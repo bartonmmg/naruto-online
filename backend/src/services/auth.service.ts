@@ -1,6 +1,6 @@
 import bcrypt from 'bcrypt'
 import jwt, { type SignOptions } from 'jsonwebtoken'
-import { prisma } from '../lib/prisma'
+import { prisma } from '../lib/prisma.js'
 import { z } from 'zod'
 
 export const registerSchema = z.object({
