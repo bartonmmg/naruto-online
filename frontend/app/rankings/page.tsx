@@ -235,9 +235,9 @@ export default function RankingsPage() {
               boxShadow: '0 0 20px rgba(0,220,110,0.7), 0 0 40px rgba(0,200,90,0.3)',
               animation: `chakra-drift ${p.dur}s cubic-bezier(0.4, 0.0, 0.6, 1) infinite`,
               animationDelay: `${p.delay}s`,
-              '--drift-x': p.driftX,
               filter: 'blur(0.5px)',
-            }}
+              '--drift-x': p.driftX,
+            } as React.CSSProperties & { [key: string]: any }}
           />
         ))}
 
@@ -261,9 +261,9 @@ export default function RankingsPage() {
               boxShadow: '0 0 20px rgba(240,70,40,0.7), 0 0 40px rgba(220,40,20,0.3)',
               animation: `chakra-drift ${p.dur}s cubic-bezier(0.4, 0.0, 0.6, 1) infinite`,
               animationDelay: `${p.delay}s`,
-              '--drift-x': p.driftX,
               filter: 'blur(0.5px)',
-            }}
+              '--drift-x': p.driftX,
+            } as React.CSSProperties & { [key: string]: any }}
           />
         ))}
 
