@@ -121,7 +121,7 @@ junit.xml
 .claude-debug/
 .claude-history/
 .claude-state/
-CLAUDE.md
+# Note: CLAUDE.md is now tracked (documentation file, not local config)
 
 # ==================== TEMPORARY FILES ====================
 tmp/
