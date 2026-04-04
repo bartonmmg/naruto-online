@@ -135,10 +135,8 @@ export default function RankingsPage() {
     )
   }
 
-  if (!user) return null
-
   // Placeholder: In future, fetch actual rank from ranking API
-  const userRank = getRankingTitle(1)
+  const userRank = user ? getRankingTitle(1) : null
 
   return (
     <main className="min-h-screen bg-[#080810] relative overflow-x-hidden">
@@ -352,7 +350,7 @@ export default function RankingsPage() {
           </nav>
 
           <div className="flex items-center gap-4">
-            {user ? (
+            {user && userRank ? (
               <>
                 <div className="hidden sm:flex items-center gap-2">
                   <span className="text-xs text-[#999] font-cinzel">{user.username}</span>

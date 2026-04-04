@@ -101,9 +101,7 @@ export default function ToolsPage() {
     )
   }
 
-  if (!user) return null
-
-  const rank = getRank(user.level)
+  const rank = user ? getRank(user.level) : null
 
   return (
     <main className="min-h-screen bg-bg-primary" style={{
@@ -134,7 +132,7 @@ export default function ToolsPage() {
           </nav>
 
           <div className="flex items-center gap-4">
-            {user ? (
+            {user && rank ? (
               <>
                 <div className="hidden sm:flex items-center gap-2">
                   <span className="text-xs text-text-dim font-cinzel">{user.username}</span>
