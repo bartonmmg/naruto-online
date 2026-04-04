@@ -6,6 +6,7 @@
 [build.environment]
   NEXT_PUBLIC_API_URL = "https://naruto-online.onrender.com"
   NODE_VERSION = "22"
+  NODE_ENV = "production"
 
 [[redirects]]
   from = "/*"
