@@ -1,5 +1,5 @@
 [build]
-  command = "npm run build --workspace=frontend"
+  command = "npm install && npm run build --workspace=frontend"
   functions = "netlify/functions"
   publish = "frontend/.next"
 
