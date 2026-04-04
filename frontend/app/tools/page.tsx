@@ -78,8 +78,9 @@ export default function ToolsPage() {
 
   useEffect(() => {
     const storedUser = localStorage.getItem('user')
-    if (!storedUser) { router.push('/auth/login'); return }
-    setUser(JSON.parse(storedUser))
+    if (storedUser) {
+      setUser(JSON.parse(storedUser))
+    }
     setLoading(false)
   }, [router])
 
@@ -133,19 +134,30 @@ export default function ToolsPage() {
           </nav>
 
           <div className="flex items-center gap-4">
-            <div className="hidden sm:flex items-center gap-2">
-              <span className="text-xs text-text-dim font-cinzel">{user.username}</span>
-              <span className={`text-xs font-cinzel px-2 py-0.5 rounded-full ${rank.cls}`}>
-                {rank.name}
-              </span>
-            </div>
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-1.5 text-xs text-text-dim hover:text-power-red transition-colors font-cinzel"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-              Salir
-            </button>
+            {user ? (
+              <>
+                <div className="hidden sm:flex items-center gap-2">
+                  <span className="text-xs text-text-dim font-cinzel">{user.username}</span>
+                  <span className={`text-xs font-cinzel px-2 py-0.5 rounded-full ${rank.cls}`}>
+                    {rank.name}
+                  </span>
+                </div>
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center gap-1.5 text-xs text-text-dim hover:text-power-red transition-colors font-cinzel"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  Salir
+                </button>
+              </>
+            ) : (
+              <Link
+                href="/auth/login"
+                className="text-xs font-cinzel text-text-dim hover:text-power-red transition-colors"
+              >
+                Iniciar sesión
+              </Link>
+            )}
           </div>
         </div>
       </header>

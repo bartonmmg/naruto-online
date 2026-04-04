@@ -5,16 +5,16 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
   LogOut,
-  Trophy,
   Search,
   Swords,
-  Crown,
   Shield,
+  Crown,
   ChevronLeft,
   LayoutGrid,
   List,
   X,
 } from 'lucide-react'
+import MedalImage from '@/components/MedalImage'
 import rankingData from '@/lib/rankings/power-ranking/power-ranking-4-2026.json'
 
 interface User {
@@ -104,11 +104,9 @@ export default function RankingsPage() {
 
   useEffect(() => {
     const storedUser = localStorage.getItem('user')
-    if (!storedUser) {
-      router.push('/auth/login')
-      return
+    if (storedUser) {
+      setUser(JSON.parse(storedUser))
     }
-    setUser(JSON.parse(storedUser))
     setLoading(false)
   }, [router])
 
@@ -354,19 +352,30 @@ export default function RankingsPage() {
           </nav>
 
           <div className="flex items-center gap-4">
-            <div className="hidden sm:flex items-center gap-2">
-              <span className="text-xs text-[#999] font-cinzel">{user.username}</span>
-              <span className={`text-xs font-cinzel px-2 py-0.5 rounded-full ${userRank.cls}`}>
-                {userRank.name}
-              </span>
-            </div>
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-1.5 text-xs text-[#666] hover:text-power-red transition-colors font-cinzel"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-              Salir
-            </button>
+            {user ? (
+              <>
+                <div className="hidden sm:flex items-center gap-2">
+                  <span className="text-xs text-[#999] font-cinzel">{user.username}</span>
+                  <span className={`text-xs font-cinzel px-2 py-0.5 rounded-full ${userRank.cls}`}>
+                    {userRank.name}
+                  </span>
+                </div>
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center gap-1.5 text-xs text-[#666] hover:text-power-red transition-colors font-cinzel"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  Salir
+                </button>
+              </>
+            ) : (
+              <Link
+                href="/auth/login"
+                className="text-xs font-cinzel text-[#666] hover:text-power-red transition-colors"
+              >
+                Iniciar sesión
+              </Link>
+            )}
           </div>
         </div>
       </header>
@@ -586,17 +595,18 @@ export default function RankingsPage() {
                       {/* Rank # */}
                       <div className="col-span-1 flex items-center justify-center">
                         {isTop3 && medal ? (
-                          medal.image ? (
-                            <div className="w-8 h-7">
-                              <img
+                          <div className="w-8 h-7 flex items-center justify-center">
+                            {medal.image ? (
+                              <MedalImage
                                 src={medal.image}
+                                emoji={medal.emoji}
                                 alt={`Top ${player.rank}`}
                                 className="w-full h-full object-contain"
                               />
-                            </div>
-                          ) : (
-                            <span className="text-xl">{medal.emoji}</span>
-                          )
+                            ) : (
+                              <span className="text-xl">{medal.emoji}</span>
+                            )}
+                          </div>
                         ) : (
                           <span className="text-xs font-cinzel font-bold text-[#555] w-7 inline-block text-center group-hover:text-[#888] transition-colors">
                             {String(player.rank).padStart(2, '0')}
@@ -711,17 +721,18 @@ export default function RankingsPage() {
 
                         {/* Medal for top 3 / Rank number for others */}
                         {isTop3 && medal ? (
-                          medal.image ? (
-                            <div className="w-16 h-12 mb-2">
-                              <img
+                          <div className="w-16 h-12 mb-2 flex items-center justify-center">
+                            {medal.image ? (
+                              <MedalImage
                                 src={medal.image}
+                                emoji={medal.emoji}
                                 alt={`Top ${player.rank}`}
                                 className="w-full h-full object-contain"
                               />
-                            </div>
-                          ) : (
-                            <span className="text-3xl mb-2">{medal.emoji}</span>
-                          )
+                            ) : (
+                              <span className="text-3xl">{medal.emoji}</span>
+                            )}
+                          </div>
                         ) : (
                           <div className="w-9 h-9 rounded-full bg-white/5 border border-white/10 flex items-center justify-center mb-2">
                             <span className="text-[10px] font-cinzel font-bold text-[#777]">
