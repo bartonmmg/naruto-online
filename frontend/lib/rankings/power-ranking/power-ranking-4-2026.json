@@ -1,0 +1,724 @@
+{
+  "meta": {
+    "region": "LATAM",
+    "cluster": 1,
+    "date": "2026-04-04",
+    "total_players": 128
+  },
+  "players": [
+    {
+      "name": "Martin 👑",
+      "server": "S111",
+      "power": 13447177,
+      "level": 115
+    },
+    {
+      "name": "Yueღ",
+      "server": "S141",
+      "power": 13410928,
+      "level": 115
+    },
+    {
+      "name": "~☆•Lucyana•☆~",
+      "server": "S15",
+      "power": 12817486,
+      "level": 115
+    },
+    {
+      "name": "AkayaNatsuda",
+      "server": "S92",
+      "power": 12144149,
+      "level": 114
+    },
+    {
+      "name": "Jhonky ♒",
+      "server": "S124",
+      "power": 12114213,
+      "level": 112
+    },
+    {
+      "name": "【DS】Kautet",
+      "server": "S184",
+      "power": 12056729,
+      "level": 115
+    },
+    {
+      "name": "MrCat",
+      "server": "S03",
+      "power": 11705249,
+      "level": 115
+    },
+    {
+      "name": "♥미나리♥",
+      "server": "S03",
+      "power": 11195684,
+      "level": 108
+    },
+    {
+      "name": "Dreams†Mica♥",
+      "server": "S42",
+      "power": 10964562,
+      "level": 114
+    },
+    {
+      "name": "Kyubi64",
+      "server": "S55",
+      "power": 10920917,
+      "level": 109
+    },
+    {
+      "name": "Shailin",
+      "server": "S50",
+      "power": 10740655,
+      "level": 115
+    },
+    {
+      "name": "💀 MEGATRON 💀",
+      "server": "S132",
+      "power": 10696423,
+      "level": 115
+    },
+    {
+      "name": "kamatany",
+      "server": "S57",
+      "power": 10348001,
+      "level": 115
+    },
+    {
+      "name": "Kumara",
+      "server": "S105",
+      "power": 10532392,
+      "level": 115
+    },
+    {
+      "name": "Gojo ツ",
+      "server": "S27",
+      "power": 10028220,
+      "level": 112
+    },
+    {
+      "name": "BloodOfFire",
+      "server": "S27",
+      "power": 9802194,
+      "level": 110
+    },
+    {
+      "name": "ChojiKamachi",
+      "server": "S116",
+      "power": 9426158,
+      "level": 115
+    },
+    {
+      "name": "KRATOSS",
+      "server": "S116",
+      "power": 9391436,
+      "level": 103
+    },
+    {
+      "name": "ريالSehzadeЄ",
+      "server": "S137",
+      "power": 9099430,
+      "level": 114
+    },
+    {
+      "name": "††oneriŌ†s†",
+      "server": "S55",
+      "power": 9091045,
+      "level": 105
+    },
+    {
+      "name": "ღ❁☆TheKing☆❁ღ",
+      "server": "S103",
+      "power": 9037797,
+      "level": 115
+    },
+    {
+      "name": "Kazumi",
+      "server": "S57",
+      "power": 8848511,
+      "level": 115
+    },
+    {
+      "name": "大Krilin",
+      "server": "S02",
+      "power": 8832558,
+      "level": 115
+    },
+    {
+      "name": "Sol ღ",
+      "server": "S25",
+      "power": 8755283,
+      "level": 114
+    },
+    {
+      "name": "ItachiOmega",
+      "server": "S03",
+      "power": 8768539,
+      "level": 111
+    },
+    {
+      "name": "RiuK",
+      "server": "S136",
+      "power": 8336130,
+      "level": 114
+    },
+    {
+      "name": "π☆..",
+      "server": "S152",
+      "power": 8180235,
+      "level": 112
+    },
+    {
+      "name": "Ragnard♣Drago",
+      "server": "S02",
+      "power": 8165811,
+      "level": 99
+    },
+    {
+      "name": "¬°StevenZh°¬",
+      "server": "S109",
+      "power": 8154297,
+      "level": 113
+    },
+    {
+      "name": "Miller",
+      "server": "S131",
+      "power": 7944456,
+      "level": 114
+    },
+    {
+      "name": "Ziaღ",
+      "server": "S111",
+      "power": 7887743,
+      "level": 114
+    },
+    {
+      "name": "❁Heath",
+      "server": "S137",
+      "power": 7883374,
+      "level": 99
+    },
+    {
+      "name": "☻Six™Kawaki 🐉",
+      "server": "S134",
+      "power": 7875112,
+      "level": 103
+    },
+    {
+      "name": "ツNΞxus ╰_╯",
+      "server": "S68",
+      "power": 7848889,
+      "level": 114
+    },
+    {
+      "name": "yeissy",
+      "server": "S10",
+      "power": 7848370,
+      "level": 115
+    },
+    {
+      "name": "ZAYKOꀩ",
+      "server": "S48",
+      "power": 7811443,
+      "level": 115
+    },
+    {
+      "name": "shinobudo",
+      "server": "S15",
+      "power": 7713810,
+      "level": 115
+    },
+    {
+      "name": "Floki",
+      "server": "S145",
+      "power": 7661920,
+      "level": 114
+    },
+    {
+      "name": "QuimicoRiCkY",
+      "server": "S144",
+      "power": 7613349,
+      "level": 115
+    },
+    {
+      "name": "Derark",
+      "server": "S143",
+      "power": 7605396,
+      "level": 110
+    },
+    {
+      "name": "♥Medusa♥",
+      "server": "S07",
+      "power": 7567924,
+      "level": 105
+    },
+    {
+      "name": "KURAMA",
+      "server": "S110",
+      "power": 7319694,
+      "level": 115
+    },
+    {
+      "name": "▶KARI◀",
+      "server": "S03",
+      "power": 7258218,
+      "level": 109
+    },
+    {
+      "name": "✣-Shika-✣",
+      "server": "S12",
+      "power": 7230054,
+      "level": 102
+    },
+    {
+      "name": "StealBlade",
+      "server": "S65",
+      "power": 7118220,
+      "level": 114
+    },
+    {
+      "name": "✧Subλru✧",
+      "server": "S03",
+      "power": 7041900,
+      "level": 94
+    },
+    {
+      "name": "Skazy",
+      "server": "S119",
+      "power": 6939549,
+      "level": 114
+    },
+    {
+      "name": "Tanjiro",
+      "server": "S152",
+      "power": 6931155,
+      "level": 115
+    },
+    {
+      "name": "Endless",
+      "server": "S08",
+      "power": 6877244,
+      "level": 111
+    },
+    {
+      "name": "Sei",
+      "server": "S62",
+      "power": 6801396,
+      "level": 115
+    },
+    {
+      "name": "NENE",
+      "server": "S137",
+      "power": 6791074,
+      "level": 113
+    },
+    {
+      "name": "Hium¥Estarossa",
+      "server": "S30",
+      "power": 6743532,
+      "level": 104
+    },
+    {
+      "name": "AnaCoppola",
+      "server": "S97",
+      "power": 6689604,
+      "level": 110
+    },
+    {
+      "name": "RoyMustang",
+      "server": "S87",
+      "power": 6596720,
+      "level": 115
+    },
+    {
+      "name": "iAlex",
+      "server": "S135",
+      "power": 6515539,
+      "level": 108
+    },
+    {
+      "name": "JigSaw♥JU♥♥",
+      "server": "S12",
+      "power": 6323388,
+      "level": 106
+    },
+    {
+      "name": "McLovin",
+      "server": "S22",
+      "power": 6305224,
+      "level": 105
+    },
+    {
+      "name": "☯Ꭰɓito",
+      "server": "S159",
+      "power": 6301786,
+      "level": 115
+    },
+    {
+      "name": "GyomeiHimejima",
+      "server": "S82",
+      "power": 6254567,
+      "level": 115
+    },
+    {
+      "name": "Mεχα-⚝",
+      "server": "S02",
+      "power": 6252764,
+      "level": 112
+    },
+    {
+      "name": "☁️OniisamaЄ",
+      "server": "S156",
+      "power": 6241111,
+      "level": 115
+    },
+    {
+      "name": "porkin",
+      "server": "S27",
+      "power": 6229850,
+      "level": 112
+    },
+    {
+      "name": "ℐ..",
+      "server": "S108",
+      "power": 6226305,
+      "level": 115
+    },
+    {
+      "name": "☯Gregz☯",
+      "server": "S47",
+      "power": 6172927,
+      "level": 114
+    },
+    {
+      "name": "Pain",
+      "server": "S27",
+      "power": 6167641,
+      "level": 115
+    },
+    {
+      "name": "希Alone",
+      "server": "S104",
+      "power": 6136375,
+      "level": 115
+    },
+    {
+      "name": "DavyJones",
+      "server": "S77",
+      "power": 6135681,
+      "level": 111
+    },
+    {
+      "name": "HanLee",
+      "server": "S147",
+      "power": 6109402,
+      "level": 105
+    },
+    {
+      "name": "Kaito",
+      "server": "S145",
+      "power": 6104380,
+      "level": 105
+    },
+    {
+      "name": "BΣLCΣBÜ",
+      "server": "S50",
+      "power": 6098086,
+      "level": 115
+    },
+    {
+      "name": "Kimura",
+      "server": "S105",
+      "power": 6092755,
+      "level": 107
+    },
+    {
+      "name": "Hana",
+      "server": "S106",
+      "power": 6078114,
+      "level": 112
+    },
+    {
+      "name": "🍎Russian..",
+      "server": "S156",
+      "power": 6073126,
+      "level": 108
+    },
+    {
+      "name": "【SN】☯..",
+      "server": "S119",
+      "power": 6061293,
+      "level": 114
+    },
+    {
+      "name": "HininUzumaki",
+      "server": "S70",
+      "power": 6061067,
+      "level": 115
+    },
+    {
+      "name": "Cold",
+      "server": "S28",
+      "power": 5979301,
+      "level": 109
+    },
+    {
+      "name": "Lɥɱεı",
+      "server": "S02",
+      "power": 5886565,
+      "level": 107
+    },
+    {
+      "name": "Lūcfēr",
+      "server": "S08",
+      "power": 5860581,
+      "level": 105
+    },
+    {
+      "name": "xiver007",
+      "server": "S35",
+      "power": 5849214,
+      "level": 113
+    },
+    {
+      "name": "【DS】Kitasan",
+      "server": "S112",
+      "power": 5816911,
+      "level": 115
+    },
+    {
+      "name": "†Escorp..",
+      "server": "S125",
+      "power": 5802631,
+      "level": 115
+    },
+    {
+      "name": "Mashiro",
+      "server": "S17",
+      "power": 5802182,
+      "level": 113
+    },
+    {
+      "name": "Hina",
+      "server": "S07",
+      "power": 5798903,
+      "level": 115
+    },
+    {
+      "name": "Near",
+      "server": "S153",
+      "power": 5786783,
+      "level": 115
+    },
+    {
+      "name": "Daijin",
+      "server": "S137",
+      "power": 5748043,
+      "level": 105
+    },
+    {
+      "name": "~ღKratho..",
+      "server": "S52",
+      "power": 5740512,
+      "level": 115
+    },
+    {
+      "name": "Lαηcεℓσ..",
+      "server": "S139",
+      "power": 5726347,
+      "level": 104
+    },
+    {
+      "name": "LocoMurdock",
+      "server": "S07",
+      "power": 5719285,
+      "level": 108
+    },
+    {
+      "name": "†ShinraTense..",
+      "server": "S144",
+      "power": 5716536,
+      "level": 104
+    },
+    {
+      "name": "OBITO",
+      "server": "S123",
+      "power": 5712533,
+      "level": 99
+    },
+    {
+      "name": "Limon",
+      "server": "S154",
+      "power": 5695229,
+      "level": 115
+    },
+    {
+      "name": "Viruz",
+      "server": "S25",
+      "power": 5690063,
+      "level": 115
+    },
+    {
+      "name": "☻♔Mada..",
+      "server": "S123",
+      "power": 5682788,
+      "level": 115
+    },
+    {
+      "name": "Sαγα",
+      "server": "S121",
+      "power": 5682518,
+      "level": 114
+    },
+    {
+      "name": "▶ BloodD ◀",
+      "server": "S143",
+      "power": 5576440,
+      "level": 112
+    },
+    {
+      "name": "🔥Shisui🔥",
+      "server": "S118",
+      "power": 5539671,
+      "level": 112
+    },
+    {
+      "name": "◆Gama◆..",
+      "server": "S104",
+      "power": 5550685,
+      "level": 110
+    },
+    {
+      "name": "Kengton",
+      "server": "S30",
+      "power": 5532685,
+      "level": 115
+    },
+    {
+      "name": "NanakoKagu..",
+      "server": "S02",
+      "power": 5492423,
+      "level": 110
+    },
+    {
+      "name": "NovaOX..",
+      "server": "S186",
+      "power": 5488395,
+      "level": 111
+    },
+    {
+      "name": "AlitzeL",
+      "server": "S137",
+      "power": 5473345,
+      "level": 109
+    },
+    {
+      "name": "Sky",
+      "server": "S189",
+      "power": 5443158,
+      "level": 111
+    },
+    {
+      "name": "Leoツ",
+      "server": "S53",
+      "power": 5437570,
+      "level": 98
+    },
+    {
+      "name": "ROCKLEE",
+      "server": "S??",
+      "power": 5428028,
+      "level": 115
+    },
+    {
+      "name": "AUbaurmeyanG",
+      "server": "S53",
+      "power": 5373075,
+      "level": 112
+    },
+    {
+      "name": "¨¨VENOM¨ThA..",
+      "server": "S52",
+      "power": 5367218,
+      "level": 115
+    },
+    {
+      "name": "Hunter",
+      "server": "S??",
+      "power": 5329459,
+      "level": 100
+    },
+    {
+      "name": "Binks",
+      "server": "S??",
+      "power": 5290991,
+      "level": 111
+    },
+    {
+      "name": "Reigen",
+      "server": "S104",
+      "power": 5286153,
+      "level": 109
+    },
+    {
+      "name": "❅snou",
+      "server": "S53",
+      "power": 5246746,
+      "level": 115
+    },
+    {
+      "name": "รเא..",
+      "server": "S134",
+      "power": 5228597,
+      "level": 114
+    },
+    {
+      "name": "بℵGodSu..",
+      "server": "S13",
+      "power": 5223677,
+      "level": 105
+    },
+    {
+      "name": "Favl0",
+      "server": "S67",
+      "power": 5219282,
+      "level": 114
+    },
+    {
+      "name": "亗GodSuN亗",
+      "server": "S13",
+      "power": 5136032,
+      "level": 113
+    },
+    {
+      "name": "かねきけん",
+      "server": "S13",
+      "power": 5128095,
+      "level": 115
+    },
+    {
+      "name": "Void",
+      "server": "S02",
+      "power": 5083399,
+      "level": 106
+    },
+    {
+      "name": "Galax",
+      "server": "S07",
+      "power": 4859066,
+      "level": 107
+    },
+    {
+      "name": "Meliod45",
+      "server": "S08",
+      "power": 4841937,
+      "level": 113
+    },
+    {
+      "name": "ὑђ๏The..",
+      "server": "S18",
+      "power": 4765755,
+      "level": 100
+    }
+  ]
+}

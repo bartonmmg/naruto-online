@@ -1,0 +1,261 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  @apply border-border;
+}
+
+html {
+  @apply bg-bg-primary text-text-primary font-inter;
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply bg-bg-primary;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  @apply font-cinzel font-bold;
+}
+
+a, button {
+  @apply transition-all duration-200;
+}
+
+/* ── Scrollbar ────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { @apply bg-bg-secondary; }
+::-webkit-scrollbar-thumb { @apply bg-accent-orange/60 rounded-full; }
+::-webkit-scrollbar-thumb:hover { @apply bg-accent-orange; }
+
+/* ── Ninja Glow Utilities ─────────────────────────── */
+.ninja-glow {
+  text-shadow: 0 0 20px rgba(255, 107, 0, 0.6), 0 0 40px rgba(255, 107, 0, 0.3);
+}
+
+.chakra-glow-text {
+  text-shadow: 0 0 20px rgba(0, 128, 255, 0.7), 0 0 40px rgba(0, 128, 255, 0.3);
+}
+
+.sage-glow-text {
+  text-shadow: 0 0 20px rgba(255, 215, 0, 0.6), 0 0 40px rgba(255, 215, 0, 0.3);
+}
+
+/* ── Card ─────────────────────────────────────────── */
+.game-card {
+  @apply bg-bg-card border border-border rounded-xl transition-all duration-300;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+}
+
+.game-card:hover {
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.6);
+}
+
+.game-card-orange:hover {
+  @apply border-accent-orange/50;
+  box-shadow: 0 8px 40px rgba(255, 107, 0, 0.15);
+}
+
+.game-card-blue:hover {
+  @apply border-chakra-blue/50;
+  box-shadow: 0 8px 40px rgba(0, 128, 255, 0.15);
+}
+
+.game-card-red:hover {
+  @apply border-power-red/50;
+  box-shadow: 0 8px 40px rgba(204, 0, 0, 0.15);
+}
+
+/* ── Animated Background Grid ─────────────────────── */
+.grid-bg {
+  background-image:
+    linear-gradient(rgba(255, 107, 0, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 107, 0, 0.04) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* ── Glowing Border ───────────────────────────────── */
+.glow-border-orange {
+  border: 1px solid rgba(255, 107, 0, 0.4);
+  box-shadow: 0 0 20px rgba(255, 107, 0, 0.1), inset 0 0 20px rgba(255, 107, 0, 0.03);
+}
+
+.glow-border-blue {
+  border: 1px solid rgba(0, 128, 255, 0.4);
+  box-shadow: 0 0 20px rgba(0, 128, 255, 0.1), inset 0 0 20px rgba(0, 128, 255, 0.03);
+}
+
+/* ── XP Bar ───────────────────────────────────────── */
+.xp-bar-fill {
+  background: linear-gradient(90deg, #FF6B00 0%, #FF3D00 50%, #FFD700 100%);
+  box-shadow: 0 0 10px rgba(255, 107, 0, 0.6);
+}
+
+/* ── Ambient glow orbs ────────────────────────────── */
+.orb-orange {
+  background: radial-gradient(circle, rgba(255, 107, 0, 0.15) 0%, transparent 70%);
+}
+
+.orb-blue {
+  background: radial-gradient(circle, rgba(0, 128, 255, 0.12) 0%, transparent 70%);
+}
+
+.orb-red {
+  background: radial-gradient(circle, rgba(204, 0, 0, 0.1) 0%, transparent 70%);
+}
+
+/* ── Dividers ─────────────────────────────────────── */
+.divider-orange {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 107, 0, 0.5), transparent);
+}
+
+.divider-red {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(196, 30, 58, 0.6), transparent);
+}
+
+/* ── Akatsuki card variant ────────────────────────── */
+.game-card-red:hover {
+  @apply border-power-red/50;
+  box-shadow: 0 8px 40px rgba(196, 30, 58, 0.18);
+}
+
+.glow-border-red {
+  border: 1px solid rgba(196, 30, 58, 0.4);
+  box-shadow: 0 0 20px rgba(196, 30, 58, 0.1), inset 0 0 20px rgba(196, 30, 58, 0.03);
+}
+
+/* ── Akatsuki grid bg (red tint) ──────────────────── */
+.grid-bg-red {
+  background-image:
+    linear-gradient(rgba(196, 30, 58, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(196, 30, 58, 0.04) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* ── Input global ─────────────────────────────────── */
+input:focus {
+  outline: none;
+}
+
+/* ── Rank badge ───────────────────────────────────── */
+.rank-genin    { @apply bg-nature-green/20 text-nature-green border border-nature-green/30; }
+.rank-chunin   { @apply bg-chakra-blue/20 text-chakra-blue border border-chakra-blue/30; }
+.rank-jonin    { @apply bg-sage-gold/20 text-sage-gold border border-sage-gold/30; }
+.rank-kage     { @apply bg-accent-orange/20 text-accent-orange border border-accent-orange/30; }
+.rank-akatsuki { @apply bg-power-red/20 text-power-red border border-power-red/30; }
+
+/* ── Floating particles ───────────────────────────── */
+.particle {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  animation: floatUp linear infinite;
+}
+
+/* ── Fire Rise Animation ──────────────────────────── */
+@keyframes fireRise {
+  0% {
+    transform: translateY(0) scale(1);
+    opacity: 0.8;
+  }
+  60% {
+    transform: translateY(-60px) scale(0.7);
+    opacity: 0.5;
+  }
+  100% {
+    transform: translateY(-120px) scale(0.3);
+    opacity: 0;
+  }
+}
+
+.animate-fire {
+  animation: fireRise infinite;
+}
+
+/* ── Fire Float Animation (partículas subiendo) ────── */
+@keyframes fire-float {
+  0%   { transform: translateY(0) scale(1); opacity: 0; }
+  10%  { opacity: 0.8; }
+  80%  { opacity: 0.6; }
+  100% { transform: translateY(-100vh) scale(0); opacity: 0; }
+}
+
+.animate-fire-float {
+  animation: fire-float linear infinite;
+}
+
+/* ── Float Slow Animation (bob suave) ──────────────── */
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-10px); }
+}
+
+.animate-float-slow {
+  animation: float-slow 4s ease-in-out infinite;
+}
+
+/* ── Gradient X Animation (título animado) ────────── */
+@keyframes gradient-x {
+  0%, 100% { background-position: 0% 50%; }
+  50%       { background-position: 100% 50%; }
+}
+
+.animate-gradient-x {
+  background-size: 200% 200%;
+  animation: gradient-x 3s ease infinite;
+}
+
+/* ── Sparkle/Destello Animation ────────────────────── */
+@keyframes sparkle {
+  0%, 100% { opacity: 0; }
+  50% { opacity: 1; }
+}
+
+.animate-sparkle {
+  animation: sparkle 1.5s ease-in-out infinite;
+}
+
+/* ── Glow pulse más fuerte ────────────────────────── */
+@keyframes glow-strong {
+  0%, 100% { filter: drop-shadow(0 0 8px rgba(255, 140, 0, 0.4)); }
+  50% { filter: drop-shadow(0 0 20px rgba(255, 140, 0, 0.8)); }
+}
+
+.animate-glow-strong {
+  animation: glow-strong 2s ease-in-out infinite;
+}
+
+/* ── Elegant Chakra Drift ───────────────────────── */
+@keyframes chakra-drift {
+  0%   { transform: translateY(0) translateX(0) scale(1); opacity: 0; }
+  10%  { opacity: 0.8; }
+  50%  { transform: translateY(-30vh) translateX(var(--drift-x, 0)); opacity: 0.6; }
+  90%  { opacity: 0.1; }
+  100% { transform: translateY(-100vh) translateX(var(--drift-x, 0)) scale(0.2); opacity: 0; }
+}
+
+/* ── Swirling Leaves Animation ──────────────────── */
+@keyframes leaf-swirl {
+  0%   { transform: translateY(0) rotateZ(0) rotateX(0); opacity: 0; }
+  15%  { opacity: 0.7; }
+  50%  { transform: translateY(-50vh) rotateZ(180deg) rotateX(45deg); opacity: 0.5; }
+  85%  { opacity: 0.2; }
+  100% { transform: translateY(-120vh) rotateZ(360deg) rotateX(90deg); opacity: 0; }
+}
+
+/* ── Glowing Orb Pulse ──────────────────────────── */
+@keyframes orb-pulse {
+  0%, 100% { transform: scale(1) translate(0, 0); opacity: 0.5; }
+  50%      { transform: scale(1.3) translate(0, -5px); opacity: 0.8; }
+}
+
+/* ── Subtle Shimmer ────────────────────────────── */
+@keyframes shimmer {
+  0%, 100% { opacity: 0.3; }
+  50%      { opacity: 0.9; }
+}

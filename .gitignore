@@ -1,0 +1,163 @@
+# ==================== DEPENDENCIES ====================
+node_modules/
+.pnp
+.pnp.js
+dist/
+build/
+
+# ==================== ENVIRONMENT & SECRETS ====================
+# Environment files — CRITICAL SECURITY
+.env
+.env.local
+.env.*.local
+.env.production
+.env.production.local
+.env.development
+.env.development.local
+.env.test
+.env.test.local
+.env.example
+
+# Secrets and API keys
+.secrets/
+*.key
+*.pem
+*.p8
+*.p12
+*.pfx
+
+# ==================== DATABASE ====================
+# SQLite files
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Prisma generated
+backend/prisma/dev.db
+backend/prisma/dev.db-journal
+
+# ==================== BUILD OUTPUT ====================
+# Next.js
+frontend/.next/
+frontend/out/
+frontend/.turbo/
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Build artifacts
+dist/
+build/
+.dist/
+.build/
+
+# ==================== LOGS ====================
+npm-debug.log*
+npm-error.log*
+yarn-debug.log*
+yarn-error.log*
+yarn-lock.log*
+lerna-debug.log*
+*.log
+logs/
+
+# ==================== OS SPECIFIC ====================
+.DS_Store
+Thumbs.db
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+desktop.ini
+
+# ==================== IDE & EDITOR ====================
+# VSCode
+.vscode/
+.vscode-test/
+*.code-workspace
+.history/
+
+# JetBrains
+.idea/
+.idea_modules/
+*.iml
+*.iws
+*.ipr
+out/
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim/Neovim
+*.swp
+*.swo
+*~
+.vim/
+.netrwhist
+
+# Emacs
+*~
+\#*\#
+.\#*
+
+# ==================== TESTING ====================
+coverage/
+.coverage
+.nyc_output/
+*.lcov
+test-results/
+junit.xml
+
+# ==================== CLAUDE CODE CONFIGURATION ====================
+# Local Claude Code settings and cache
+.claude/
+.claude-cache/
+.claude-debug/
+.claude-history/
+.claude-state/
+CLAUDE.md
+
+# ==================== TEMPORARY FILES ====================
+tmp/
+temp/
+.temp/
+*.tmp
+*.bak
+*.backup
+~*
+*.swp
+
+# ==================== MISC ====================
+# Vercel
+.vercel
+
+# Generated files
+.eslintcache
+.prettierignore
+.prettierignore.bak
+
+# Private documentation (notes, drafts)
+PRIVATE-*.md
+NOTES-*.md
+DRAFT-*.md
+TODO-*.md
+
+# ==================== WORKSPACE SPECIFIC ====================
+# Local development scripts
+local-*.sh
+local-*.bat
+
+# Optional npm cache directory
+.npm
+
+# Optional REPL history
+.node_repl_history
+
+# Optional output
+out

@@ -1,0 +1,35 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  username      String    @unique
+  email         String    @unique
+  passwordHash  String
+  avatarUrl     String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  xp            Int       @default(0)
+  level         Int       @default(1)
+  lastDailyLogin DateTime?
+
+  xpLogs        XpLog[]
+}
+
+model XpLog {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action    String    // DAILY_LOGIN, GUIDE_READ, TOOL_USED, COMMUNITY_POST
+  amount    Int
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
