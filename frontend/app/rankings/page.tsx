@@ -3,7 +3,6 @@
 import { useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import Image from 'next/image'
 import {
   LogOut,
   Trophy,
@@ -86,12 +85,12 @@ function getRank(level: number) {
 }
 
 function getRankingTitle(playerRank: number) {
-  if (playerRank === 1) return 'Forzudo de espacio tiempo'
-  if (playerRank === 2 || playerRank === 3) return 'Tirano de espacio tiempo'
-  if (playerRank >= 4 && playerRank <= 10) return 'Dios Viviente'
-  if (playerRank >= 11 && playerRank <= 50) return 'Ninja Legendario'
-  if (playerRank >= 51 && playerRank <= 100) return 'Maestro Supremo'
-  return 'Ninja de Elite'
+  if (playerRank === 1) return { name: 'Forzudo de espacio tiempo', cls: 'bg-sage-gold/20 text-sage-gold', icon: '🥇' }
+  if (playerRank === 2 || playerRank === 3) return { name: 'Tirano de espacio tiempo', cls: 'bg-[#C0C0C0]/20 text-[#C0C0C0]', icon: '🥈' }
+  if (playerRank >= 4 && playerRank <= 10) return { name: 'Dios Viviente', cls: 'bg-power-red/20 text-power-red', icon: '🔥' }
+  if (playerRank >= 11 && playerRank <= 50) return { name: 'Ninja Legendario', cls: 'bg-chakra-blue/20 text-chakra-blue', icon: '⭐' }
+  if (playerRank >= 51 && playerRank <= 100) return { name: 'Maestro Supremo', cls: 'bg-text-dim/20 text-text-dim', icon: '👑' }
+  return { name: 'Ninja de Elite', cls: 'bg-accent-orange/20 text-accent-orange', icon: '🌟' }
 }
 
 export default function RankingsPage() {
@@ -140,7 +139,8 @@ export default function RankingsPage() {
 
   if (!user) return null
 
-  const userRank = getRank(user.level)
+  // Placeholder: In future, fetch actual rank from ranking API
+  const userRank = getRankingTitle(1)
 
   return (
     <main className="min-h-screen bg-[#080810] relative overflow-x-hidden">
@@ -226,18 +226,20 @@ export default function RankingsPage() {
           <div
             key={`green-${i}`}
             className="absolute rounded-full"
-            style={{
-              left: p.left,
-              bottom: p.bottom,
-              width: p.size,
-              height: p.size,
-              backgroundColor: 'rgba(0,220,110,0.6)',
-              boxShadow: '0 0 20px rgba(0,220,110,0.7), 0 0 40px rgba(0,200,90,0.3)',
-              animation: `chakra-drift ${p.dur}s cubic-bezier(0.4, 0.0, 0.6, 1) infinite`,
-              animationDelay: `${p.delay}s`,
-              filter: 'blur(0.5px)',
-              '--drift-x': p.driftX,
-            } as React.CSSProperties & { [key: string]: any }}
+            style={
+              {
+                left: p.left,
+                bottom: p.bottom,
+                width: p.size,
+                height: p.size,
+                backgroundColor: 'rgba(0,220,110,0.6)',
+                boxShadow: '0 0 20px rgba(0,220,110,0.7), 0 0 40px rgba(0,200,90,0.3)',
+                animation: `chakra-drift ${p.dur}s cubic-bezier(0.4, 0.0, 0.6, 1) infinite`,
+                animationDelay: `${p.delay}s`,
+                filter: 'blur(0.5px)',
+                '--drift-x': p.driftX,
+              } as React.CSSProperties & { [key: string]: any }
+            }
           />
         ))}
 
@@ -252,18 +254,20 @@ export default function RankingsPage() {
           <div
             key={`red-${i}`}
             className="absolute rounded-full"
-            style={{
-              right: p.right,
-              bottom: p.bottom,
-              width: p.size,
-              height: p.size,
-              backgroundColor: 'rgba(240,70,40,0.6)',
-              boxShadow: '0 0 20px rgba(240,70,40,0.7), 0 0 40px rgba(220,40,20,0.3)',
-              animation: `chakra-drift ${p.dur}s cubic-bezier(0.4, 0.0, 0.6, 1) infinite`,
-              animationDelay: `${p.delay}s`,
-              filter: 'blur(0.5px)',
-              '--drift-x': p.driftX,
-            } as React.CSSProperties & { [key: string]: any }}
+            style={
+              {
+                right: p.right,
+                bottom: p.bottom,
+                width: p.size,
+                height: p.size,
+                backgroundColor: 'rgba(240,70,40,0.6)',
+                boxShadow: '0 0 20px rgba(240,70,40,0.7), 0 0 40px rgba(220,40,20,0.3)',
+                animation: `chakra-drift ${p.dur}s cubic-bezier(0.4, 0.0, 0.6, 1) infinite`,
+                animationDelay: `${p.delay}s`,
+                filter: 'blur(0.5px)',
+                '--drift-x': p.driftX,
+              } as React.CSSProperties & { [key: string]: any }
+            }
           />
         ))}
 
@@ -583,12 +587,11 @@ export default function RankingsPage() {
                       <div className="col-span-1 flex items-center justify-center">
                         {isTop3 && medal ? (
                           medal.image ? (
-                            <div className="relative w-8 h-7">
-                              <Image
+                            <div className="w-8 h-7">
+                              <img
                                 src={medal.image}
                                 alt={`Top ${player.rank}`}
-                                fill
-                                className="object-contain"
+                                className="w-full h-full object-contain"
                               />
                             </div>
                           ) : (
@@ -709,12 +712,11 @@ export default function RankingsPage() {
                         {/* Medal for top 3 / Rank number for others */}
                         {isTop3 && medal ? (
                           medal.image ? (
-                            <div className="relative w-16 h-12 mb-2">
-                              <Image
+                            <div className="w-16 h-12 mb-2">
+                              <img
                                 src={medal.image}
                                 alt={`Top ${player.rank}`}
-                                fill
-                                className="object-contain"
+                                className="w-full h-full object-contain"
                               />
                             </div>
                           ) : (
@@ -757,7 +759,7 @@ export default function RankingsPage() {
                             <span
                               className={`px-2 py-1 rounded text-[9px] font-cinzel font-bold ${badgeColor} border mb-2 text-center line-clamp-2 w-full`}
                             >
-                              {title}
+                              {title.icon} {title.name}
                             </span>
                           )
                         })()}

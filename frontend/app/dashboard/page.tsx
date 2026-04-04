@@ -61,7 +61,7 @@ export default function DashboardPage() {
 
   const xpForNextLevel = Math.pow(user.level, 2) * 100
   const xpProgress = Math.min((user.xp / xpForNextLevel) * 100, 100)
-  const rank = getRank(user.level)
+  const rank = getRank(user.level) 
 
   return (
     <main className="min-h-screen bg-bg-primary grid-bg">
