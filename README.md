@@ -84,3 +84,4 @@ naruto-app/
 ---
 
 **Hecho con 🧡 para la comunidad**
+# Force rebuild
