@@ -185,6 +185,47 @@ naruto-app/
 4. **Styling:** Use Tailwind classes; custom CSS in `globals.css` for utility overrides
 5. **Testing endpoints:** Use Postman, Thunder Client, or curl against `http://localhost:4000`
 
+## Build & Deployment Best Practices
+
+### Pre-Deploy Verification
+**Before every push to main:**
+```bash
+# Simulate what Netlify does
+cd frontend && npm run build
+
+# Or run the full validation script
+bash pre-deploy-check.sh
+```
+
+**Why:** Catches 95% of issues locally before they appear in production.
+
+### Build Process
+- **Netlify:** Only builds frontend (`npm install && cd frontend && npm run build`)
+- **Render (Backend):** Separate service, deployed independently
+- **Environment:** Netlify runs on Linux (different from Windows dev machine) — file system behavior and permissions may differ
+
+### Why Builds Fail (Troubleshooting)
+| Symptom | Likely Cause | Fix |
+|---------|--------------|-----|
+| `exit code 1` with no details | Build environment issue or cache | Clear cache in Netlify UI + retry |
+| `EPERM: operation not permitted` | File system permissions (dev machine only) | Run `npm ci` instead of `npm install` |
+| `TypeError: X is not defined` | Missing import or outdated lockfile | Delete `package-lock.json` and run `npm install` |
+| `Cannot find module 'X'` | Dependency not installed | `npm install` in root, then `cd frontend && npm install` |
+| `Port already in use` | Local development conflict | Kill process or use different port |
+
+### Netlify Configuration
+- **Build Command:** `npm install && cd frontend && npm run build`
+- **Publish Directory:** `frontend/.next`
+- **Node Version:** 18.17.0 (set in netlify.toml `[env]`)
+- **Cache:** Netlify caches `node_modules` and `.next` — clear if weird issues occur
+- **Plugin:** Uses `@netlify/plugin-nextjs` for Next.js-specific optimizations
+
+### Git Best Practices
+- **Always test locally first:** `npm install && cd frontend && npm run build`
+- **Commit all changes:** `git status` should be clean before push
+- **Use meaningful commit messages:** Makes debugging easier if rollback needed
+- **Monitor after push:** Check Netlify dashboard within 2 minutes after `git push`
+
 ## Known Constraints & Decisions
 
 - **SQLite enum limitation:** SQLite has no native enum type; use string fields + TypeScript constants
@@ -375,7 +416,22 @@ Located in `frontend/public/images/power-ranking/`:
 2. **Image 404 Errors:** Use native `<img>` tags for PNGs, not `next/image` on Netlify
 3. **Database Connection Errors:** Verify `DATABASE_URL` is correctly set in Render environment
 4. **ESM Import Errors:** Ensure backend uses `.js` extensions in relative imports (required for production)
-5. **Build Failures:** Run `npm install && npm run build` locally to catch TypeScript errors before deploying
+5. **Netlify Build Failures (exit code 1):**
+   - **Cause:** Often related to environment differences or file system issues (e.g., Prisma permissions on Linux vs Windows)
+   - **Prevention:** Run `pre-deploy-check.sh` script before pushing
+   - **Fix if it happens:**
+     - Check Netlify deploy logs for exact error message
+     - Manually trigger "Clear cache and retry deploy" in Netlify dashboard
+     - Ensure all files are committed to git (no `node_modules` pollution)
+     - Verify `netlify.toml` has correct build command: `npm install && cd frontend && npm run build`
+   - **Why it happens:** Netlify runs on Linux (different file system/permissions than Windows dev), and build caching can cause stale issues
+
+**Pre-Deployment Checklist:**
+- ✅ Run local build: `cd frontend && npm run build` (should show ✓ Compiled successfully)
+- ✅ Run pre-deploy script: `bash pre-deploy-check.sh` (catches most issues)
+- ✅ Verify all changes committed: `git status` (should be clean)
+- ✅ Push to main: `git push origin main`
+- ✅ Monitor Netlify: https://app.netlify.com/sites/naruto-online/deploys
 
 ## Rankings Page Visual Effects (Performance-Optimized 2026-04-05)
 
