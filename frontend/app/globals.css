@@ -305,15 +305,14 @@ input:focus {
 }
 
 
-/* Combine breathing + edge glow animations */
-[data-character="left"].edge-glow {
-  animation: character-breathe 4s ease-in-out infinite,
-             edge-glow-left 2.5s ease-in-out infinite;
+/* Edge glow on left overlay (separate div for performance) */
+.edge-glow {
+  animation: edge-glow-left 2.5s ease-in-out infinite;
 }
 
-[data-character="right"].edge-glow {
-  animation: character-breathe 4s ease-in-out infinite,
-             edge-glow-right 2.5s ease-in-out infinite;
+/* Edge glow on right overlay (separate div for performance) */
+.edge-glow-right-only {
+  animation: edge-glow-right 2.5s ease-in-out infinite;
 }
 
 /* ── Parallax smooth transition ────────────────────── */

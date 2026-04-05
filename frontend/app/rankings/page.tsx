@@ -178,7 +178,7 @@ export default function RankingsPage() {
       {/* ── Hashirama — Left Background ──────────────────── */}
       <div
         data-character="left"
-        className="character-breathe edge-glow hidden lg:block fixed bottom-0 left-0 w-[1000px] h-full pointer-events-none"
+        className="character-breathe hidden lg:block fixed bottom-0 left-0 w-[1000px] h-full pointer-events-none"
         style={{
           zIndex: 1,
           backgroundImage: 'url(/images/power-ranking/hashiizq.webp)',
@@ -192,14 +192,20 @@ export default function RankingsPage() {
             'linear-gradient(to top, transparent 2%, black 15%, black 85%, transparent 100%), linear-gradient(to right, black 0%, black 50%, transparent 100%)',
           maskComposite: 'intersect',
           WebkitMaskComposite: 'source-in',
-          transition: 'transform 0.05s ease-out',
+          willChange: 'transform',
+          transform: 'translateZ(0)',
         }}
+      />
+      {/* Edge glow overlay — separate from image div to avoid filter repaint on large element */}
+      <div
+        className="edge-glow hidden lg:block fixed bottom-0 left-0 w-[1000px] h-full pointer-events-none"
+        style={{ zIndex: 1, willChange: 'filter' }}
       />
 
       {/* ── Madara — Right Background ───────────────────── */}
       <div
         data-character="right"
-        className="character-breathe edge-glow hidden lg:block fixed bottom-0 right-0 w-[1000px] h-full pointer-events-none"
+        className="character-breathe hidden lg:block fixed bottom-0 right-0 w-[1000px] h-full pointer-events-none"
         style={{
           zIndex: 1,
           backgroundImage: 'url(/images/power-ranking/madaraderecha.webp)',
@@ -213,8 +219,14 @@ export default function RankingsPage() {
             'linear-gradient(to top, transparent 2%, black 15%, black 85%, transparent 100%), linear-gradient(to left, black 0%, black 50%, transparent 100%)',
           maskComposite: 'intersect',
           WebkitMaskComposite: 'source-in',
-          transition: 'transform 0.05s ease-out',
+          willChange: 'transform',
+          transform: 'translateZ(0)',
         }}
+      />
+      {/* Edge glow overlay — separate from image div to avoid filter repaint on large element */}
+      <div
+        className="edge-glow-right-only hidden lg:block fixed bottom-0 right-0 w-[1000px] h-full pointer-events-none"
+        style={{ zIndex: 1, willChange: 'filter' }}
       />
 
       {/* ── Elegant Chakra Effects ──────────────────────── */}
