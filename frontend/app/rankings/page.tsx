@@ -4,7 +4,6 @@ import { useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
-  LogOut,
   Search,
   Swords,
   Shield,
@@ -14,16 +13,9 @@ import {
   List,
   X,
 } from 'lucide-react'
+import Navbar from '@/components/Navbar'
 import MedalImage from '@/components/MedalImage'
 import rankingData from '@/lib/rankings/power-ranking/power-ranking-4-2026.json'
-
-interface User {
-  id: string
-  username: string
-  email: string
-  level: number
-  xp: number
-}
 
 interface Player {
   rank: number
@@ -95,7 +87,6 @@ function getRankingTitle(playerRank: number) {
 
 export default function RankingsPage() {
   const router = useRouter()
-  const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [server, setServer] = useState('Todos')
@@ -103,10 +94,6 @@ export default function RankingsPage() {
   const [tooltip, setTooltip] = useState<number | null>(null)
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('user')
-    if (storedUser) {
-      setUser(JSON.parse(storedUser))
-    }
     setLoading(false)
   }, [router])
 
@@ -151,11 +138,6 @@ export default function RankingsPage() {
     }
   }, [])
 
-  const handleLogout = () => {
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
-    router.push('/')
-  }
 
   const filtered = useMemo(() => {
     return PLAYERS_DATA.filter((p) => {
@@ -175,9 +157,6 @@ export default function RankingsPage() {
       </div>
     )
   }
-
-  // Placeholder: In future, fetch actual rank from ranking API
-  const userRank = user ? getRankingTitle(1) : null
 
   return (
     <main className="min-h-screen bg-[#080810] relative overflow-x-hidden">
@@ -345,89 +324,8 @@ export default function RankingsPage() {
         ))}
       </div>
 
-      {/* ═══════════════════════════════════════════════════
-          HEADER
-          ═══════════════════════════════════════════════════ */}
-      <header
-        className="relative border-b border-white/5 bg-[#080810]/80 backdrop-blur-xl sticky top-0"
-        style={{ zIndex: 50 }}
-      >
-        <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
-          <Link href="/dashboard" className="flex items-center gap-2 group">
-            <span className="text-power-red/80 text-lg font-cinzel select-none group-hover:text-power-red transition-all duration-300 leading-none">
-              忍
-            </span>
-            <div className="flex items-baseline gap-0.5">
-              <span className="font-cinzel font-black text-xs tracking-[0.1em] text-text-primary group-hover:text-power-red transition-all duration-300">
-                H
-              </span>
-              <span className="font-cinzel font-black text-xs tracking-[0.1em] text-text-primary group-hover:text-power-red transition-all duration-300">
-                D
-              </span>
-              <span
-                className="font-cinzel font-black text-xs tracking-[0.1em] text-power-red transition-all duration-300"
-                style={{ textShadow: '0 0 8px rgba(196,30,58,0.4)' }}
-              >
-                R
-              </span>
-              <span
-                className="font-cinzel font-black text-xs tracking-[0.1em] text-power-red transition-all duration-300"
-                style={{ textShadow: '0 0 8px rgba(196,30,58,0.4)' }}
-              >
-                V
-              </span>
-            </div>
-          </Link>
-
-          <nav className="hidden md:flex items-center gap-6">
-            <Link
-              href="/dashboard"
-              className="text-sm font-cinzel text-white/70 hover:text-white transition-colors"
-            >
-              Dashboard
-            </Link>
-            <Link
-              href="/rankings"
-              className="text-sm font-cinzel text-power-red border-b border-power-red/40 pb-px"
-            >
-              Rankings
-            </Link>
-            <Link
-              href="/tools"
-              className="text-sm font-cinzel text-white/70 hover:text-white transition-colors"
-            >
-              Herramientas
-            </Link>
-          </nav>
-
-          <div className="flex items-center gap-4">
-            {user && userRank ? (
-              <>
-                <div className="hidden sm:flex items-center gap-2">
-                  <span className="text-sm text-white/70 font-cinzel">{user.username}</span>
-                  <span className={`text-sm font-cinzel px-2 py-0.5 rounded-full ${userRank.cls}`}>
-                    {userRank.name}
-                  </span>
-                </div>
-                <button
-                  onClick={handleLogout}
-                  className="flex items-center gap-1.5 text-sm text-white/70 hover:text-power-red transition-colors font-cinzel"
-                >
-                  <LogOut className="w-4 h-4" />
-                  Salir
-                </button>
-              </>
-            ) : (
-              <Link
-                href="/auth/login"
-                className="text-sm font-cinzel text-white/70 hover:text-power-red transition-colors"
-              >
-                Iniciar sesión
-              </Link>
-            )}
-          </div>
-        </div>
-      </header>
+      {/* Navbar */}
+      <Navbar />
 
       {/* ═══════════════════════════════════════════════════
           MAIN CONTENT — Centered Ranking

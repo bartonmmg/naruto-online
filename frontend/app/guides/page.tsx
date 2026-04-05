@@ -14,6 +14,7 @@ interface Guide {
   color: string
   difficulty: 'Básico' | 'Intermedio' | 'Avanzado'
   readTime: string
+  available?: boolean
 }
 
 const GUIDES: Guide[] = [
@@ -79,14 +80,17 @@ const GUIDES: Guide[] = [
   },
 ]
 
+// All guides are coming soon for now
+const AVAILABLE_GUIDES = GUIDES.map(g => ({ ...g, available: false }))
+
 const CATEGORIES = ['Todos', 'Builds', 'Misiones', 'PvP', 'Clanes', 'Eventos']
 
 export default function GuidesPage() {
   const [selectedCategory, setSelectedCategory] = useState('Todos')
 
   const filteredGuides = selectedCategory === 'Todos'
-    ? GUIDES
-    : GUIDES.filter(g => g.category === selectedCategory)
+    ? AVAILABLE_GUIDES
+    : AVAILABLE_GUIDES.filter(g => g.category === selectedCategory)
 
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
@@ -161,10 +165,15 @@ export default function GuidesPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredGuides.map(guide => {
               const Icon = guide.icon
+              const isAvailable = guide.available !== false
               return (
                 <div
                   key={guide.id}
-                  className="group game-card p-6 rounded-xl hover:border-chakra-blue/50 transition-all duration-300 hover:shadow-lg hover:shadow-chakra-blue/20 cursor-pointer"
+                  className={`group game-card p-6 rounded-xl transition-all duration-300 ${
+                    isAvailable
+                      ? 'hover:border-chakra-blue/50 hover:shadow-lg hover:shadow-chakra-blue/20 cursor-pointer'
+                      : 'opacity-60 cursor-not-allowed'
+                  }`}
                 >
                   {/* Header */}
                   <div className="flex items-start justify-between mb-4">
@@ -175,13 +184,21 @@ export default function GuidesPage() {
                         className="w-7 h-7 object-contain"
                       />
                     </div>
-                    <span className={`text-xs font-cinzel px-3 py-1 rounded-full border ${getDifficultyColor(guide.difficulty)}`}>
-                      {guide.difficulty}
-                    </span>
+                    {isAvailable ? (
+                      <span className={`text-xs font-cinzel px-3 py-1 rounded-full border ${getDifficultyColor(guide.difficulty)}`}>
+                        {guide.difficulty}
+                      </span>
+                    ) : (
+                      <span className="text-xs font-cinzel px-3 py-1 rounded-full bg-white/10 text-white/50 border border-white/20">
+                        Próximamente
+                      </span>
+                    )}
                   </div>
 
                   {/* Content */}
-                  <h3 className="text-lg font-montserrat font-bold text-text-primary mb-2 group-hover:text-chakra-blue transition-colors">
+                  <h3 className={`text-lg font-montserrat font-bold mb-2 ${
+                    isAvailable ? 'text-text-primary group-hover:text-chakra-blue transition-colors' : 'text-white/60'
+                  }`}>
                     {guide.title}
                   </h3>
                   <p className="text-sm text-white/70 leading-relaxed mb-6">
@@ -189,15 +206,17 @@ export default function GuidesPage() {
                   </p>
 
                   {/* Footer */}
-                  <div className="flex items-center justify-between pt-4 border-t border-border/50">
-                    <div className="flex items-center gap-4 text-xs text-white/50">
-                      <span>{guide.readTime} lectura</span>
-                      <span className="inline-flex items-center gap-1">
-                        <Scroll className="w-3 h-3" />
-                        {guide.category}
-                      </span>
+                  {isAvailable && (
+                    <div className="flex items-center justify-between pt-4 border-t border-border/50">
+                      <div className="flex items-center gap-4 text-xs text-white/50">
+                        <span>{guide.readTime} lectura</span>
+                        <span className="inline-flex items-center gap-1">
+                          <Scroll className="w-3 h-3" />
+                          {guide.category}
+                        </span>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               )
             })}
