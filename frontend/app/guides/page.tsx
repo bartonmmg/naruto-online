@@ -168,8 +168,12 @@ export default function GuidesPage() {
                 >
                   {/* Header */}
                   <div className="flex items-start justify-between mb-4">
-                    <div className={`w-12 h-12 rounded-lg bg-bg-elevated flex items-center justify-center group-hover:scale-110 transition-transform`}>
-                      <Icon className={`w-6 h-6 ${guide.color}`} />
+                    <div className={`w-12 h-12 rounded-lg bg-bg-elevated flex items-center justify-center group-hover:scale-110 transition-transform border border-border`}>
+                      <img
+                        src="/images/tools/shuriken.png"
+                        alt={guide.title}
+                        className="w-7 h-7 object-contain"
+                      />
                     </div>
                     <span className={`text-xs font-cinzel px-3 py-1 rounded-full border ${getDifficultyColor(guide.difficulty)}`}>
                       {guide.difficulty}
