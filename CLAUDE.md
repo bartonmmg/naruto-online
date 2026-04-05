@@ -473,22 +473,115 @@ All three effects run simultaneously without conflicts, creating a dynamic and e
 - **User Display:** Username and rank badge sizes increased
 - **Logout Button:** Larger icon and text for better visibility
 
+## Pages & Routes
+
+### Home (`/`) — app/page.tsx
+- **Hero Section:** Village background with parallax (`village.png`), overlay opacity 0.6
+- **Buttons:** Orange gradient (orange-600 → orange-500) with hover overlay effect
+- **FloatingParticles:** 20 animated particles with variable duration/delay
+- **Kanji Decorations:** Animated floating Kanji background elements (忍, 暁, 滅, 力)
+- **Sections:** Features (3 main cards + 3 secondary), Rank System, CTA, Footer
+
+### Guides (`/guides`) — app/guides/page.tsx
+- **Background:** `guias.png` with 0.7 opacity overlay
+- **Hero Section:** Title, description, category filter buttons
+- **Cards:** 6 guide templates (all marked "Próximamente")
+  - Shows shuriken icon, difficulty badge, category, read time
+  - Grayed out (opacity-60) with "Próximamente" status
+- **Filter:** Todos (default), by category
+- **CTA Section:** Link back to home
+
+### Tools (`/tools`) — app/tools/page.tsx
+- **Background:** `herramientas.png` with 0.7 opacity overlay
+- **Hero Section:** Title, description, filter buttons
+- **Filter:** Todos, Disponibles, Próximamente
+- **Cards:** 4 tools (1 available: Calculadora de Cupones → `/tools/coupons`)
+  - Available: Orange border, clickable Link, CheckCircle badge
+  - Unavailable: Grayed out, "Próximamente" status
+- **CTA Section:** Link back to home
+
+### Rankings (`/rankings`) — app/rankings/page.tsx
+- **Background:** Dark battlefield (#080810) with character animations
+- **Navbar:** Global Navbar (no custom header)
+- **Hero:** Title "Ranking de Poder", decorative line, player count badge
+- **Filters:** Search by name, Server dropdown, View toggle (Table/Cards)
+- **Character Animations:**
+  - Hashirama (left), Madara (right): Breathing + Edge Glow animations
+  - Chakra particles: Green (left), Red/Orange (right) with drift animation
+  - Parallax effect: Characters move slightly based on mouse position
+- **Content:** Ranking table/cards with medals, titles, power levels
+
+### Tools/Coupons (`/tools/coupons`) — app/tools/coupons/page.tsx
+- Coupon calculator with event selection and reward simulation
+- Exclusive to authenticated users (redirects to login if not)
+
+## Navigation
+
+### Navbar Component (`components/Navbar.tsx`)
+- **Global Navigation:** Used on all pages
+- **Links:**
+  - Logo: Redirects to `/` (kanji + HDRV)
+  - `/#features` (Características) — Home page section
+  - `/#community` (Comunidad) — Home page section
+  - `/rankings` — Ranking page
+  - `/tools` — Tools landing
+  - `/guides` — Guides landing
+- **Mobile Menu:** Hamburger toggle for responsive navigation
+- **Auth Buttons:** Login/Register (or Logout on protected pages)
+- **Behavior:** Adds backdrop blur on scroll > 30px
+
+**Important:** Anchors must include `/` prefix (`/#features`, `/#community`) to work correctly from nested pages.
+
+## Security & Production Readiness
+
+### Sensitive Files Protection
+- ✅ **`.env` files** — All ignored in `.gitignore` (DATABASE_URL, JWT_SECRET, API keys)
+- ✅ **`.env.local`** — Frontend env ignored
+- ✅ **Database files** — `*.db`, `*.sqlite`, `dev.db` ignored
+- ✅ **Claude Code config** — `.claude/` directory ignored (not tracked)
+- ✅ **Build artifacts** — `dist/`, `build/`, `.next/` ignored
+- ✅ **Logs & temp files** — `*.log`, `tmp/`, `temp/` ignored
+
+### Pre-Deployment Checklist
+1. **Environment Variables Set (Render Dashboard):**
+   - `DATABASE_URL` (PostgreSQL from Neon.tech)
+   - `JWT_SECRET` (≥32 random characters, NOT the development placeholder)
+   - `FRONTEND_URL` (exact origin, e.g., `https://naruto-online.netlify.app`)
+   - `BACKEND_PORT` (default: `4000`)
+   - `NODE_ENV` (`production`)
+
+2. **Environment Variables Set (Netlify Dashboard):**
+   - `NEXT_PUBLIC_API_URL` (backend URL, e.g., `https://naruto-online.onrender.com`)
+
+3. **Database:**
+   - Ensure Neon.tech PostgreSQL is provisioned
+   - Run migrations: `npx prisma db push` on backend before deployment
+
+4. **Build Verification:**
+   - Local: `npm run build` (both workspaces should succeed)
+   - Next.js: First Load JS ~93–94 kB (acceptable range)
+   - No TypeScript errors or unused variables
+
+5. **Git Status:**
+   - `git status` should show clean (no `.env`, `.db`, `.claude/` files)
+   - All changes committed
+
+### Known Issues & Mitigations
+- **Next.js on Netlify:** Cannot optimize local PNG files with `next/image` → Use native `<img>` tags
+- **ESM Imports in Backend:** Production requires `.js` extensions in relative imports
+- **CORS:** Restricted to FRONTEND_URL env var (must match exactly, no trailing slash)
+- **JWT Expiration:** Hardcoded to 7 days (change in `auth.service.ts` if needed)
+
 ## Last Updated
-2026-04-04 (Complete UI/Typography Overhaul + Visual Effects)
-- ✅ Typography: Bebas Neue (titles) + Montserrat (body) from Google Fonts
-- ✅ Navbar: Redesigned with larger logo, better spacing, improved buttons
-- ✅ Landing Page: Enhanced buttons, removed duplicate stats, improved colors
-- ✅ Floating Shuriken Particles: Implemented in FloatingParticles component
-- ✅ Breathing Animation (continuous, 4s cycle)
-- ✅ Edge Glow Pulsante (2.5s cycle, green/red)
-- ✅ Chakra Particles Enhanced with Intensity Pulse (8 per side, boosted visuals)
-- ✅ Parallax Mouse Effect: Direct JS transform manipulation for character movement
-- Tested and rejected: Tilt on Hover, Vertical Float, Ambient Lights, Sword Clash, Badge Glow
-- Added production deployment configuration (Render, Netlify, Neon.tech)
-- Documented ESM import requirements with `.js` extensions
-- Updated database configuration for PostgreSQL production
-- Added CORS configuration details
-- Updated ranking titles to return objects with name, cls, icon
-- Documented image optimization requirements (no next/image for large PNGs)
-- Added environment variable requirements for both backend and frontend
-- Added deployment troubleshooting guide
+2026-04-05 (Background Integration + Page Structure + Navigation Fixes)
+- ✅ **Hero Section:** Added `village.png` background with parallax effect and overlay
+- ✅ **Guides Page:** Created `/guides` with `guias.png` background, 6 guide cards, category filter
+- ✅ **Tools Page:** Redesigned with `herramientas.png` background, 4 tools, availability filter
+- ✅ **Rankings Navbar:** Replaced custom header with global Navbar
+- ✅ **Navigation Links:** Fixed anchor links (`/#features`, `/#community`) to work from any page
+- ✅ **Tools Cards:** Added clickable links for available tools (Calculadora de Cupones)
+- ✅ **Guides Status:** All guides marked "Próximamente" with gray styling and no metadata
+- ✅ **Filter System:** Implemented for both `/tools` and `/guides`
+- ✅ **Typography:** Optimized "LATAM · Cluster 1 · Poder de Combate" with Bebas Neue
+- ✅ **Production Ready:** Verified no sensitive files in git, proper .gitignore configuration
+- Previous: Typography (Bebas Neue + Montserrat), Visual Effects, Chakra Animations, Character Effects
