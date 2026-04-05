@@ -1,14 +1,15 @@
 [build]
-  command = "npm install && npm run build --workspace=frontend"
-  functions = "netlify/functions"
-  publish = "frontend/.next"
+command = "npm install && cd frontend && npm run build"
+publish = "frontend/.next"
 
-[build.environment]
-  NEXT_PUBLIC_API_URL = "https://naruto-online.onrender.com"
-  NODE_VERSION = "22"
-  NODE_ENV = "production"
+[env]
+NODE_VERSION = "18.17.0"
+NODE_ENV = "production"
 
 [[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
+from = "/*"
+status = 200
+to = "/index.html"
+
+[plugins]
+package = "@netlify/plugin-nextjs"
