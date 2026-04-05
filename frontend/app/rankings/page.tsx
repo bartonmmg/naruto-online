@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState, useMemo } from 'react'
-import { useRouter } from 'next/navigation'
 import {
   Search,
   Swords,
@@ -84,46 +83,43 @@ function getRankingTitle(playerRank: number) {
 }
 
 export default function RankingsPage() {
-  const router = useRouter()
-  const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [server, setServer] = useState('Todos')
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table')
-  const [tooltip, setTooltip] = useState<number | null>(null)
 
-  useEffect(() => {
-    setLoading(false)
-  }, [router])
-
-  // Subtle parallax effect based on mouse position
-  // Using position + width adjustment to avoid transform conflicts
+  // Subtle parallax effect based on mouse position with throttling
   useEffect(() => {
     const hashirama = document.querySelector('[data-character="left"]') as HTMLElement
     const madara = document.querySelector('[data-character="right"]') as HTMLElement
+    let rafId: number | null = null
 
     const handleMouseMove = (e: MouseEvent) => {
-      if (!hashirama || !madara) return
+      if (!hashirama || !madara || rafId) return
 
-      const mouseX = e.clientX
-      const screenCenterX = window.innerWidth / 2
+      rafId = requestAnimationFrame(() => {
+        const mouseX = e.clientX
+        const screenCenterX = window.innerWidth / 2
 
-      // Left side: Hashirama moves towards cursor
-      if (mouseX < screenCenterX) {
-        const distanceFromCenter = screenCenterX - mouseX
-        const offset = (distanceFromCenter / screenCenterX) * 8 // Max 8px
-        hashirama.style.left = `${-offset}px`
-        madara.style.right = '0px'
-      }
-      // Right side: Madara moves towards cursor
-      else {
-        const distanceFromCenter = mouseX - screenCenterX
-        const offset = (distanceFromCenter / screenCenterX) * 8 // Max 8px
-        madara.style.right = `${-offset}px`
-        hashirama.style.left = '0px'
-      }
+        // Left side: Hashirama moves towards cursor
+        if (mouseX < screenCenterX) {
+          const distanceFromCenter = screenCenterX - mouseX
+          const offset = (distanceFromCenter / screenCenterX) * 8 // Max 8px
+          hashirama.style.left = `${-offset}px`
+          madara.style.right = '0px'
+        }
+        // Right side: Madara moves towards cursor
+        else {
+          const distanceFromCenter = mouseX - screenCenterX
+          const offset = (distanceFromCenter / screenCenterX) * 8 // Max 8px
+          madara.style.right = `${-offset}px`
+          hashirama.style.left = '0px'
+        }
+        rafId = null
+      })
     }
 
     const handleMouseLeave = () => {
+      if (rafId) cancelAnimationFrame(rafId)
       if (hashirama) hashirama.style.left = '0px'
       if (madara) madara.style.right = '0px'
     }
@@ -133,6 +129,7 @@ export default function RankingsPage() {
     return () => {
       window.removeEventListener('mousemove', handleMouseMove)
       window.removeEventListener('mouseleave', handleMouseLeave)
+      if (rafId) cancelAnimationFrame(rafId)
     }
   }, [])
 
@@ -144,17 +141,6 @@ export default function RankingsPage() {
       return matchServer && matchSearch
     })
   }, [search, server])
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-bg-primary flex items-center justify-center">
-        <div className="flex items-center gap-3 text-text-muted">
-          <span className="w-5 h-5 border-2 border-power-red/30 border-t-power-red rounded-full animate-spin" />
-          <span className="font-cinzel text-sm tracking-widest">CARGANDO...</span>
-        </div>
-      </div>
-    )
-  }
 
   return (
     <main className="min-h-screen bg-[#080810] relative overflow-x-hidden">
@@ -195,7 +181,7 @@ export default function RankingsPage() {
         className="character-breathe edge-glow hidden lg:block fixed bottom-0 left-0 w-[1000px] h-full pointer-events-none"
         style={{
           zIndex: 1,
-          backgroundImage: 'url(/images/power-ranking/hashiizq.png)',
+          backgroundImage: 'url(/images/power-ranking/hashiizq.webp)',
           backgroundSize: 'contain',
           backgroundRepeat: 'no-repeat',
           backgroundPosition: 'left bottom',
@@ -216,7 +202,7 @@ export default function RankingsPage() {
         className="character-breathe edge-glow hidden lg:block fixed bottom-0 right-0 w-[1000px] h-full pointer-events-none"
         style={{
           zIndex: 1,
-          backgroundImage: 'url(/images/power-ranking/madaraderecha.png)',
+          backgroundImage: 'url(/images/power-ranking/madaraderecha.webp)',
           backgroundSize: 'contain',
           backgroundRepeat: 'no-repeat',
           backgroundPosition: 'right bottom',
@@ -487,7 +473,6 @@ export default function RankingsPage() {
                 filtered.map((player, index) => {
                   const medal = MEDAL[player.rank]
                   const isTop3 = player.rank <= 3
-                  const pRank = getRank(player.level)
 
                   return (
                     <div
@@ -504,29 +489,7 @@ export default function RankingsPage() {
                             }
                           : {}),
                       }}
-                      onMouseEnter={() => setTooltip(player.rank)}
-                      onMouseLeave={() => setTooltip(null)}
                     >
-                      {/* Tooltip */}
-                      {tooltip === player.rank && (
-                        <div
-                          className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-[#12121e] border border-white/10 rounded-lg p-3 shadow-2xl whitespace-nowrap text-xs font-cinzel"
-                          style={{ zIndex: 60 }}
-                        >
-                          <div className="flex flex-col gap-1 text-[#999]">
-                            <div>
-                              <span className="text-power-red">Rango:</span> {pRank.name}
-                            </div>
-                            <div>
-                              <span className="text-power-red">Poder:</span>{' '}
-                              {player.power.toLocaleString()}
-                            </div>
-                            <div>
-                              <span className="text-power-red">Posicion:</span> #{player.rank}
-                            </div>
-                          </div>
-                        </div>
-                      )}
 
                       {/* Rank # */}
                       <div className="col-span-1 flex items-center justify-center">
