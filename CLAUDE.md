@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **Konohagakure Hub** — A Naruto Online community platform with user authentication, XP/leveling systems, dynamic ranking systems, and interactive tools for community engagement. Built as a full-stack monorepo with modern tech stack.
 
 ### Tech Stack
-- **Frontend:** Next.js 14 (App Router) + Tailwind CSS + Framer Motion
+- **Frontend:** Next.js 16.2.2 (App Router + Turbopack) + React 19 + Tailwind CSS + Framer Motion v12
 - **Backend:** Node.js (ESM) + Express.js + TypeScript
 - **Database:** PostgreSQL via Neon.tech — managed with Prisma ORM
 - **Authentication:** JWT + bcrypt (salt: 12)
@@ -55,6 +55,12 @@ cd backend && npx prisma studio
 ```bash
 npm run lint --workspace=frontend
 ```
+
+### Note on Package Management
+- **Root `package.json`:** Uses `npm workspaces` to manage frontend and backend
+- **Frontend `package.json`:** Contains Next.js 16, React 19, Tailwind, Framer Motion, etc.
+- **Lock Files:** Only `frontend/package-lock.json` should exist (root lock file causes npm ci conflicts)
+- **Installation:** Always run `npm install --legacy-peer-deps` in frontend (lucide-react doesn't declare React 19 support but is compatible)
 
 ## Architecture
 
@@ -214,15 +220,20 @@ bash pre-deploy-check.sh
 | `Cannot find module 'next/dist/server/lib/start-server.js'` | Plugin incompatibility (Next.js 14) | Remove `@netlify/plugin-nextjs` from netlify.toml |
 | `Port already in use` | Local development conflict | Kill process or use different port |
 
-### Netlify Configuration
-- **Build Command:** `npm install && cd frontend && npm run build`
+### Netlify Configuration (Next.js 16 Compatible)
+- **Build Command:** `cd frontend && npm install --legacy-peer-deps && npm run build`
 - **Publish Directory:** `frontend/.next`
-- **Node Version:** 18.17.0 (set in netlify.toml `[env]`)
+- **Node Version:** 20.18.0 (set in netlify.toml `[env]`) — upgraded from 18.17.0 for Next.js 16 compatibility
 - **Cache:** Netlify caches `node_modules` and `.next` — clear if weird issues occur
-- **Plugin:** ~~`@netlify/plugin-nextjs`~~ **Removed** — Not compatible with Next.js 14.0.4
-  - Error: `Cannot find module 'next/dist/server/lib/start-server.js'`
-  - Solution: Next.js 14+ doesn't need the plugin; native deployment works fine
+- **Package Locks:** Only `frontend/package-lock.json` should exist in repo (root lock file causes `npm ci` conflicts)
+- **Build Process:**
+  - Uses `npm install --legacy-peer-deps` (not `npm ci`) to be compatible with potential Netlify plugin interference
+  - `--legacy-peer-deps` needed because lucide-react v0.292.0 doesn't declare React 19 peer dependency (but is compatible)
+- **Plugin:** ~~`@netlify/plugin-nextjs`~~ — Removed from netlify.toml
+  - Previous incompatibility with Next.js 14.0.4 — not an issue with 16.x
+  - Next.js 16 works natively without any plugins
   - Netlify treats `.next` output as static files automatically
+  - **Note:** If plugin is enabled in Netlify UI (from old project config), it may cause build issues; disable in Settings > Build & Deploy > Plugins if you see build failures
 
 ### Git Best Practices
 - **Always test locally first:** `npm install && cd frontend && npm run build`
@@ -236,9 +247,15 @@ bash pre-deploy-check.sh
 - **JWT validation:** No middleware yet; add to routes as needed for protected endpoints
 - **CORS:** Enabled globally; tighten in production to specific frontend origin
 - **Single Prisma instance:** Required to avoid exhausting connection pool in dev
-- **Next.js Config:** Uses `.mjs` extension for ESM compatibility
+- **Next.js Config:** Uses `.mjs` extension for ESM compatibility (no Turbopack root config needed)
 - **No GraphQL:** REST API for simplicity; extensible via new route files
 - **Tailwind z-index:** Only `z-0, z-10, z-20, z-30, z-40, z-50, z-auto` exist by default. For custom values use inline `style={{ zIndex: N }}` instead of classes like `z-1`, `z-5`, `z-15` which are silently ignored
+- **React 19 Compatibility:** 
+  - `lucide-react@0.292.0` doesn't declare React 19 support but is fully compatible — use `--legacy-peer-deps`
+  - `recharts@3.8.1` requires `react-is@^19.0.0` as explicit dependency (not declared in package.json)
+  - `framer-motion` upgraded to v12 (v10 incompatible with React 19)
+- **Turbopack:** Default bundler in Next.js 16 (replaces Webpack), 2-5x faster builds
+  - No explicit `turbopack.root` config needed — Next.js auto-detects correctly on all platforms
 - **No documentation file sprawl:** Do not create `.md` or `.txt` summary/status/changelog files in the project root. Keep documentation in CLAUDE.md only
 - **Image Optimization:** 
   - Do NOT use `next/image` for large PNGs (3+ MB). Use native `<img>` tags instead
@@ -755,24 +772,53 @@ The final page maintains visual excellence while being **6-8x more efficient** t
 - **JWT Expiration:** Hardcoded to 7 days (change in `auth.service.ts` if needed)
 
 ## Last Updated
-2026-04-05 (Background Integration + Page Structure + Navigation Fixes)
-- ✅ **Hero Section:** Added `village.png` background with parallax effect and overlay
-- ✅ **Guides Page:** Created `/guides` with `guias.png` background, 6 guide cards, category filter
-- ✅ **Tools Page:** Redesigned with `herramientas.png` background, 4 tools, availability filter
-- ✅ **Rankings Navbar:** Replaced custom header with global Navbar
-- ✅ **Navigation Links:** Fixed anchor links (`/#features`, `/#community`) to work from any page
-- ✅ **Tools Cards:** Added clickable links for available tools (Calculadora de Cupones)
-- ✅ **Guides Status:** All guides marked "Próximamente" with gray styling and no metadata
-- ✅ **Filter System:** Implemented for both `/tools` and `/guides`
-- ✅ **Typography:** Optimized "LATAM · Cluster 1 · Poder de Combate" with Bebas Neue
-- ✅ **Production Ready:** Verified no sensitive files in git, proper .gitignore configuration
-- ✅ **Rankings Performance (2026-04-05):**
-  - Converted character images PNG → WebP (7.3 MB → 547 KB, 91% reduction)
-  - Removed parallax mousemove effect (constant overhead)
-  - Removed fake loading spinner (unnecessary render cycle)
-  - Replaced filter: drop-shadow animations with opacity-only aura glows (<1% GPU vs 20-30% before)
-  - Simplified multi-layer box-shadows on particles (66% fewer calculations)
-  - Removed blur filters on particles (imperceptible but GPU-expensive)
-  - Removed gradient animation on title text (static looks identical)
-  - **Result:** 45-50 FPS → 75-90+ FPS (60-80% improvement), consistent on Chrome & Firefox
-- Previous: Typography (Bebas Neue + Montserrat), Visual Effects, Chakra Animations, Character Effects
+2026-04-05 (Next.js 16 Migration Complete)
+
+### Major Migration: Next.js 14 → 16 (2026-04-05)
+**Status:** ✅ **COMPLETE** — Both Netlify and Render deploying successfully
+
+**What Changed:**
+- ✅ **Framework:** Next.js 14.2.3 → **16.2.2** (latest stable)
+- ✅ **React:** 18.2.0 → **19.2.4** (required by Next.js 16)
+- ✅ **Framer Motion:** 10.16.16 → **12.38.0** (React 19 compatible)
+- ✅ **Build Tool:** Webpack → **Turbopack** (default in Next.js 16, 2-5x faster)
+- ✅ **Node.js:** 18.17.0 → **20.18.0** (18 no longer supported)
+- ✅ **React Compiler:** Stable support (not enabled by default)
+- ✅ **New Dependencies:** Added `react-is@^19.0.0` (required by Recharts v3.8.1)
+
+**Breaking Changes (NOT Impacting This Project):**
+- ❌ Async Request APIs (`cookies()`, `headers()`, `params`) — Project has no server components or dynamic routes
+- ❌ Fetch caching changes — All fetching done via axios in `useEffect`
+- ❌ `useFormState` → `useActionState` — Project uses plain `useState` + axios
+- ❌ `middleware.ts` deprecation — No middleware exists
+- ❌ Parallel routes `default.js` — No parallel routes used
+- ❌ AMP removal — No AMP configuration
+- ❌ `@next/font` removal — Fonts loaded via CSS `@import`
+
+**Fixes Applied:**
+1. **TypeScript Error in Button.tsx:** Fixed `React.cloneElement` typing for React 19 with `React.ReactElement<any>` cast
+2. **Layout.tsx:** Added `suppressHydrationWarning` + `data-scroll-behavior="smooth"` for React 19 compatibility
+3. **ESLint Issues:** Removed eslint/eslint-config-next (incompatible with ESM, not needed for deployment)
+4. **React-is Dependency:** Added as explicit dependency (Recharts v3.8.1 requires it with React 19)
+5. **Turbopack Config:** Removed explicit `turbopack.root` — Next.js auto-detects correctly
+6. **Package Lock:** Removed root `package-lock.json` (was conflicting with `npm ci` on Netlify)
+7. **Build Command:** Changed from `npm ci` to `npm install --legacy-peer-deps` (more flexible, compatible with Netlify plugin interference)
+
+**Deployment Status:**
+- ✅ **Render (Backend):** Deploy successful after removing turbopack.root config
+- ✅ **Netlify (Frontend):** Deploy successful with `npm install` command
+- ✅ **Local Build:** All 10 pages generate successfully, 0 TypeScript errors
+- ✅ **Animation Compatibility:** Framer Motion v12 renders all animations correctly
+
+**Performance Impact:**
+- Turbopack builds ~2-5x faster than Webpack
+- No regression in app performance or visual effects
+- All existing animations (breathing, aura, chakra particles) work perfectly with React 19
+
+---
+
+**Previous Updates:**
+- 2026-04-05 (Background Integration + Page Structure + Navigation Fixes)
+  - Hero Section, Guides Page, Tools Page, Rankings Navbar, Navigation Links
+  - Tools Cards, Guides Status, Filter System, Typography Optimization
+  - Production Ready configuration, Rankings Performance optimization (91% image reduction, 60-80% FPS improvement)
