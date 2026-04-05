@@ -131,16 +131,18 @@ export default function Home() {
             className="flex flex-col sm:flex-row items-center justify-center gap-5 animate-fade-up"
             style={{ animationDelay: '0.3s' }}
           >
-            <Link href="/auth/register" className="px-8 py-3.5 text-lg font-montserrat font-bold text-white bg-gradient-to-r from-power-red to-accent-orange rounded-xl hover:shadow-2xl hover:shadow-power-red/40 transition-all duration-300 hover:scale-105 active:scale-95 flex items-center gap-2.5">
-              <Flame className="w-5 h-5" />
-              Comenzar tu camino ninja
+            <Link href="/auth/register" className="group px-8 py-3.5 text-lg font-montserrat font-bold text-white bg-gradient-to-r from-orange-600 to-orange-500 rounded-lg hover:shadow-lg hover:shadow-orange-500/30 transition-all duration-300 hover:scale-105 active:scale-95 flex items-center gap-2.5 relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-r from-orange-700 to-orange-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <Flame className="w-5 h-5 relative z-10" />
+              <span className="relative z-10">Comenzar tu camino ninja</span>
             </Link>
             <Link
               href="/auth/login"
-              className="px-8 py-3.5 text-lg font-montserrat font-bold text-white/80 border-2 border-white/40 rounded-xl hover:border-power-red hover:text-power-red hover:bg-power-red/5 transition-all duration-300 flex items-center gap-2.5"
+              className="group px-8 py-3.5 text-lg font-montserrat font-bold text-white/90 border border-white/20 rounded-lg hover:border-white/40 hover:bg-white/5 transition-all duration-300 relative overflow-hidden flex items-center gap-2.5"
             >
-              Ya eres ninja
-              <ChevronRight className="w-5 h-5" />
+              <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <span className="relative z-10">Ya eres ninja</span>
+              <ChevronRight className="w-5 h-5 relative z-10 group-hover:translate-x-1 transition-transform" />
             </Link>
           </div>
 
@@ -248,9 +250,10 @@ export default function Home() {
                 Sube de rango ganando XP. Cada acción en la plataforma — desde completar misiones
                 hasta participar en la comunidad — te acerca al rango más alto.
               </p>
-              <Link href="/auth/register" className="inline-flex items-center gap-2 px-6 py-2.5 text-base font-montserrat font-bold text-white bg-gradient-to-r from-power-red to-accent-orange rounded-lg hover:shadow-xl hover:shadow-power-red/40 transition-all duration-300 hover:scale-105 active:scale-95">
-                <Swords className="w-4 h-4" />
-                Comenzar como Genin
+              <Link href="/auth/register" className="group inline-flex items-center gap-2 px-6 py-2.5 text-base font-montserrat font-bold text-white bg-gradient-to-r from-orange-600 to-orange-500 rounded-lg hover:shadow-lg hover:shadow-orange-500/30 transition-all duration-300 hover:scale-105 active:scale-95 relative overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-r from-orange-700 to-orange-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                <Swords className="w-4 h-4 relative z-10" />
+                <span className="relative z-10">Comenzar como Genin</span>
               </Link>
             </div>
 
@@ -286,9 +289,10 @@ export default function Home() {
             </span>
           </h2>
           <p className="text-white/70 mb-10">Únete a la comunidad. Es gratis. Siempre lo será.</p>
-          <Link href="/auth/register" className="inline-flex items-center gap-2.5 px-8 py-3.5 text-lg font-montserrat font-bold text-white bg-gradient-to-r from-power-red to-accent-orange rounded-xl hover:shadow-2xl hover:shadow-power-red/40 transition-all duration-300 hover:scale-105 active:scale-95">
-            <Flame className="w-5 h-5" />
-            Registrarse ahora — gratis
+          <Link href="/auth/register" className="group inline-flex items-center gap-2.5 px-8 py-3.5 text-lg font-montserrat font-bold text-white bg-gradient-to-r from-orange-600 to-orange-500 rounded-lg hover:shadow-lg hover:shadow-orange-500/30 transition-all duration-300 hover:scale-105 active:scale-95 relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-r from-orange-700 to-orange-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            <Flame className="w-5 h-5 relative z-10" />
+            <span className="relative z-10">Registrarse ahora — gratis</span>
           </Link>
         </div>
       </section>

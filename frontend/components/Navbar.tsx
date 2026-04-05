@@ -66,11 +66,12 @@ export default function Navbar() {
 
         {/* Desktop auth */}
         <div className="hidden md:flex items-center gap-4">
-          <Link href="/auth/login" className="px-6 py-2.5 text-sm font-montserrat font-semibold text-white/70 hover:text-power-red transition-all duration-200 border border-white/20 rounded-lg hover:border-power-red/50 hover:bg-power-red/5">
+          <Link href="/auth/login" className="group px-6 py-2.5 text-sm font-montserrat font-semibold text-white/70 hover:text-white/90 transition-all duration-200 border border-white/15 rounded-lg hover:border-white/30 hover:bg-white/5">
             Entrar
           </Link>
-          <Link href="/auth/register" className="px-7 py-2.5 text-sm font-montserrat font-semibold text-white bg-gradient-to-r from-power-red to-accent-orange rounded-lg hover:shadow-lg hover:shadow-power-red/50 transition-all duration-200 hover:scale-105 active:scale-95">
-            Registrarse
+          <Link href="/auth/register" className="group px-7 py-2.5 text-sm font-montserrat font-semibold text-white bg-gradient-to-r from-orange-600 to-orange-500 rounded-lg hover:shadow-md hover:shadow-orange-500/30 transition-all duration-200 hover:scale-105 active:scale-95 relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-r from-orange-700 to-orange-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            <span className="relative z-10">Registrarse</span>
           </Link>
         </div>
 
@@ -107,13 +108,14 @@ export default function Navbar() {
               </Link>
             )
           ))}
-          <div className="h-px bg-gradient-to-r from-transparent via-power-red/30 to-transparent my-2" />
+          <div className="h-px bg-gradient-to-r from-transparent via-white/20 to-transparent my-2" />
           <div className="flex flex-col gap-3 pt-2">
-            <Link href="/auth/login" className="px-4 py-2 text-sm font-montserrat font-semibold text-white/70 hover:text-power-red transition-colors border border-white/20 rounded-lg text-center" onClick={() => setMenuOpen(false)}>
+            <Link href="/auth/login" className="group px-4 py-2 text-sm font-montserrat font-semibold text-white/70 hover:text-white/90 transition-all border border-white/15 rounded-lg text-center hover:border-white/30 hover:bg-white/5" onClick={() => setMenuOpen(false)}>
               Entrar
             </Link>
-            <Link href="/auth/register" className="px-4 py-2 text-sm font-montserrat font-semibold text-white bg-gradient-to-r from-power-red to-accent-orange rounded-lg text-center" onClick={() => setMenuOpen(false)}>
-              Registrarse
+            <Link href="/auth/register" className="group px-4 py-2 text-sm font-montserrat font-semibold text-white bg-gradient-to-r from-orange-600 to-orange-500 rounded-lg text-center hover:shadow-md hover:shadow-orange-500/30 relative overflow-hidden" onClick={() => setMenuOpen(false)}>
+              <div className="absolute inset-0 bg-gradient-to-r from-orange-700 to-orange-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <span className="relative z-10">Registrarse</span>
             </Link>
           </div>
         </div>
