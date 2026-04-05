@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import {
   Search,
   Swords,
@@ -87,52 +87,6 @@ export default function RankingsPage() {
   const [server, setServer] = useState('Todos')
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table')
 
-  // Subtle parallax effect based on mouse position with throttling
-  useEffect(() => {
-    const hashirama = document.querySelector('[data-character="left"]') as HTMLElement
-    const madara = document.querySelector('[data-character="right"]') as HTMLElement
-    let rafId: number | null = null
-
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!hashirama || !madara || rafId) return
-
-      rafId = requestAnimationFrame(() => {
-        const mouseX = e.clientX
-        const screenCenterX = window.innerWidth / 2
-
-        // Left side: Hashirama moves towards cursor
-        if (mouseX < screenCenterX) {
-          const distanceFromCenter = screenCenterX - mouseX
-          const offset = (distanceFromCenter / screenCenterX) * 8 // Max 8px
-          hashirama.style.left = `${-offset}px`
-          madara.style.right = '0px'
-        }
-        // Right side: Madara moves towards cursor
-        else {
-          const distanceFromCenter = mouseX - screenCenterX
-          const offset = (distanceFromCenter / screenCenterX) * 8 // Max 8px
-          madara.style.right = `${-offset}px`
-          hashirama.style.left = '0px'
-        }
-        rafId = null
-      })
-    }
-
-    const handleMouseLeave = () => {
-      if (rafId) cancelAnimationFrame(rafId)
-      if (hashirama) hashirama.style.left = '0px'
-      if (madara) madara.style.right = '0px'
-    }
-
-    window.addEventListener('mousemove', handleMouseMove)
-    window.addEventListener('mouseleave', handleMouseLeave)
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove)
-      window.removeEventListener('mouseleave', handleMouseLeave)
-      if (rafId) cancelAnimationFrame(rafId)
-    }
-  }, [])
-
 
   const filtered = useMemo(() => {
     return PLAYERS_DATA.filter((p) => {
@@ -192,14 +146,7 @@ export default function RankingsPage() {
             'linear-gradient(to top, transparent 2%, black 15%, black 85%, transparent 100%), linear-gradient(to right, black 0%, black 50%, transparent 100%)',
           maskComposite: 'intersect',
           WebkitMaskComposite: 'source-in',
-          willChange: 'transform',
-          transform: 'translateZ(0)',
         }}
-      />
-      {/* Edge glow overlay — separate from image div to avoid filter repaint on large element */}
-      <div
-        className="edge-glow hidden lg:block fixed bottom-0 left-0 w-[1000px] h-full pointer-events-none"
-        style={{ zIndex: 1, willChange: 'filter' }}
       />
 
       {/* ── Madara — Right Background ───────────────────── */}
@@ -219,14 +166,7 @@ export default function RankingsPage() {
             'linear-gradient(to top, transparent 2%, black 15%, black 85%, transparent 100%), linear-gradient(to left, black 0%, black 50%, transparent 100%)',
           maskComposite: 'intersect',
           WebkitMaskComposite: 'source-in',
-          willChange: 'transform',
-          transform: 'translateZ(0)',
         }}
-      />
-      {/* Edge glow overlay — separate from image div to avoid filter repaint on large element */}
-      <div
-        className="edge-glow-right-only hidden lg:block fixed bottom-0 right-0 w-[1000px] h-full pointer-events-none"
-        style={{ zIndex: 1, willChange: 'filter' }}
       />
 
       {/* ── Elegant Chakra Effects ──────────────────────── */}
@@ -252,10 +192,9 @@ export default function RankingsPage() {
                 width: p.size,
                 height: p.size,
                 backgroundColor: 'rgba(0,220,110,0.8)',
-                boxShadow: '0 0 30px rgba(0,220,110,0.9), 0 0 60px rgba(0,200,90,0.6), 0 0 80px rgba(0,220,110,0.3)',
+                boxShadow: '0 0 60px rgba(0,220,110,0.7)',
                 animation: `chakra-drift ${p.dur}s cubic-bezier(0.4, 0.0, 0.6, 1) infinite`,
                 animationDelay: `${p.delay}s`,
-                filter: 'blur(0.5px)',
                 '--drift-x': p.driftX,
               } as React.CSSProperties & { [key: string]: any }
             }
@@ -283,10 +222,9 @@ export default function RankingsPage() {
                 width: p.size,
                 height: p.size,
                 backgroundColor: 'rgba(240,70,40,0.8)',
-                boxShadow: '0 0 30px rgba(240,70,40,0.9), 0 0 60px rgba(220,40,20,0.6), 0 0 80px rgba(240,70,40,0.3)',
+                boxShadow: '0 0 60px rgba(240,70,40,0.7)',
                 animation: `chakra-drift ${p.dur}s cubic-bezier(0.4, 0.0, 0.6, 1) infinite`,
                 animationDelay: `${p.delay}s`,
-                filter: 'blur(0.5px)',
                 '--drift-x': p.driftX,
               } as React.CSSProperties & { [key: string]: any }
             }
@@ -310,11 +248,10 @@ export default function RankingsPage() {
               height: p.size,
               backgroundColor: p.left ? 'rgba(100,255,150,0.8)' : 'rgba(255,120,60,0.8)',
               boxShadow: p.left
-                ? '0 0 15px rgba(100,255,150,0.9), 0 0 30px rgba(0,220,110,0.4)'
-                : '0 0 15px rgba(255,120,60,0.9), 0 0 30px rgba(240,70,40,0.4)',
+                ? '0 0 30px rgba(0,220,110,0.6)'
+                : '0 0 30px rgba(240,70,40,0.6)',
               animation: `orb-pulse ${p.dur}s ease-in-out infinite`,
               animationDelay: `${p.delay}s`,
-              filter: 'blur(0.3px)',
             }}
           />
         ))}
@@ -338,8 +275,6 @@ export default function RankingsPage() {
               className="text-transparent bg-clip-text"
               style={{
                 backgroundImage: 'linear-gradient(135deg, #CC0000 0%, #FF4444 50%, #CC0000 100%)',
-                backgroundSize: '200% 200%',
-                animation: 'gradient-x 3s ease infinite',
                 filter: 'drop-shadow(0 0 20px rgba(196,30,58,0.4))',
               }}
             >

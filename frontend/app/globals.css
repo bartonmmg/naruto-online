@@ -209,16 +209,7 @@ input:focus {
   animation: float-slow 4s ease-in-out infinite;
 }
 
-/* ── Gradient X Animation (título animado) ────────── */
-@keyframes gradient-x {
-  0%, 100% { background-position: 0% 50%; }
-  50%       { background-position: 100% 50%; }
-}
-
-.animate-gradient-x {
-  background-size: 200% 200%;
-  animation: gradient-x 3s ease infinite;
-}
+/* Gradient animation removed for performance optimization */
 
 /* ── Sparkle/Destello Animation ────────────────────── */
 @keyframes sparkle {
@@ -276,28 +267,7 @@ input:focus {
   50% { transform: scale(1.015); }
 }
 
-/* ── Edge Glow Animations ────────────────────────── */
-@keyframes edge-glow-left {
-  0%, 100% {
-    filter: drop-shadow(-8px 0 12px rgba(0, 220, 110, 0.25))
-            drop-shadow(8px 0 12px rgba(0, 220, 110, 0.1));
-  }
-  50% {
-    filter: drop-shadow(-8px 0 25px rgba(0, 220, 110, 0.5))
-            drop-shadow(8px 0 25px rgba(0, 220, 110, 0.25));
-  }
-}
-
-@keyframes edge-glow-right {
-  0%, 100% {
-    filter: drop-shadow(8px 0 12px rgba(240, 70, 40, 0.25))
-            drop-shadow(-8px 0 12px rgba(240, 70, 40, 0.1));
-  }
-  50% {
-    filter: drop-shadow(8px 0 25px rgba(240, 70, 40, 0.5))
-            drop-shadow(-8px 0 25px rgba(240, 70, 40, 0.25));
-  }
-}
+/* Edge glow animations removed for performance optimization */
 
 .character-breathe {
   animation: character-breathe 4s ease-in-out infinite;
@@ -305,19 +275,9 @@ input:focus {
 }
 
 
-/* Edge glow on left overlay (separate div for performance) */
-.edge-glow {
-  animation: edge-glow-left 2.5s ease-in-out infinite;
-}
-
-/* Edge glow on right overlay (separate div for performance) */
-.edge-glow-right-only {
-  animation: edge-glow-right 2.5s ease-in-out infinite;
-}
-
-/* ── Parallax smooth transition ────────────────────── */
+/* ── Character animations ────────────────────── */
 [data-character] {
-  transition: left 0.05s ease-out, right 0.05s ease-out;
+  /* Parallax transitions removed for performance */
 }
 
 
