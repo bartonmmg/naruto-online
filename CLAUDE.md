@@ -211,6 +211,7 @@ bash pre-deploy-check.sh
 | `EPERM: operation not permitted` | File system permissions (dev machine only) | Run `npm ci` instead of `npm install` |
 | `TypeError: X is not defined` | Missing import or outdated lockfile | Delete `package-lock.json` and run `npm install` |
 | `Cannot find module 'X'` | Dependency not installed | `npm install` in root, then `cd frontend && npm install` |
+| `Cannot find module 'next/dist/server/lib/start-server.js'` | Plugin incompatibility (Next.js 14) | Remove `@netlify/plugin-nextjs` from netlify.toml |
 | `Port already in use` | Local development conflict | Kill process or use different port |
 
 ### Netlify Configuration
@@ -218,7 +219,10 @@ bash pre-deploy-check.sh
 - **Publish Directory:** `frontend/.next`
 - **Node Version:** 18.17.0 (set in netlify.toml `[env]`)
 - **Cache:** Netlify caches `node_modules` and `.next` — clear if weird issues occur
-- **Plugin:** Uses `@netlify/plugin-nextjs` for Next.js-specific optimizations
+- **Plugin:** ~~`@netlify/plugin-nextjs`~~ **Removed** — Not compatible with Next.js 14.0.4
+  - Error: `Cannot find module 'next/dist/server/lib/start-server.js'`
+  - Solution: Next.js 14+ doesn't need the plugin; native deployment works fine
+  - Netlify treats `.next` output as static files automatically
 
 ### Git Best Practices
 - **Always test locally first:** `npm install && cd frontend && npm run build`
