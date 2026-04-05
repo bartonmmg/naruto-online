@@ -152,7 +152,7 @@ export default function RankingsPage() {
       <div
         className="aura-left hidden lg:block fixed bottom-0 left-0 w-[1000px] h-full pointer-events-none"
         style={{
-          zIndex: 1,
+          zIndex: 0,
           background: 'radial-gradient(ellipse at left center, rgba(0,220,110,0.8) 0%, transparent 60%)',
           boxShadow: '-40px 0 100px rgba(0,220,110,0.5), inset -30px 0 80px rgba(0,220,110,0.3)',
           maskImage:
@@ -187,7 +187,7 @@ export default function RankingsPage() {
       <div
         className="aura-right hidden lg:block fixed bottom-0 right-0 w-[1000px] h-full pointer-events-none"
         style={{
-          zIndex: 1,
+          zIndex: 0,
           background: 'radial-gradient(ellipse at right center, rgba(240,70,40,0.8) 0%, transparent 60%)',
           boxShadow: '40px 0 100px rgba(240,70,40,0.5), inset 30px 0 80px rgba(240,70,40,0.3)',
           maskImage:
