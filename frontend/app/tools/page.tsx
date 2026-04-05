@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { ChevronLeft, Ticket, Swords, Map, BookOpen, Wrench, Lock, ChevronRight } from 'lucide-react'
+import { ChevronLeft, Ticket, Swords, Map, BookOpen, Wrench, Lock, ChevronRight, CheckCircle } from 'lucide-react'
 import Navbar from '@/components/Navbar'
 
 interface Tool {
@@ -52,6 +52,14 @@ const TOOLS: Tool[] = [
 ]
 
 export default function ToolsPage() {
+  const [selectedFilter, setSelectedFilter] = useState('Todos')
+
+  const filteredTools = selectedFilter === 'Todos'
+    ? TOOLS
+    : selectedFilter === 'Disponibles'
+      ? TOOLS.filter(t => t.available)
+      : TOOLS.filter(t => !t.available)
+
   return (
     <main className="min-h-screen bg-bg-primary overflow-x-hidden" style={{
       backgroundImage: 'url(/images/bg/herramientas.png), linear-gradient(rgba(196, 30, 58, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(196, 30, 58, 0.03) 1px, transparent 1px)',
@@ -73,11 +81,6 @@ export default function ToolsPage() {
       {/* Hero Section */}
       <section className="relative py-20 px-6 border-b border-border/50">
         <div className="max-w-6xl mx-auto relative z-10">
-          <Link href="/" className="inline-flex items-center gap-2 text-sm text-white/60 hover:text-white/90 transition-colors mb-8">
-            <ChevronLeft className="w-4 h-4" />
-            Volver al inicio
-          </Link>
-
           <div className="mb-12">
             <p className="text-xs font-cinzel text-accent-orange tracking-[0.2em] uppercase font-bold mb-4">
               Herramientas
@@ -90,6 +93,23 @@ export default function ToolsPage() {
               Domina el juego con herramientas exclusivas de la comunidad.
             </p>
           </div>
+
+          {/* Filter */}
+          <div className="flex flex-wrap gap-3">
+            {['Todos', 'Disponibles', 'Próximamente'].map(filter => (
+              <button
+                key={filter}
+                onClick={() => setSelectedFilter(filter)}
+                className={`px-4 py-2 rounded-lg font-montserrat font-semibold text-sm transition-all duration-200 ${
+                  selectedFilter === filter
+                    ? 'bg-accent-orange text-white shadow-lg shadow-accent-orange/30'
+                    : 'bg-bg-card border border-border hover:border-accent-orange/50 text-white/70 hover:text-white'
+                }`}
+              >
+                {filter}
+              </button>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -97,55 +117,67 @@ export default function ToolsPage() {
       <section className="py-20 px-6 relative">
         <div className="max-w-6xl mx-auto relative z-10">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
-            {TOOLS.map((tool) => (
-              <div
-                key={tool.id}
-                className={`group game-card p-8 rounded-xl transition-all duration-300 ${
-                  tool.available
-                    ? 'game-card-orange hover:border-accent-orange/50 hover:shadow-lg hover:shadow-accent-orange/20 cursor-pointer'
-                    : 'opacity-60 cursor-not-allowed'
-                }`}
-              >
-                {/* Header */}
-                <div className="flex items-start justify-between mb-6">
-                  <div className={`w-14 h-14 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform ${
-                    tool.available ? 'bg-accent-orange/10 border border-accent-orange/20' : 'bg-bg-elevated border border-border'
-                  }`}>
-                    <img
-                      src="/images/tools/shuriken.png"
-                      alt={tool.name}
-                      className="w-8 h-8 object-contain"
-                    />
+            {filteredTools.map((tool) => {
+              const CardContent = (
+                <div
+                  className={`group game-card p-8 rounded-xl transition-all duration-300 ${
+                    tool.available
+                      ? 'game-card-orange hover:border-accent-orange/50 hover:shadow-lg hover:shadow-accent-orange/20 cursor-pointer'
+                      : 'opacity-60 cursor-not-allowed'
+                  }`}
+                >
+                  {/* Header */}
+                  <div className="flex items-start justify-between mb-6">
+                    <div className={`w-14 h-14 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform ${
+                      tool.available ? 'bg-accent-orange/10 border border-accent-orange/20' : 'bg-bg-elevated border border-border'
+                    }`}>
+                      <img
+                        src="/images/tools/shuriken.png"
+                        alt={tool.name}
+                        className="w-8 h-8 object-contain"
+                      />
+                    </div>
+                    {tool.available ? (
+                      <span className="text-xs font-cinzel px-3 py-1 rounded-full bg-accent-orange/20 text-accent-orange border border-accent-orange/30 flex items-center gap-1.5">
+                        <CheckCircle className="w-3 h-3" />
+                        {tool.badge}
+                      </span>
+                    ) : (
+                      <div className="flex items-center gap-1.5 text-xs font-cinzel text-white/50">
+                        <Lock className="w-3 h-3" />
+                        Próximamente
+                      </div>
+                    )}
                   </div>
-                  {tool.available ? (
-                    <span className="text-xs font-cinzel px-3 py-1 rounded-full bg-accent-orange/20 text-accent-orange border border-accent-orange/30">
-                      {tool.badge}
-                    </span>
-                  ) : (
-                    <div className="flex items-center gap-1.5 text-xs font-cinzel text-white/50">
-                      <Lock className="w-3 h-3" />
-                      Próximamente
+
+                  {/* Content */}
+                  <h3 className="text-lg font-montserrat font-bold text-text-primary mb-3 group-hover:text-accent-orange transition-colors">
+                    {tool.name}
+                  </h3>
+                  <p className="text-sm text-white/70 leading-relaxed mb-6">
+                    {tool.description}
+                  </p>
+
+                  {/* Footer */}
+                  {tool.available && (
+                    <div className="flex items-center justify-between pt-4 border-t border-border/50">
+                      <span className="text-xs text-accent-orange font-cinzel">Abrir herramienta</span>
+                      <ChevronRight className="w-4 h-4 text-accent-orange group-hover:translate-x-1 transition-transform" />
                     </div>
                   )}
                 </div>
+              )
 
-                {/* Content */}
-                <h3 className="text-lg font-montserrat font-bold text-text-primary mb-3 group-hover:text-accent-orange transition-colors">
-                  {tool.name}
-                </h3>
-                <p className="text-sm text-white/70 leading-relaxed mb-6">
-                  {tool.description}
-                </p>
-
-                {/* Footer */}
-                {tool.available && (
-                  <div className="flex items-center justify-between pt-4 border-t border-border/50">
-                    <span className="text-xs text-accent-orange font-cinzel">Abrir herramienta</span>
-                    <ChevronRight className="w-4 h-4 text-accent-orange group-hover:translate-x-1 transition-transform" />
-                  </div>
-                )}
-              </div>
-            ))}
+              return tool.available && tool.href ? (
+                <Link key={tool.id} href={tool.href}>
+                  {CardContent}
+                </Link>
+              ) : (
+                <div key={tool.id}>
+                  {CardContent}
+                </div>
+              )
+            })}
           </div>
 
           {/* CTA Section */}

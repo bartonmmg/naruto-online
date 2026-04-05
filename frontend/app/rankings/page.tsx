@@ -2,13 +2,11 @@
 
 import { useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import {
   Search,
   Swords,
   Shield,
   Crown,
-  ChevronLeft,
   LayoutGrid,
   List,
   X,
@@ -330,19 +328,10 @@ export default function RankingsPage() {
       {/* ═══════════════════════════════════════════════════
           MAIN CONTENT — Centered Ranking
           ═══════════════════════════════════════════════════ */}
-      <div className="relative max-w-4xl mx-auto px-6 py-8" style={{ zIndex: 10 }}>
-        {/* Back link */}
-        <Link
-          href="/dashboard"
-          className="inline-flex items-center gap-1.5 text-xs text-[#888] hover:text-power-red transition-colors font-cinzel mb-8"
-        >
-          <ChevronLeft className="w-3.5 h-3.5" />
-          Volver al dashboard
-        </Link>
-
+      <div className="relative max-w-4xl mx-auto px-6 py-8 pt-28" style={{ zIndex: 10 }}>
         {/* ── Title Block ──────────────────────────────── */}
         <div className="text-center mb-10 animate-fade-up">
-          <p className="text-xs font-cinzel font-bold text-power-red/70 tracking-[0.3em] uppercase mb-2">
+          <p className="text-sm font-cinzel font-black text-power-red/70 tracking-[0.3em] uppercase mb-2">
             {rankingData.meta.region} · Cluster {rankingData.meta.cluster} · Poder de Combate
           </p>
           <h1 className="text-4xl md:text-5xl font-cinzel font-black text-white leading-tight mb-3">
