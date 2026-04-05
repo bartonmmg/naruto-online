@@ -6,6 +6,11 @@ publish = "frontend/.next"
 NODE_VERSION = "20.18.0"
 NODE_ENV = "production"
 
+# Explicitly disable the Next.js plugin - it's incompatible with Next.js 16
+[[plugins]]
+package = "@netlify/plugin-nextjs"
+skip = true
+
 [[redirects]]
 from = "/*"
 status = 200
