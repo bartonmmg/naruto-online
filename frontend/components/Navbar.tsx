@@ -25,30 +25,30 @@ export default function Navbar() {
   return (
     <nav className={`fixed top-0 w-full z-50 transition-all duration-300 ${
       scrolled
-        ? 'bg-bg-primary/92 backdrop-blur-xl border-b border-border shadow-[0_1px_0_rgba(196,30,58,0.2)]'
+        ? 'bg-bg-primary/95 backdrop-blur-2xl border-b border-power-red/20 shadow-lg shadow-power-red/10'
         : 'bg-transparent border-b border-transparent'
     }`}>
-      <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
 
         {/* Logo — HDRV + kanji */}
-        <Link href="/" className="flex items-center gap-2.5 group">
-          <span className="text-power-red/80 text-lg font-cinzel select-none group-hover:text-power-red transition-all duration-300 transform group-hover:scale-110 leading-none">忍</span>
-          <div className="flex items-baseline gap-0.5">
-            <span className="font-cinzel font-black text-sm tracking-[0.1em] text-text-primary group-hover:text-power-red transition-all duration-300" style={{ textShadow: 'group-hover' }}>H</span>
-            <span className="font-cinzel font-black text-sm tracking-[0.1em] text-text-primary group-hover:text-power-red transition-all duration-300">D</span>
-            <span className="font-cinzel font-black text-sm tracking-[0.1em] text-power-red group-hover:drop-shadow-[0_0_10px_rgba(196,30,58,0.6)] transition-all duration-300" style={{ textShadow: '0 0 8px rgba(196,30,58,0.4)' }}>R</span>
-            <span className="font-cinzel font-black text-sm tracking-[0.1em] text-power-red group-hover:drop-shadow-[0_0_10px_rgba(196,30,58,0.6)] transition-all duration-300" style={{ textShadow: '0 0 8px rgba(196,30,58,0.4)' }}>V</span>
+        <Link href="/" className="flex items-center gap-3 group">
+          <span className="text-power-red/80 text-2xl font-cinzel select-none group-hover:text-power-red transition-all duration-300 transform group-hover:scale-125 leading-none">忍</span>
+          <div className="flex items-baseline gap-0">
+            <span className="font-cinzel font-black text-lg tracking-[0.05em] text-text-primary group-hover:text-power-red transition-all duration-300" style={{ textShadow: 'group-hover' }}>H</span>
+            <span className="font-cinzel font-black text-lg tracking-[0.05em] text-text-primary group-hover:text-power-red transition-all duration-300">D</span>
+            <span className="font-cinzel font-black text-lg tracking-[0.05em] text-power-red group-hover:drop-shadow-[0_0_12px_rgba(196,30,58,0.8)] transition-all duration-300" style={{ textShadow: '0 0 10px rgba(196,30,58,0.6)' }}>R</span>
+            <span className="font-cinzel font-black text-lg tracking-[0.05em] text-power-red group-hover:drop-shadow-[0_0_12px_rgba(196,30,58,0.8)] transition-all duration-300" style={{ textShadow: '0 0 10px rgba(196,30,58,0.6)' }}>V</span>
           </div>
         </Link>
 
         {/* Desktop links */}
-        <div className="hidden md:flex items-center gap-8">
+        <div className="hidden md:flex items-center gap-10">
           {navLinks.map(({ href, label }) => (
             href.startsWith('#') ? (
               <a
                 key={href}
                 href={href}
-                className="text-xs font-cinzel text-[#B0B0B0] hover:text-text-primary tracking-widest transition-colors duration-200"
+                className="text-sm font-montserrat font-semibold text-white/70 hover:text-power-red transition-colors duration-200 relative after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-power-red after:transition-all after:duration-300 hover:after:w-full"
               >
                 {label}
               </a>
@@ -56,7 +56,7 @@ export default function Navbar() {
               <Link
                 key={href}
                 href={href}
-                className="text-xs font-cinzel text-[#B0B0B0] hover:text-text-primary tracking-widest transition-colors duration-200"
+                className="text-sm font-montserrat font-semibold text-white/70 hover:text-power-red transition-colors duration-200 relative after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-power-red after:transition-all after:duration-300 hover:after:w-full"
               >
                 {label}
               </Link>
@@ -65,18 +65,18 @@ export default function Navbar() {
         </div>
 
         {/* Desktop auth */}
-        <div className="hidden md:flex items-center gap-3">
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/auth/login" className="font-cinzel tracking-widest text-xs">Entrar</Link>
-          </Button>
-          <Button variant="power" size="sm" asChild>
-            <Link href="/auth/register" className="font-cinzel tracking-widest text-xs">Registrarse</Link>
-          </Button>
+        <div className="hidden md:flex items-center gap-4">
+          <Link href="/auth/login" className="px-6 py-2.5 text-sm font-montserrat font-semibold text-white/70 hover:text-power-red transition-all duration-200 border border-white/20 rounded-lg hover:border-power-red/50 hover:bg-power-red/5">
+            Entrar
+          </Link>
+          <Link href="/auth/register" className="px-7 py-2.5 text-sm font-montserrat font-semibold text-white bg-gradient-to-r from-power-red to-accent-orange rounded-lg hover:shadow-lg hover:shadow-power-red/50 transition-all duration-200 hover:scale-105 active:scale-95">
+            Registrarse
+          </Link>
         </div>
 
         {/* Mobile toggle */}
         <button
-          className="md:hidden p-2 text-[#B0B0B0] hover:text-power-red transition-colors"
+          className="md:hidden p-2 text-white/70 hover:text-power-red transition-colors"
           onClick={() => setMenuOpen(!menuOpen)}
         >
           {menuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -85,13 +85,13 @@ export default function Navbar() {
 
       {/* Mobile menu */}
       {menuOpen && (
-        <div className="md:hidden bg-bg-primary/95 backdrop-blur-xl border-b border-border px-6 py-6 flex flex-col gap-4 animate-fade-up">
+        <div className="md:hidden bg-bg-primary/98 backdrop-blur-xl border-b border-power-red/20 px-6 py-6 flex flex-col gap-4 animate-fade-up">
           {navLinks.map(({ href, label }) => (
             href.startsWith('#') ? (
               <a
                 key={href}
                 href={href}
-                className="font-cinzel text-xs text-[#B0B0B0] hover:text-text-primary transition-colors tracking-widest"
+                className="font-montserrat text-sm font-semibold text-white/70 hover:text-power-red transition-colors"
                 onClick={() => setMenuOpen(false)}
               >
                 {label}
@@ -100,20 +100,20 @@ export default function Navbar() {
               <Link
                 key={href}
                 href={href}
-                className="font-cinzel text-xs text-[#B0B0B0] hover:text-text-primary transition-colors tracking-widest"
+                className="font-montserrat text-sm font-semibold text-white/70 hover:text-power-red transition-colors"
                 onClick={() => setMenuOpen(false)}
               >
                 {label}
               </Link>
             )
           ))}
-          <div className="divider-red" />
-          <div className="flex flex-col gap-3 pt-1">
-            <Link href="/auth/login" className="font-cinzel text-xs text-text-primary hover:text-power-red transition-colors tracking-widest" onClick={() => setMenuOpen(false)}>
+          <div className="h-px bg-gradient-to-r from-transparent via-power-red/30 to-transparent my-2" />
+          <div className="flex flex-col gap-3 pt-2">
+            <Link href="/auth/login" className="px-4 py-2 text-sm font-montserrat font-semibold text-white/70 hover:text-power-red transition-colors border border-white/20 rounded-lg text-center" onClick={() => setMenuOpen(false)}>
               Entrar
             </Link>
-            <Link href="/auth/register" className="font-cinzel text-xs text-power-red font-bold hover:text-power-dark transition-colors tracking-widest" onClick={() => setMenuOpen(false)}>
-              Registrarse →
+            <Link href="/auth/register" className="px-4 py-2 text-sm font-montserrat font-semibold text-white bg-gradient-to-r from-power-red to-accent-orange rounded-lg text-center" onClick={() => setMenuOpen(false)}>
+              Registrarse
             </Link>
           </div>
         </div>

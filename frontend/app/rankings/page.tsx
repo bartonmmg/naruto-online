@@ -110,6 +110,47 @@ export default function RankingsPage() {
     setLoading(false)
   }, [router])
 
+  // Subtle parallax effect based on mouse position
+  // Using position + width adjustment to avoid transform conflicts
+  useEffect(() => {
+    const hashirama = document.querySelector('[data-character="left"]') as HTMLElement
+    const madara = document.querySelector('[data-character="right"]') as HTMLElement
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!hashirama || !madara) return
+
+      const mouseX = e.clientX
+      const screenCenterX = window.innerWidth / 2
+
+      // Left side: Hashirama moves towards cursor
+      if (mouseX < screenCenterX) {
+        const distanceFromCenter = screenCenterX - mouseX
+        const offset = (distanceFromCenter / screenCenterX) * 8 // Max 8px
+        hashirama.style.left = `${-offset}px`
+        madara.style.right = '0px'
+      }
+      // Right side: Madara moves towards cursor
+      else {
+        const distanceFromCenter = mouseX - screenCenterX
+        const offset = (distanceFromCenter / screenCenterX) * 8 // Max 8px
+        madara.style.right = `${-offset}px`
+        hashirama.style.left = '0px'
+      }
+    }
+
+    const handleMouseLeave = () => {
+      if (hashirama) hashirama.style.left = '0px'
+      if (madara) madara.style.right = '0px'
+    }
+
+    window.addEventListener('mousemove', handleMouseMove)
+    window.addEventListener('mouseleave', handleMouseLeave)
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('mouseleave', handleMouseLeave)
+    }
+  }, [])
+
   const handleLogout = () => {
     localStorage.removeItem('token')
     localStorage.removeItem('user')
@@ -173,7 +214,8 @@ export default function RankingsPage() {
 
       {/* ── Hashirama — Left Background ──────────────────── */}
       <div
-        className="hidden lg:block fixed bottom-0 left-0 w-[1000px] h-full pointer-events-none"
+        data-character="left"
+        className="character-breathe edge-glow hidden lg:block fixed bottom-0 left-0 w-[1000px] h-full pointer-events-none"
         style={{
           zIndex: 1,
           backgroundImage: 'url(/images/power-ranking/hashiizq.png)',
@@ -187,12 +229,14 @@ export default function RankingsPage() {
             'linear-gradient(to top, transparent 2%, black 15%, black 85%, transparent 100%), linear-gradient(to right, black 0%, black 50%, transparent 100%)',
           maskComposite: 'intersect',
           WebkitMaskComposite: 'source-in',
+          transition: 'transform 0.05s ease-out',
         }}
       />
 
       {/* ── Madara — Right Background ───────────────────── */}
       <div
-        className="hidden lg:block fixed bottom-0 right-0 w-[1000px] h-full pointer-events-none"
+        data-character="right"
+        className="character-breathe edge-glow hidden lg:block fixed bottom-0 right-0 w-[1000px] h-full pointer-events-none"
         style={{
           zIndex: 1,
           backgroundImage: 'url(/images/power-ranking/madaraderecha.png)',
@@ -206,6 +250,7 @@ export default function RankingsPage() {
             'linear-gradient(to top, transparent 2%, black 15%, black 85%, transparent 100%), linear-gradient(to left, black 0%, black 50%, transparent 100%)',
           maskComposite: 'intersect',
           WebkitMaskComposite: 'source-in',
+          transition: 'transform 0.05s ease-out',
         }}
       />
 
@@ -218,6 +263,9 @@ export default function RankingsPage() {
           { left: '5%', bottom: '35%', size: 7, dur: 9, delay: 1.5, driftX: '20px' },
           { left: '15%', bottom: '10%', size: 4, dur: 6.5, delay: 2.2, driftX: '-50px' },
           { left: '3%', bottom: '55%', size: 5.5, dur: 8.5, delay: 0.3, driftX: '35px' },
+          { left: '18%', bottom: '40%', size: 5, dur: 7.5, delay: 1.2, driftX: '25px' },
+          { left: '2%', bottom: '20%', size: 6.5, dur: 8.8, delay: 2.5, driftX: '-40px' },
+          { left: '10%', bottom: '50%', size: 4.5, dur: 7.2, delay: 0.5, driftX: '30px' },
         ].map((p, i) => (
           <div
             key={`green-${i}`}
@@ -228,8 +276,8 @@ export default function RankingsPage() {
                 bottom: p.bottom,
                 width: p.size,
                 height: p.size,
-                backgroundColor: 'rgba(0,220,110,0.6)',
-                boxShadow: '0 0 20px rgba(0,220,110,0.7), 0 0 40px rgba(0,200,90,0.3)',
+                backgroundColor: 'rgba(0,220,110,0.8)',
+                boxShadow: '0 0 30px rgba(0,220,110,0.9), 0 0 60px rgba(0,200,90,0.6), 0 0 80px rgba(0,220,110,0.3)',
                 animation: `chakra-drift ${p.dur}s cubic-bezier(0.4, 0.0, 0.6, 1) infinite`,
                 animationDelay: `${p.delay}s`,
                 filter: 'blur(0.5px)',
@@ -246,6 +294,9 @@ export default function RankingsPage() {
           { right: '5%', bottom: '42%', size: 7, dur: 9.5, delay: 1.8, driftX: '-20px' },
           { right: '15%', bottom: '12%', size: 4, dur: 6.8, delay: 2.5, driftX: '50px' },
           { right: '4%', bottom: '60%', size: 5.5, dur: 8.2, delay: 0.5, driftX: '-35px' },
+          { right: '18%', bottom: '45%', size: 5, dur: 8, delay: 1.3, driftX: '-25px' },
+          { right: '2%', bottom: '28%', size: 6.5, dur: 9, delay: 2.8, driftX: '40px' },
+          { right: '10%', bottom: '55%', size: 4.5, dur: 7.8, delay: 0.8, driftX: '-30px' },
         ].map((p, i) => (
           <div
             key={`red-${i}`}
@@ -256,8 +307,8 @@ export default function RankingsPage() {
                 bottom: p.bottom,
                 width: p.size,
                 height: p.size,
-                backgroundColor: 'rgba(240,70,40,0.6)',
-                boxShadow: '0 0 20px rgba(240,70,40,0.7), 0 0 40px rgba(220,40,20,0.3)',
+                backgroundColor: 'rgba(240,70,40,0.8)',
+                boxShadow: '0 0 30px rgba(240,70,40,0.9), 0 0 60px rgba(220,40,20,0.6), 0 0 80px rgba(240,70,40,0.3)',
                 animation: `chakra-drift ${p.dur}s cubic-bezier(0.4, 0.0, 0.6, 1) infinite`,
                 animationDelay: `${p.delay}s`,
                 filter: 'blur(0.5px)',
@@ -331,19 +382,19 @@ export default function RankingsPage() {
           <nav className="hidden md:flex items-center gap-6">
             <Link
               href="/dashboard"
-              className="text-xs font-cinzel text-[#888] hover:text-white transition-colors"
+              className="text-sm font-cinzel text-white/70 hover:text-white transition-colors"
             >
               Dashboard
             </Link>
             <Link
               href="/rankings"
-              className="text-xs font-cinzel text-power-red border-b border-power-red/40 pb-px"
+              className="text-sm font-cinzel text-power-red border-b border-power-red/40 pb-px"
             >
               Rankings
             </Link>
             <Link
               href="/tools"
-              className="text-xs font-cinzel text-[#888] hover:text-white transition-colors"
+              className="text-sm font-cinzel text-white/70 hover:text-white transition-colors"
             >
               Herramientas
             </Link>
@@ -353,23 +404,23 @@ export default function RankingsPage() {
             {user && userRank ? (
               <>
                 <div className="hidden sm:flex items-center gap-2">
-                  <span className="text-xs text-[#999] font-cinzel">{user.username}</span>
-                  <span className={`text-xs font-cinzel px-2 py-0.5 rounded-full ${userRank.cls}`}>
+                  <span className="text-sm text-white/70 font-cinzel">{user.username}</span>
+                  <span className={`text-sm font-cinzel px-2 py-0.5 rounded-full ${userRank.cls}`}>
                     {userRank.name}
                   </span>
                 </div>
                 <button
                   onClick={handleLogout}
-                  className="flex items-center gap-1.5 text-xs text-[#666] hover:text-power-red transition-colors font-cinzel"
+                  className="flex items-center gap-1.5 text-sm text-white/70 hover:text-power-red transition-colors font-cinzel"
                 >
-                  <LogOut className="w-3.5 h-3.5" />
+                  <LogOut className="w-4 h-4" />
                   Salir
                 </button>
               </>
             ) : (
               <Link
                 href="/auth/login"
-                className="text-xs font-cinzel text-[#666] hover:text-power-red transition-colors"
+                className="text-sm font-cinzel text-white/70 hover:text-power-red transition-colors"
               >
                 Iniciar sesión
               </Link>

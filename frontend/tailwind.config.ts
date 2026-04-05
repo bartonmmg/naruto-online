@@ -52,8 +52,10 @@ const config: Config = {
         },
       },
       fontFamily: {
-        cinzel: ['Cinzel', 'serif'],
-        inter:  ['Inter', 'sans-serif'],
+        bebas: ['Bebas Neue', 'sans-serif'],
+        montserrat: ['Montserrat', 'sans-serif'],
+        cinzel: ['Bebas Neue', 'sans-serif'],
+        inter: ['Montserrat', 'sans-serif'],
       },
       boxShadow: {
         'orange-sm':  '0 0 12px rgba(255, 107, 0, 0.3)',

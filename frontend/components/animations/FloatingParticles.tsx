@@ -25,13 +25,13 @@ export default function FloatingParticles() {
           key={p.id}
           className="absolute rounded-full"
           style={{
-            left:    `${p.left}%`,
+            left:    p.left + '%',
             bottom:  '-4px',
-            width:   `${p.size}px`,
-            height:  `${p.size}px`,
+            width:   p.size + 'px',
+            height:  p.size + 'px',
             background: p.color,
-            animation: `floatUp ${p.duration}s linear ${p.delay}s infinite`,
-            filter: `blur(1px)`,
+            animation: 'floatUp ' + p.duration + 's linear ' + p.delay + 's infinite',
+            filter: 'blur(1px)',
           }}
         />
       ))}

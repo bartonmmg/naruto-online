@@ -346,6 +346,75 @@ Located in `frontend/public/images/power-ranking/`:
 4. **ESM Import Errors:** Ensure backend uses `.js` extensions in relative imports (required for production)
 5. **Build Failures:** Run `npm install && npm run build` locally to catch TypeScript errors before deploying
 
+## Rankings Page Visual Effects
+
+**Active Effects (✅ Implemented & Working):**
+
+### 1. **Character Breathing Animation**
+- **File:** `frontend/app/globals.css` - `.character-breathe` class
+- **Behavior:**
+  - Subtle scale animation (1 → 1.015 → 1)
+  - Makes characters appear alive and present
+  - Continuous loop every 4 seconds
+- **Implementation:**
+  - Uses CSS keyframes with scale transform
+  - Pure CSS, no JavaScript required
+  - Very efficient animation (transform only)
+- **Applied to:**
+  - `[data-character="left"]` (Hashirama)
+  - `[data-character="right"]` (Madara)
+
+### 2. **Edge Glow (Borde Brillante) - Pulsante**
+- **File:** `frontend/app/globals.css` - `edge-glow-left` & `edge-glow-right` keyframes
+- **Behavior:**
+  - Drop-shadow glow effect that pulses around character edges
+  - **Hashirama (left):** Green glow (rgba(0, 220, 110))
+  - **Madara (right):** Red/Orange glow (rgba(240, 70, 40))
+  - Pulses every 2.5 seconds (subtle, not distracting)
+- **Implementation:**
+  - Two separate keyframe animations for left/right characters
+  - Uses CSS `drop-shadow` filter
+  - Combines with breathing animation via multi-animation syntax
+- **Effect:**
+  - 0%, 100%: Subtle glow (0.25-0.1 opacity)
+  - 50%: Enhanced glow (0.5-0.25 opacity)
+
+### 3. **Chakra Particles Enhanced (Intensity Pulse)**
+- **File:** `frontend/app/rankings/page.tsx` - Array of particle objects
+- **Behavior:**
+  - 8 particles per side (16 total) floating upward continuously
+  - **Left side (Hashirama):** Green chakra particles (rgba(0, 220, 110))
+  - **Right side (Madara):** Red/Orange chakra particles (rgba(240, 70, 40))
+  - Uses `chakra-drift` animation from `globals.css`
+- **Implementation:**
+  - Array-based rendering with .map()
+  - Each particle has: position, size, duration, delay, horizontal drift
+  - Cubic-bezier easing (0.4, 0.0, 0.6, 1) for natural upward drift
+- **Intensity Pulse:**
+  - Increased opacity: 0.6 → 0.8
+  - Enhanced box-shadow: 
+    - Primary glow: 30px with 0.9 opacity
+    - Secondary glow: 60px with 0.6 opacity
+    - Tertiary glow: 80px with 0.3 opacity
+  - Result: Much more vibrant and visible particles
+
+**Tested Combinations:**
+- ✅ Breathing + Edge Glow work together perfectly
+- ✅ All effects compatible with Chakra Particles
+- ✅ Performance excellent (no FPS drops)
+- ✅ Effects are balanced - not overwhelming but visually impressive
+
+**Rejected Effects:**
+- ❌ Ambient Lights (no visible impact, performance drop)
+- ❌ Sword Clash (visual clutter in center)
+- ❌ Badge Glow (focus should be on characters, not UI)
+- ❌ Parallax with Mouse (variables in keyframes didn't work reliably)
+- ❌ Tilt on Hover (transform conflicts with animations, never became visible)
+- ❌ Subtle Vertical Float (redundant with breathing, no added value)
+
+**Final Effect Stack:**
+All three effects run simultaneously without conflicts, creating a dynamic and epic visual experience on the rankings page.
+
 ## Future Phases
 
 1. **Phase 2:** Daily login XP system, daily streak tracking
@@ -353,8 +422,68 @@ Located in `frontend/public/images/power-ranking/`:
 3. **Phase 4:** Community features (posts, comments)
 4. **Phase 5:** Achievements, leaderboards, clans
 
+## Typography & Styling (Updated 2026-04-04)
+
+### Fonts
+- **Titles (h1-h6, .font-cinzel):** Bebas Neue (Google Fonts)
+  - Large, bold, impactful ninja aesthetic
+  - Used for: Main headings, page titles, large labels
+- **Body Text:** Montserrat (Google Fonts)
+  - Clean, modern, highly readable sans-serif
+  - Used for: Paragraphs, buttons, form inputs, secondary text, feature titles
+- **Special Cases:** Some feature/rank titles use Montserrat instead of Bebas to prevent letter-spacing issues
+  - Examples: "Sistema de XP", "Genin", "Misiones Diarias", etc.
+
+### Font Loading
+- Imported from Google Fonts via `frontend/app/fonts.css`
+- Uses `@import url()` for reliability
+- Global CSS applies fonts with `!important` to override component-level classes
+- Fallback: `sans-serif`
+
+## Homepage & UI Improvements (Updated 2026-04-04)
+
+### Navbar Component (`components/Navbar.tsx`)
+- **Logo Size:** Increased kanji from `text-lg` → `text-2xl`, letters from `text-sm` → `text-lg`
+- **Navbar Height:** `h-16` → `h-20` (more spacious)
+- **Desktop Links:** 
+  - Font: Bebas Neue → Montserrat (semibold)
+  - Size: `text-xs` → `text-base`
+  - Added underline animation on hover (pseudo-element `::after`)
+  - Gap: `gap-8` → `gap-10`
+  - Color: `text-[#B0B0B0]` → `text-white/70` (better contrast)
+- **Auth Buttons:**
+  - "Entrar": Ghost style with border, hover effect to red
+  - "Registrarse": Gradient (power-red to accent-orange) with shadow and scale animation
+  - Size: `sm` → `md`, text `text-xs` → `text-base`
+- **Mobile Menu:** Updated with gradient border, improved button styles
+
+### Landing Page (`app/page.tsx`)
+- **Removed:** Stats cards (duplicated with Features section)
+- **Button Improvements:**
+  - Primary CTA ("Comenzar tu camino ninja"): Gradient rojo-naranja, large shadow, scale animation
+  - Secondary CTA ("Ya eres ninja"): Border style, hover to red
+  - All buttons: Montserrat semibold, better spacing, active states
+- **Color Improvements:**
+  - Changed muted grays to `text-white/70` for better visibility
+  - All subtitle and description text: More contrast
+- **Rankings Page Navbar:** Text sizes increased (`text-xs` → `text-sm`)
+
+### Rankings Page (`app/rankings/page.tsx`)
+- **Navbar Links:** `text-xs` → `text-sm`, color improved to `text-white/70`
+- **User Display:** Username and rank badge sizes increased
+- **Logout Button:** Larger icon and text for better visibility
+
 ## Last Updated
-2026-04-04
+2026-04-04 (Complete UI/Typography Overhaul + Visual Effects)
+- ✅ Typography: Bebas Neue (titles) + Montserrat (body) from Google Fonts
+- ✅ Navbar: Redesigned with larger logo, better spacing, improved buttons
+- ✅ Landing Page: Enhanced buttons, removed duplicate stats, improved colors
+- ✅ Floating Shuriken Particles: Implemented in FloatingParticles component
+- ✅ Breathing Animation (continuous, 4s cycle)
+- ✅ Edge Glow Pulsante (2.5s cycle, green/red)
+- ✅ Chakra Particles Enhanced with Intensity Pulse (8 per side, boosted visuals)
+- ✅ Parallax Mouse Effect: Direct JS transform manipulation for character movement
+- Tested and rejected: Tilt on Hover, Vertical Float, Ambient Lights, Sword Clash, Badge Glow
 - Added production deployment configuration (Render, Netlify, Neon.tech)
 - Documented ESM import requirements with `.js` extensions
 - Updated database configuration for PostgreSQL production

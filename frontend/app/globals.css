@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700&display=swap');
+@import './fonts.css';
 
 @tailwind base;
 @tailwind components;
@@ -9,16 +9,26 @@
 }
 
 html {
-  @apply bg-bg-primary text-text-primary font-inter;
+  @apply bg-bg-primary text-text-primary;
+  font-family: 'Montserrat', sans-serif;
   scroll-behavior: smooth;
 }
 
 body {
   @apply bg-bg-primary;
+  font-family: 'Montserrat', sans-serif;
 }
 
-h1, h2, h3, h4, h5, h6 {
-  @apply font-cinzel font-bold;
+/* ── TITLES — Bebas Neue ──────────────────────────── */
+h1, h2, h3, h4, h5, h6, .font-cinzel {
+  font-family: 'Bebas Neue', sans-serif !important;
+}
+
+/* Ensure nested elements in headers use Bebas too */
+h1 *, h2 *, h3 *, h4 *, h5 *, h6 *,
+h1 .font-cinzel, h2 .font-cinzel, h3 .font-cinzel,
+h4 .font-cinzel, h5 .font-cinzel, h6 .font-cinzel {
+  font-family: 'Bebas Neue', sans-serif !important;
 }
 
 a, button {
@@ -259,3 +269,57 @@ input:focus {
   0%, 100% { opacity: 0.3; }
   50%      { opacity: 0.9; }
 }
+
+/* ── Character Breathing Animation ──────────────── */
+@keyframes character-breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.015); }
+}
+
+/* ── Edge Glow Animations ────────────────────────── */
+@keyframes edge-glow-left {
+  0%, 100% {
+    filter: drop-shadow(-8px 0 12px rgba(0, 220, 110, 0.25))
+            drop-shadow(8px 0 12px rgba(0, 220, 110, 0.1));
+  }
+  50% {
+    filter: drop-shadow(-8px 0 25px rgba(0, 220, 110, 0.5))
+            drop-shadow(8px 0 25px rgba(0, 220, 110, 0.25));
+  }
+}
+
+@keyframes edge-glow-right {
+  0%, 100% {
+    filter: drop-shadow(8px 0 12px rgba(240, 70, 40, 0.25))
+            drop-shadow(-8px 0 12px rgba(240, 70, 40, 0.1));
+  }
+  50% {
+    filter: drop-shadow(8px 0 25px rgba(240, 70, 40, 0.5))
+            drop-shadow(-8px 0 25px rgba(240, 70, 40, 0.25));
+  }
+}
+
+.character-breathe {
+  animation: character-breathe 4s ease-in-out infinite;
+  transition: transform 0.05s ease-out;
+}
+
+
+/* Combine breathing + edge glow animations */
+[data-character="left"].edge-glow {
+  animation: character-breathe 4s ease-in-out infinite,
+             edge-glow-left 2.5s ease-in-out infinite;
+}
+
+[data-character="right"].edge-glow {
+  animation: character-breathe 4s ease-in-out infinite,
+             edge-glow-right 2.5s ease-in-out infinite;
+}
+
+/* ── Parallax smooth transition ────────────────────── */
+[data-character] {
+  transition: left 0.05s ease-out, right 0.05s ease-out;
+}
+
+
+

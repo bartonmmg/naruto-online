@@ -13,7 +13,6 @@ import {
   Star,
 } from 'lucide-react'
 import Navbar from '@/components/Navbar'
-import Button from '@/components/ui/Button'
 import FloatingParticles from '@/components/animations/FloatingParticles'
 
 const FEATURES = [
@@ -44,13 +43,6 @@ const FEATURES = [
     description:
       'Conecta con ninjas de todo el mundo. Comparte estrategias, compite en rankings y forma clanes legendarios.',
   },
-]
-
-const STATS = [
-  { value: '10K+', label: 'Ninjas activos' },
-  { value: '50+', label: 'Herramientas' },
-  { value: '99', label: 'Nivel máximo' },
-  { value: '24/7', label: 'Comunidad' },
 ]
 
 const RANKS = [
@@ -120,14 +112,14 @@ export default function Home() {
               HDRV
             </span>
             <br />
-            <span className="text-3xl md:text-4xl text-text-muted font-normal tracking-widest">
+            <span className="text-3xl md:text-4xl text-white/80 font-semibold tracking-widest">
               Comunidad Naruto Online
             </span>
           </h1>
 
           {/* Subtitle */}
           <p
-            className="text-lg md:text-xl text-text-muted max-w-2xl mx-auto mb-10 leading-relaxed animate-fade-up"
+            className="text-lg md:text-xl text-white/70 max-w-2xl mx-auto mb-10 leading-relaxed animate-fade-up"
             style={{ animationDelay: '0.2s' }}
           >
             Gana experiencia, sube de rango y construye tu leyenda. La comunidad más activa del
@@ -136,38 +128,22 @@ export default function Home() {
 
           {/* CTAs */}
           <div
-            className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-fade-up"
+            className="flex flex-col sm:flex-row items-center justify-center gap-5 animate-fade-up"
             style={{ animationDelay: '0.3s' }}
           >
-            <Button size="lg" variant="ninja" asChild>
-              <Link href="/auth/register" className="flex items-center gap-2.5">
-                <Flame className="w-5 h-5" />
-                Comenzar tu camino ninja
-              </Link>
-            </Button>
-            <Button size="lg" variant="ghost" asChild>
-              <Link
-                href="/auth/login"
-                className="flex items-center gap-2.5 text-text-muted hover:text-text-primary"
-              >
-                Ya eres ninja
-                <ChevronRight className="w-4 h-4" />
-              </Link>
-            </Button>
+            <Link href="/auth/register" className="px-8 py-3.5 text-lg font-montserrat font-bold text-white bg-gradient-to-r from-power-red to-accent-orange rounded-xl hover:shadow-2xl hover:shadow-power-red/40 transition-all duration-300 hover:scale-105 active:scale-95 flex items-center gap-2.5">
+              <Flame className="w-5 h-5" />
+              Comenzar tu camino ninja
+            </Link>
+            <Link
+              href="/auth/login"
+              className="px-8 py-3.5 text-lg font-montserrat font-bold text-white/80 border-2 border-white/40 rounded-xl hover:border-power-red hover:text-power-red hover:bg-power-red/5 transition-all duration-300 flex items-center gap-2.5"
+            >
+              Ya eres ninja
+              <ChevronRight className="w-5 h-5" />
+            </Link>
           </div>
 
-          {/* Stats */}
-          <div
-            className="grid grid-cols-2 md:grid-cols-4 gap-px mt-20 border border-border rounded-2xl overflow-hidden bg-border animate-fade-up"
-            style={{ animationDelay: '0.4s' }}
-          >
-            {STATS.map(({ value, label }) => (
-              <div key={label} className="bg-bg-card px-6 py-5 text-center">
-                <div className="text-2xl font-cinzel font-black text-power-red mb-1">{value}</div>
-                <div className="text-xs text-text-muted">{label}</div>
-              </div>
-            ))}
-          </div>
         </div>
       </section>
 
@@ -181,7 +157,7 @@ export default function Home() {
             <h2 className="text-4xl md:text-5xl font-cinzel font-black text-text-primary leading-tight mb-6">
               Todo lo que necesitas
             </h2>
-            <p className="text-text-muted/90 mt-4 max-w-2xl mx-auto text-base leading-relaxed">
+            <p className="text-white/70 mt-4 max-w-2xl mx-auto text-base leading-relaxed">
               Herramientas poderosas diseñadas por y para la comunidad de Naruto Online. Domina el
               juego con nuestras calculadoras, guías y rankings.
             </p>
@@ -198,10 +174,10 @@ export default function Home() {
                 >
                   <Icon className={`w-6 h-6 ${color}`} />
                 </div>
-                <h3 className="text-lg font-cinzel font-bold text-text-primary mb-3 group-hover:text-accent-orange transition-colors">
+                <h3 className="text-lg font-montserrat font-bold text-text-primary mb-3 group-hover:text-accent-orange transition-colors">
                   {title}
                 </h3>
-                <p className="text-sm text-text-muted leading-relaxed">{description}</p>
+                <p className="text-sm text-white/70 leading-relaxed">{description}</p>
               </div>
             ))}
           </div>
@@ -238,8 +214,8 @@ export default function Home() {
                   <Icon className={`w-5 h-5 ${color}`} />
                 </div>
                 <div>
-                  <div className="font-cinzel font-bold text-sm text-text-primary">{title}</div>
-                  <div className="text-xs text-text-muted mt-0.5">{desc}</div>
+                  <div className="font-montserrat font-bold text-sm text-text-primary">{title}</div>
+                  <div className="text-xs text-white/70 mt-0.5">{desc}</div>
                 </div>
               </div>
             ))}
@@ -268,16 +244,14 @@ export default function Home() {
                 </span>{' '}
                 ninja
               </h2>
-              <p className="text-text-muted/90 leading-relaxed mb-8 text-base">
+              <p className="text-white/70 leading-relaxed mb-8 text-base">
                 Sube de rango ganando XP. Cada acción en la plataforma — desde completar misiones
                 hasta participar en la comunidad — te acerca al rango más alto.
               </p>
-              <Button variant="ninja" size="md" asChild>
-                <Link href="/auth/register" className="inline-flex items-center gap-2">
-                  <Swords className="w-4 h-4" />
-                  Comenzar como Genin
-                </Link>
-              </Button>
+              <Link href="/auth/register" className="inline-flex items-center gap-2 px-6 py-2.5 text-base font-montserrat font-bold text-white bg-gradient-to-r from-power-red to-accent-orange rounded-lg hover:shadow-xl hover:shadow-power-red/40 transition-all duration-300 hover:scale-105 active:scale-95">
+                <Swords className="w-4 h-4" />
+                Comenzar como Genin
+              </Link>
             </div>
 
             <div className="space-y-3">
@@ -289,7 +263,7 @@ export default function Home() {
                 >
                   <div className="flex items-center gap-3">
                     <Star className="w-4 h-4 text-text-dim" />
-                    <span className="font-cinzel font-bold text-sm text-text-primary">{name}</span>
+                    <span className="font-montserrat font-bold text-sm text-text-primary">{name}</span>
                   </div>
                   <span className={`text-xs font-cinzel px-3 py-1 rounded-full ${cls}`}>{xp}</span>
                 </div>
@@ -311,13 +285,11 @@ export default function Home() {
               primera misión?
             </span>
           </h2>
-          <p className="text-text-muted mb-10">Únete a la comunidad. Es gratis. Siempre lo será.</p>
-          <Button size="lg" variant="ninja" asChild>
-            <Link href="/auth/register" className="inline-flex items-center gap-2.5">
-              <Flame className="w-5 h-5" />
-              Registrarse ahora — gratis
-            </Link>
-          </Button>
+          <p className="text-white/70 mb-10">Únete a la comunidad. Es gratis. Siempre lo será.</p>
+          <Link href="/auth/register" className="inline-flex items-center gap-2.5 px-8 py-3.5 text-lg font-montserrat font-bold text-white bg-gradient-to-r from-power-red to-accent-orange rounded-xl hover:shadow-2xl hover:shadow-power-red/40 transition-all duration-300 hover:scale-105 active:scale-95">
+            <Flame className="w-5 h-5" />
+            Registrarse ahora — gratis
+          </Link>
         </div>
       </section>
 
