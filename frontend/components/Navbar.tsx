@@ -10,6 +10,7 @@ const navLinks = [
   { href: '#community', label: 'Comunidad' },
   { href: '/rankings',  label: 'Rankings' },
   { href: '/tools',     label: 'Herramientas' },
+  { href: '/guides',    label: 'Guías' },
 ]
 
 export default function Navbar() {

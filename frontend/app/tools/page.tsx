@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { LogOut, Hexagon, Wrench, Ticket, ChevronRight, ChevronLeft, Lock, Swords, Map, BookOpen } from 'lucide-react'
+import Navbar from '@/components/Navbar'
 
 interface User {
   id: string
@@ -104,19 +105,23 @@ export default function ToolsPage() {
   const rank = user ? getRank(user.level) : null
 
   return (
-    <main className="min-h-screen bg-bg-primary" style={{
-      backgroundImage: 'linear-gradient(rgba(196, 30, 58, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(196, 30, 58, 0.03) 1px, transparent 1px)',
-      backgroundSize: '40px 40px',
+    <main className="min-h-screen bg-bg-primary overflow-x-hidden" style={{
+      backgroundImage: 'url(/images/bg/herramientas.png), linear-gradient(rgba(196, 30, 58, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(196, 30, 58, 0.03) 1px, transparent 1px)',
+      backgroundPosition: 'center, 0, 0',
+      backgroundSize: 'cover, 40px 40px, 40px 40px',
+      backgroundAttachment: 'fixed, scroll, scroll',
     }}>
+      {/* Herramientas background overlay — Low opacity */}
+      <div className="fixed inset-0 bg-bg-primary/70 pointer-events-none z-0" />
 
       {/* Ambient */}
-      <div className="fixed top-0 left-0 w-full h-full pointer-events-none overflow-hidden z-0">
+      <div className="fixed top-0 left-0 w-full h-full pointer-events-none overflow-hidden z-1">
         <div className="absolute top-0 right-1/3 w-96 h-96 rounded-full opacity-15"
           style={{ background: 'radial-gradient(circle, rgba(196,30,58,0.15) 0%, transparent 70%)' }} />
       </div>
 
       {/* Header */}
-      <header className="border-b border-border bg-bg-primary/80 backdrop-blur-xl sticky top-0 z-40">
+      <header className="border-b border-border bg-bg-primary/80 backdrop-blur-xl sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
           <Link href="/dashboard" className="flex items-center gap-2 group">
             <Hexagon className="w-6 h-6 text-power-red fill-power-red/15 group-hover:fill-power-red/30 transition-all" />

@@ -88,10 +88,13 @@ export default function Home() {
       </div>
 
       {/* ── HERO ─────────────────────────────────────── */}
-      <section className="relative min-h-screen flex items-center justify-center px-6 grid-bg">
+      <section className="relative min-h-screen flex items-center justify-center px-6 grid-bg overflow-hidden" style={{ backgroundImage: 'url(/images/bg/village.png)', backgroundPosition: 'center bottom', backgroundSize: 'cover', backgroundAttachment: 'fixed' }}>
+        {/* Village background overlay — Low opacity */}
+        <div className="absolute inset-0 bg-bg-primary/60 pointer-events-none z-5" />
+
         {/* Ambient orbs — Akatsuki red + dark blue */}
-        <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] orb-red opacity-25 pointer-events-none" />
-        <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] orb-blue opacity-15 pointer-events-none" />
+        <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] orb-red opacity-25 pointer-events-none z-5" />
+        <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] orb-blue opacity-15 pointer-events-none z-5" />
 
         <div className="relative z-10 max-w-4xl mx-auto text-center">
           {/* Status badge */}
