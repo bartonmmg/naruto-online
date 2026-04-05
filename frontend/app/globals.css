@@ -267,11 +267,29 @@ input:focus {
   50% { transform: scale(1.015); }
 }
 
-/* Edge glow animations removed for performance optimization */
+/* ── Aura Glow (opacity-only — GPU compositor, no repaints) ── */
+@keyframes aura-pulse-left {
+  0%, 100% { opacity: 0.25; }
+  50%       { opacity: 0.65; }
+}
+
+@keyframes aura-pulse-right {
+  0%, 100% { opacity: 0.2; }
+  50%       { opacity: 0.55; }
+}
+
+.aura-left {
+  animation: aura-pulse-left 2.5s ease-in-out infinite;
+  will-change: opacity;
+}
+
+.aura-right {
+  animation: aura-pulse-right 2.5s ease-in-out infinite;
+  will-change: opacity;
+}
 
 .character-breathe {
   animation: character-breathe 4s ease-in-out infinite;
-  transition: transform 0.05s ease-out;
 }
 
 

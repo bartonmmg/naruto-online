@@ -148,6 +148,17 @@ export default function RankingsPage() {
           WebkitMaskComposite: 'source-in',
         }}
       />
+      {/* Left Aura Glow — Pulsing opacity for performance */}
+      <div
+        className="aura-left hidden lg:block fixed bottom-0 left-0 pointer-events-none"
+        style={{
+          zIndex: 1,
+          width: '80px',
+          height: '100%',
+          background: 'linear-gradient(to right, rgba(0,220,110,0.8) 0%, transparent 100%)',
+          boxShadow: '-30px 0 80px rgba(0,220,110,0.6), inset -20px 0 60px rgba(0,220,110,0.4)',
+        }}
+      />
 
       {/* ── Madara — Right Background ───────────────────── */}
       <div
@@ -166,6 +177,17 @@ export default function RankingsPage() {
             'linear-gradient(to top, transparent 2%, black 15%, black 85%, transparent 100%), linear-gradient(to left, black 0%, black 50%, transparent 100%)',
           maskComposite: 'intersect',
           WebkitMaskComposite: 'source-in',
+        }}
+      />
+      {/* Right Aura Glow — Pulsing opacity for performance */}
+      <div
+        className="aura-right hidden lg:block fixed bottom-0 right-0 pointer-events-none"
+        style={{
+          zIndex: 1,
+          width: '80px',
+          height: '100%',
+          background: 'linear-gradient(to left, rgba(240,70,40,0.8) 0%, transparent 100%)',
+          boxShadow: '30px 0 80px rgba(240,70,40,0.6), inset 20px 0 60px rgba(240,70,40,0.4)',
         }}
       />
 
