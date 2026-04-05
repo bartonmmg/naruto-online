@@ -10,6 +10,3 @@ NODE_ENV = "production"
 from = "/*"
 status = 200
 to = "/index.html"
-
-[[plugins]]
-package = "@netlify/plugin-nextjs"
