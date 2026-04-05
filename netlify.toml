@@ -3,7 +3,7 @@ command = "cd frontend && npm ci && npm run build"
 publish = "frontend/.next"
 
 [env]
-NODE_VERSION = "18.17.0"
+NODE_VERSION = "20.18.0"
 NODE_ENV = "production"
 
 [[redirects]]
