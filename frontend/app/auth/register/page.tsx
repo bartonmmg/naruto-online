@@ -7,6 +7,7 @@ import { Eye, EyeOff, AlertTriangle, ArrowRight, User, Mail, Lock } from 'lucide
 import AuthCard from '@/components/auth/AuthCard'
 import Input from '@/components/ui/Input'
 import Button from '@/components/ui/Button'
+import { API_URL } from '@/lib/config'
 import axios from 'axios'
 
 function getPasswordStrength(pw: string): { label: string; color: string; width: string; steps: number } | null {
@@ -59,9 +60,8 @@ export default function RegisterPage() {
     }
     setLoading(true)
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'
-      console.log('Registering to:', `${apiUrl}/auth/register`)
-      const response = await axios.post(`${apiUrl}/auth/register`, {
+      console.log('Registering to:', `${API_URL}/auth/register`)
+      const response = await axios.post(`${API_URL}/auth/register`, {
         username: formData.username,
         email: formData.email,
         password: formData.password,
