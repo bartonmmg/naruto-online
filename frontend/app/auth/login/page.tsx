@@ -31,7 +31,12 @@ export default function LoginPage() {
     }
     setLoading(true)
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'
+      // En producción, usar la URL del backend en Render
+      // En desarrollo, usar localhost
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL ||
+        (typeof window !== 'undefined' && window.location.origin === 'http://localhost:3000'
+          ? 'http://localhost:4000'
+          : 'https://naruto-online.onrender.com')
       console.log('Logging in to:', `${apiUrl}/auth/login`)
       const response = await axios.post(`${apiUrl}/auth/login`, {
         email: formData.email,
