@@ -33,9 +33,11 @@ export default function GuidesPage() {
   const categories = ['Todos', ...Object.values(CATEGORY_LABELS)]
 
   // Filter by category and visibility (hide DRAFT from non-admin users)
-  const filteredGuides = guides
-    .filter(g => selectedCategory === 'Todos' || g.category === Object.keys(CATEGORY_LABELS).find(k => CATEGORY_LABELS[k] === selectedCategory))
-    .filter(g => g.status === 'PUBLISHED' || hasRole(['ADMIN', 'MODERATOR']))
+  const filteredGuides = Array.isArray(guides)
+    ? guides
+        .filter(g => selectedCategory === 'Todos' || g.category === Object.keys(CATEGORY_LABELS).find(k => CATEGORY_LABELS[k] === selectedCategory))
+        .filter(g => g.status === 'PUBLISHED' || hasRole(['ADMIN', 'MODERATOR']))
+    : []
 
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
