@@ -17,6 +17,7 @@ export const updateGuideSchema = z.object({
   content: z.string().min(20, 'El contenido debe tener al menos 20 caracteres').optional(),
   imageUrls: z.array(z.string()).optional(),
   videoUrls: z.array(z.string()).optional(),
+  status: z.enum(['DRAFT', 'PUBLISHED']).optional(),
 })
 
 type CreateGuideInput = z.infer<typeof createGuideSchema>
