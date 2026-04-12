@@ -733,13 +733,33 @@ The final page maintains visual excellence while being **6-8x more efficient** t
 
 ## Security & Production Readiness
 
-### Sensitive Files Protection
-- ✅ **`.env` files** — All ignored in `.gitignore` (DATABASE_URL, JWT_SECRET, API keys)
-- ✅ **`.env.local`** — Frontend env ignored
-- ✅ **Database files** — `*.db`, `*.sqlite`, `dev.db` ignored
-- ✅ **Claude Code config** — `.claude/` directory ignored (not tracked)
-- ✅ **Build artifacts** — `dist/`, `build/`, `.next/` ignored
-- ✅ **Logs & temp files** — `*.log`, `tmp/`, `temp/` ignored
+### Sensitive Files Protection (All Ignored in `.gitignore`)
+- ✅ **Environment Files:**
+  - `.env`, `.env.local`, `.env.*.local` (DATABASE_URL, JWT_SECRET, API keys)
+  - `.env.production`, `.env.production.local`
+  - `.env.development`, `.env.development.local`
+  - `.env.test`, `.env.test.local`
+- ✅ **Credentials & Secrets:**
+  - `CREDENCIALES.md`, `CREDENCIALES-*.md` (passwords, tokens, test accounts)
+  - `SECRETS.md`, `TOKENS.md` (authentication tokens, API keys)
+  - `*.key`, `*.pem`, `*.p8`, `*.p12`, `*.pfx` (certificate files)
+- ✅ **Database Files:**
+  - `*.db`, `*.sqlite`, `*.sqlite3` (SQLite development databases)
+  - `*.db-journal`, `*.db-wal`, `*.db-shm` (SQLite temporary files)
+  - `backend/prisma/dev.db`, `backend/prisma/dev.db-journal`
+- ✅ **Claude Code Config:**
+  - `.claude/` directory (local settings, cache, history, state)
+  - `.claude-cache/`, `.claude-debug/`, `.claude-history/`, `.claude-state/`
+- ✅ **Build Artifacts & Logs:**
+  - `dist/`, `build/`, `frontend/.next/`, `.turbo/`
+  - `*.log`, `logs/`, `npm-debug.log*`, `yarn-error.log*`
+  - `coverage/`, `.nyc_output/`, `test-results/`
+- ✅ **IDE & Editor Config:**
+  - `.vscode/`, `.idea/`, `*.code-workspace`, `.history/`
+- ✅ **OS & Temporary Files:**
+  - `.DS_Store`, `Thumbs.db`, `tmp/`, `temp/`, `*.tmp`, `*.bak`
+- ✅ **Private Documentation:**
+  - `PRIVATE-*.md`, `NOTES-*.md`, `DRAFT-*.md`, `TODO-*.md`
 
 ### Pre-Deployment Checklist
 1. **Environment Variables Set (Render Dashboard):**
@@ -772,7 +792,7 @@ The final page maintains visual excellence while being **6-8x more efficient** t
 - **JWT Expiration:** Hardcoded to 7 days (change in `auth.service.ts` if needed)
 
 ## Last Updated
-2026-04-05 (Next.js 16 Migration Complete)
+2026-04-12 (Guides System + Security Updates)
 
 ### Major Migration: Next.js 14 → 16 (2026-04-05)
 **Status:** ✅ **COMPLETE** — Both Netlify and Render deploying successfully

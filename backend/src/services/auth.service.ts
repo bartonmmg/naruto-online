@@ -39,7 +39,7 @@ export const authService = {
     })
 
     const token = jwt.sign(
-      { userId: user.id, username: user.username },
+      { userId: user.id, username: user.username, role: user.role },
       process.env.JWT_SECRET as string,
       { expiresIn: JWT_EXPIRATION } as SignOptions
     )
@@ -52,6 +52,7 @@ export const authService = {
         email: user.email,
         level: user.level,
         xp: user.xp,
+        role: user.role,
       },
     }
   },
@@ -71,7 +72,7 @@ export const authService = {
     }
 
     const token = jwt.sign(
-      { userId: user.id, username: user.username },
+      { userId: user.id, username: user.username, role: user.role },
       process.env.JWT_SECRET as string,
       { expiresIn: JWT_EXPIRATION } as SignOptions
     )
@@ -84,6 +85,7 @@ export const authService = {
         email: user.email,
         level: user.level,
         xp: user.xp,
+        role: user.role,
       },
     }
   },

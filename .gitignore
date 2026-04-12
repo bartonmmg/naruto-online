@@ -147,6 +147,13 @@ PRIVATE-*.md
 NOTES-*.md
 DRAFT-*.md
 TODO-*.md
+CREDENCIALES.md
+CREDENCIALES-*.md
+SECRETS.md
+TOKENS.md
+COMANDOS.md
+DESARROLLO.md
+QUICK_START.md
 
 # ==================== WORKSPACE SPECIFIC ====================
 # Local development scripts

@@ -31,15 +31,34 @@ export default function LoginPage() {
     }
     setLoading(true)
     try {
-      const response = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/auth/login`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'
+      console.log('Logging in to:', `${apiUrl}/auth/login`)
+      const response = await axios.post(`${apiUrl}/auth/login`, {
         email: formData.email,
         password: formData.password,
       })
+      console.log('Login response:', response.data)
       localStorage.setItem('token', response.data.token)
       localStorage.setItem('user', JSON.stringify(response.data.user))
       router.push('/dashboard')
     } catch (error: any) {
-      setErrors({ submit: error.response?.data?.error || 'Credenciales incorrectas.' })
+      console.error('Login error:', error)
+      console.error('Error status:', error.response?.status)
+      console.error('Error data:', error.response?.data)
+
+      // Mejor manejo de errores
+      let errorMsg = 'Error al iniciar sesión. Intenta de nuevo.'
+
+      if (error.response?.status === 401) {
+        // El mensaje de error viene del backend
+        errorMsg = error.response?.data?.error || 'Email o contraseña incorrectos.'
+      } else if (error.message === 'Network Error') {
+        errorMsg = 'No se pudo conectar con el servidor. Verifica tu conexión.'
+      } else if (error.code === 'ECONNREFUSED') {
+        errorMsg = 'Servidor no disponible. ¿Está corriendo el backend?'
+      }
+
+      setErrors({ submit: errorMsg })
     } finally {
       setLoading(false)
     }

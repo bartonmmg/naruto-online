@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -13,6 +13,7 @@ model User {
   email         String    @unique
   passwordHash  String
   avatarUrl     String?
+  role          String    @default("USER")
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -21,6 +22,38 @@ model User {
   lastDailyLogin DateTime?
 
   xpLogs        XpLog[]
+  guides        Guide[]
+}
+
+model Guide {
+  id          String    @id @default(cuid())
+  title       String
+  category    String
+  difficulty  String
+  content     String
+  imageUrls   String    @default("[]")
+  videoUrls   String    @default("[]")
+  status      String    @default("DRAFT")
+  authorId    String
+  author      User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  editHistory GuideEditHistory[]
+
+  @@index([authorId])
+  @@index([status])
+  @@index([category])
+}
+
+model GuideEditHistory {
+  id        String    @id @default(cuid())
+  guideId   String
+  guide     Guide     @relation(fields: [guideId], references: [id], onDelete: Cascade)
+  editedBy  String    // username
+  editedAt  DateTime  @default(now())
+
+  @@index([guideId])
 }
 
 model XpLog {

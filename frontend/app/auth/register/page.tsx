@@ -59,16 +59,21 @@ export default function RegisterPage() {
     }
     setLoading(true)
     try {
-      const response = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/auth/register`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'
+      console.log('Registering to:', `${apiUrl}/auth/register`)
+      const response = await axios.post(`${apiUrl}/auth/register`, {
         username: formData.username,
         email: formData.email,
         password: formData.password,
       })
+      console.log('Registration response:', response.data)
       localStorage.setItem('token', response.data.token)
       localStorage.setItem('user', JSON.stringify(response.data.user))
       router.push('/dashboard')
     } catch (error: any) {
-      setErrors({ submit: error.response?.data?.error || 'Error al registrarse. Inténtalo de nuevo.' })
+      console.error('Registration error:', error)
+      const errorMsg = error.response?.data?.error || error.message || 'Error al registrarse. Inténtalo de nuevo.'
+      setErrors({ submit: errorMsg })
     } finally {
       setLoading(false)
     }
