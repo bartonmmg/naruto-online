@@ -41,15 +41,32 @@ npm run build --workspace=frontend
 
 ### Database (Prisma)
 ```bash
-# Run migrations (backend workspace)
+# Development: Create new migration after schema changes
 cd backend && npx prisma migrate dev --name <migration_name>
+
+# Production: Apply migrations to production database
+cd backend && npx prisma migrate deploy
+
+# Sync schema to database (without creating migration)
+cd backend && npx prisma db push
 
 # Generate Prisma client after schema changes
 cd backend && npx prisma generate
 
-# Open Prisma Studio UI
+# Open Prisma Studio UI (local development)
 cd backend && npx prisma studio
 ```
+
+**Development Database (SQLite):**
+- File-based, no setup required
+- Lives in `backend/prisma/dev.db`
+- `.env` or `.env.local`: `DATABASE_URL=file:./prisma/dev.db`
+
+**Production Database (PostgreSQL via Neon):**
+- Cloud-hosted, managed by Neon.tech
+- Connection string: `postgresql://user:password@host:5432/database`
+- Configured in Render Dashboard environment variables
+- Auto-migrations on deploy via `prisma migrate deploy`
 
 ### Linting
 ```bash
@@ -77,9 +94,10 @@ naruto-app/
 │   │   └── lib/
 │   │       └── prisma.ts        # Prisma client singleton
 │   ├── prisma/
-│   │   ├── schema.prisma        # Database schema (SQLite for dev)
-│   │   └── dev.db              # SQLite file for local development
-│   ├── .env                     # DATABASE_URL, JWT_SECRET, BACKEND_PORT
+│   │   ├── schema.prisma        # Database schema (PostgreSQL)
+│   │   ├── migrations/          # Prisma migrations (auto-created)
+│   │   └── dev.db              # SQLite file (development only)
+│   ├── .env.example             # Template for environment variables
 │   └── dist/                    # Compiled output
 │
 ├── frontend/                     # Next.js app
@@ -132,16 +150,42 @@ naruto-app/
 ## Important Details
 
 ### Environment Variables
-**Backend** (`.env`):
-- `DATABASE_URL`: PostgreSQL URI (Neon.tech connection string in prod)
-- `JWT_SECRET`: Secret key for signing tokens (MUST be ≥32 characters in production)
-- `JWT_EXPIRATION`: Token lifetime (default: `7d`)
-- `BACKEND_PORT`: Port for Express server (default: `4000`)
-- `FRONTEND_URL`: Frontend origin for CORS (e.g., `https://naruto-online.netlify.app`)
-- `NODE_ENV`: Environment flag (development, production)
 
-**Frontend** (`.env.local`):
-- `NEXT_PUBLIC_API_URL`: Backend URL (must be public for browser; e.g., `https://naruto-online.onrender.com`)
+#### **Backend (Configure in Render Dashboard, NOT `.env`)**
+
+**Development** (`backend/.env.local` — local only, not committed):
+```bash
+DATABASE_URL=file:./prisma/dev.db
+JWT_SECRET=dev-secret-min-32-characters-for-local-testing
+BACKEND_PORT=4000
+NODE_ENV=development
+```
+
+**Production** (Render Dashboard → Settings → Environment Variables):
+| Variable | Value |
+|----------|-------|
+| `DATABASE_URL` | PostgreSQL connection string from Neon.tech |
+| `JWT_SECRET` | Random ≥32 character string (SECURE!) |
+| `FRONTEND_URL` | `https://naruto-online.netlify.app` |
+| `NODE_ENV` | `production` |
+| `BACKEND_PORT` | `4000` |
+
+#### **Frontend (`.env.local` — development only)**
+
+```bash
+# Development
+NEXT_PUBLIC_API_URL=http://localhost:4000
+
+# Production: Uses fallback in lib/config.ts
+# (Or configure in Netlify Dashboard if available)
+# NEXT_PUBLIC_API_URL=https://naruto-online.onrender.com
+```
+
+**Frontend URL Resolution:**
+- Configured centrally in `lib/config.ts`
+- Checks `NEXT_PUBLIC_API_URL` first
+- Falls back to `https://naruto-online.onrender.com` in production
+- Uses `http://localhost:4000` in development
 
 ### Database
 - **Production:** PostgreSQL via Neon.tech (connected via DATABASE_URL)
@@ -419,18 +463,49 @@ Located in `frontend/public/images/power-ranking/`:
 
 ## Deployment & Production
 
-**Current Deployment Status:**
-- ✅ Backend: Render.com (https://naruto-online.onrender.com)
-- ✅ Frontend: Netlify (https://naruto-online.netlify.app)
-- ✅ Database: Neon.tech PostgreSQL
+### **Current Deployment Status:**
+- ✅ **Backend:** Render.com (https://naruto-online.onrender.com)
+- ✅ **Frontend:** Netlify (https://naruto-online.netlify.app)
+- ✅ **Database:** Neon.tech PostgreSQL (Free tier with $5/month of free credits)
 
-**Deployment Checklist:**
-- [x] Configure Netlify environment variables (NEXT_PUBLIC_API_URL)
-- [x] Configure Render environment variables (DATABASE_URL, JWT_SECRET, FRONTEND_URL, etc.)
-- [x] Set up CORS for frontend-backend communication
-- [x] Test registration and login flow end-to-end
-- [ ] Monitor error logs in production
-- [ ] Set up production JWT_SECRET (replace placeholder)
+### **Production Services Configuration:**
+
+#### **Render Backend** (https://naruto-online.onrender.com)
+1. Git repo connected: auto-deploys on push to main
+2. Environment Variables set (see Environment Variables section above)
+3. Build command: `cd backend && npm install && npm run build`
+4. Start command: `npm start --workspace=backend`
+5. Auto-runs `prisma migrate deploy` on startup (via build script)
+
+#### **Netlify Frontend** (https://naruto-online.netlify.app)
+1. Git repo connected: auto-deploys on push to main
+2. Build command: `cd frontend && npm install --legacy-peer-deps && npm run build`
+3. Publish directory: `frontend/.next`
+4. Auto-detects Next.js 16 (no plugin needed)
+
+#### **Neon PostgreSQL Database**
+- Connection string: Configured in Render environment variables
+- Free tier: Expires if no activity for 7 days (but can be used indefinitely with $5/month)
+- Migrations auto-applied on Render deploy
+- Accessible from Render backend only (internal connection)
+
+### **Pre-Deployment Checklist:**
+- [x] Configure all environment variables in Render Dashboard
+- [x] Set up PostgreSQL database in Neon.tech
+- [x] Test registration and login end-to-end
+- [x] Verify CORS allows Netlify frontend
+- [x] Monitor Render/Netlify deploy logs
+- [x] Backup DATABASE_URL connection string locally (in `.env.render.local`)
+
+### **Post-Deployment Verification:**
+```bash
+# Check backend health
+curl https://naruto-online.onrender.com/health
+
+# Test registration
+# Navigate to https://naruto-online.netlify.app/auth/register
+# Should register and redirect to /dashboard
+```
 
 **Common Issues & Fixes:**
 1. **CORS Errors:** Check `FRONTEND_URL` in Render matches exactly the frontend origin (no trailing slash)
@@ -791,8 +866,63 @@ The final page maintains visual excellence while being **6-8x more efficient** t
 - **CORS:** Restricted to FRONTEND_URL env var (must match exactly, no trailing slash)
 - **JWT Expiration:** Hardcoded to 7 days (change in `auth.service.ts` if needed)
 
+## Development Workflow
+
+### **Starting Development**
+```bash
+# Install dependencies
+npm install
+
+# Setup development database (SQLite)
+cd backend
+cp .env.example .env.local
+# Edit .env.local: DATABASE_URL=file:./prisma/dev.db
+
+# Create initial migration if needed
+npx prisma migrate dev --name init
+
+# Go back to root and start both servers
+cd ..
+npm run dev
+```
+
+Frontend runs on `http://localhost:3000`
+Backend runs on `http://localhost:4000`
+
+### **Making Database Changes**
+```bash
+# 1. Edit backend/prisma/schema.prisma
+# 2. Create migration
+cd backend
+npx prisma migrate dev --name <description>
+
+# 3. Prisma client auto-updates
+# 4. Commit migration files to git
+```
+
+### **Pushing to Production**
+```bash
+# 1. All changes committed and pushed to main
+git push origin main
+
+# 2. Render auto-deploys backend
+# - Runs build script (includes prisma generate)
+# - Runs prisma migrate deploy on startup
+# - Auto-syncs schema with Neon PostgreSQL
+
+# 3. Netlify auto-deploys frontend
+# - Builds Next.js app
+# - Publishes to CDN
+```
+
+### **Debugging Production Issues**
+- **Backend logs:** Render Dashboard → Logs
+- **Frontend errors:** Browser DevTools console
+- **Database:** `npx prisma studio` (local dev only) or Neon Dashboard
+- **Health check:** `curl https://naruto-online.onrender.com/health`
+
 ## Last Updated
-2026-04-12 (Guides System + Security Updates)
+2026-04-12 (Guides System + Database/Production Setup Complete)
 
 ### Major Migration: Next.js 14 → 16 (2026-04-05)
 **Status:** ✅ **COMPLETE** — Both Netlify and Render deploying successfully

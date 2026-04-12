@@ -20,6 +20,7 @@ export default function CreateGuidePage() {
   const [category, setCategory] = useState('BUILDS')
   const [difficulty, setDifficulty] = useState('BASICO')
   const [content, setContent] = useState('')
+  const [status, setStatus] = useState('DRAFT')
   const [imageUrls, setImageUrls] = useState<string[]>([])
   const [imageInput, setImageInput] = useState('')
   const [videoUrls, setVideoUrls] = useState<string[]>([])
@@ -99,6 +100,7 @@ export default function CreateGuidePage() {
         category,
         difficulty,
         content,
+        status,
         imageUrls,
         videoUrls,
       })
@@ -223,6 +225,34 @@ export default function CreateGuidePage() {
                   ))}
                 </select>
                 {fieldErrors.difficulty && <p className="text-xs text-power-red mt-2">{fieldErrors.difficulty}</p>}
+              </div>
+
+              <div>
+                <label className="block text-sm font-montserrat font-semibold text-text-primary mb-2">
+                  Estado <span className="text-power-red">*</span>
+                </label>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setStatus('DRAFT')}
+                    className={`flex-1 px-4 py-2.5 rounded-lg font-montserrat transition-all ${
+                      status === 'DRAFT'
+                        ? 'bg-accent-orange text-white'
+                        : 'bg-bg-card border border-border text-white/70 hover:border-accent-orange/50'
+                    }`}
+                  >
+                    Borrador
+                  </button>
+                  <button
+                    onClick={() => setStatus('PUBLISHED')}
+                    className={`flex-1 px-4 py-2.5 rounded-lg font-montserrat transition-all ${
+                      status === 'PUBLISHED'
+                        ? 'bg-chakra-blue text-white'
+                        : 'bg-bg-card border border-border text-white/70 hover:border-chakra-blue/50'
+                    }`}
+                  >
+                    Publicada
+                  </button>
+                </div>
               </div>
 
               <div className="border-t border-border pt-6">

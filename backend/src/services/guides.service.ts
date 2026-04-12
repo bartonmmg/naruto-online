@@ -8,6 +8,7 @@ export const createGuideSchema = z.object({
   content: z.string().min(20, 'El contenido debe tener al menos 20 caracteres'),
   imageUrls: z.array(z.string()).optional().default([]),
   videoUrls: z.array(z.string()).optional().default([]),
+  status: z.enum(['DRAFT', 'PUBLISHED']).optional().default('DRAFT'),
 })
 
 export const updateGuideSchema = z.object({
@@ -88,7 +89,7 @@ export const guidesService = {
         content: data.content,
         imageUrls: JSON.stringify(data.imageUrls || []),
         videoUrls: JSON.stringify(data.videoUrls || []),
-        status: 'PUBLISHED',
+        status: data.status || 'DRAFT',
         authorId,
       },
       include: {
