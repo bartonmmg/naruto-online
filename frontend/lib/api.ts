@@ -1,16 +1,23 @@
-import axios from 'axios'
-import { API_URL } from './config'
+﻿import { API_URL } from './config'
 
-const api = axios.create({
-  baseURL: API_URL,
-})
+const API_KEY = process.env.NEXT_PUBLIC_RANKING_API_KEY || ''
 
-api.interceptors.request.use(config => {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
+export async function fetchRankingAPI(endpoint: string, options?: RequestInit) {
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+    'x-api-key': API_KEY,
+    ...options?.headers,
   }
-  return config
-})
 
-export default api
+  const response = await fetch(${API_URL}${endpoint}, {
+    ...options,
+    headers,
+    cache: options?.cache || 'no-store',
+  })
+
+  if (!response.ok) {
+    throw new Error(API Error: ${response.status} ${response.statusText})
+  }
+
+  return response.json()
+}

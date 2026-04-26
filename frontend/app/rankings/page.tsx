@@ -12,6 +12,7 @@ import {
   X,
   BarChart2,
 } from 'lucide-react'
+import { fetchRankingAPI } from '@/lib/api'
 import Navbar from '@/components/Navbar'
 import MedalImage from '@/components/MedalImage'
 
@@ -33,7 +34,6 @@ interface Cluster {
   name: string
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'
 
 const MEDAL: Record<
   number,
@@ -104,13 +104,9 @@ export default function RankingsPage() {
 
   // Cargar regiones al montar el componente
   useEffect(() => {
-    const fetchRegions = async () => {
+    const loadRegions = async () => {
       try {
-        const res = await fetch(`${API_URL}/api/rankings/regions`, {
-          cache: 'no-store'
-        })
-        if (!res.ok) throw new Error('Failed to fetch regions')
-        const data = await res.json()
+        const data = await fetchRankingAPI('/api/rankings/regions')
         setRegions(data)
         // Asegurar que region tiene un valor válido
         if (data.length > 0 && !region) {
@@ -121,7 +117,7 @@ export default function RankingsPage() {
         setError(`Error fetching regions: ${err}`)
       }
     }
-    fetchRegions()
+    loadRegions()
   }, [])
 
   // Cargar clusters cuando cambie la región
@@ -131,13 +127,9 @@ export default function RankingsPage() {
       return
     }
 
-    const fetchClusters = async () => {
+    const loadClusters = async () => {
       try {
-        const res = await fetch(`${API_URL}/api/rankings/clusters/${region}`, {
-          cache: 'no-store'
-        })
-        if (!res.ok) throw new Error('Failed to fetch clusters')
-        const data = await res.json()
+        const data = await fetchRankingAPI(`/api/rankings/clusters/${region}`)
         setClusters(data)
         if (data.length > 0 && data[0].id !== cluster) {
           setCluster(data[0].id)
@@ -147,7 +139,7 @@ export default function RankingsPage() {
         setError(`Error fetching clusters: ${err}`)
       }
     }
-    fetchClusters()
+    loadClusters()
   }, [region])
 
   // Cargar fechas disponibles cuando cambie región/cluster
@@ -157,13 +149,9 @@ export default function RankingsPage() {
       return
     }
 
-    const fetchDates = async () => {
+    const loadDates = async () => {
       try {
-        const res = await fetch(`${API_URL}/api/rankings/dates/${region}/${cluster}`, {
-          cache: 'no-store'
-        })
-        if (!res.ok) throw new Error('Failed to fetch dates')
-        const data = await res.json()
+        const data = await fetchRankingAPI(`/api/rankings/dates/${region}/${cluster}`)
         setDates(data)
         if (data.length > 0 && data[0] !== date) {
           setDate(data[0])
@@ -172,28 +160,26 @@ export default function RankingsPage() {
         setError(`Error fetching dates: ${err}`)
       }
     }
-    fetchDates()
+    loadDates()
   }, [region, cluster, date])
 
   // Cargar ranking cuando cambie región/cluster/fecha
   useEffect(() => {
-    const fetchRanking = async () => {
+    const loadRanking = async () => {
       setError('')
       try {
-        let url: string
+        let endpoint: string
 
         if (region === 'GLOBAL') {
           // Global - consolidar todas las regiones
-          url = `${API_URL}/api/rankings/consolidated-global?date=${date}`
+          endpoint = `/api/rankings/consolidated-global?date=${date}`
         } else {
           // Regional - filtro específico
           if (!region || !cluster || !date) return
-          url = `${API_URL}/api/rankings/top100?region=${region}&cluster=${cluster}&date=${date}`
+          endpoint = `/api/rankings/top100?region=${region}&cluster=${cluster}&date=${date}`
         }
 
-        const res = await fetch(url)
-        if (!res.ok) throw new Error(`Failed to fetch ranking: ${res.status}`)
-        const data = await res.json()
+        const data = await fetchRankingAPI(endpoint)
         setPlayers(data.players || [])
 
         // Extraer servidores únicos de forma más eficiente
@@ -210,9 +196,9 @@ export default function RankingsPage() {
     }
 
     if (region === 'GLOBAL' && date) {
-      fetchRanking()
+      loadRanking()
     } else if (region !== 'GLOBAL' && region && cluster && date) {
-      fetchRanking()
+      loadRanking()
     }
   }, [region, cluster, date])
 

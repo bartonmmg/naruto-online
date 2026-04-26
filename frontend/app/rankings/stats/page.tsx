@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
-import { API_URL } from '@/lib/config'
+import { fetchRankingAPI } from '@/lib/api'
 import Navbar from '@/components/Navbar'
 import RegionComparator from '@/components/rankings/stats/RegionComparator'
 import StatsSkeleton from '@/components/rankings/stats/StatsSkeleton'
@@ -55,12 +55,8 @@ export default function StatsPage() {
     const fetchDates = async () => {
       try {
         const [esDates, latamDates] = await Promise.all([
-          fetch(`${API_URL}/api/rankings/dates/ES/1`, { cache: 'no-store' }).then(
-            (r) => r.json()
-          ),
-          fetch(`${API_URL}/api/rankings/dates/LATAM/1`, { cache: 'no-store' }).then(
-            (r) => r.json()
-          ),
+          fetchRankingAPI('/api/rankings/dates/ES/1'),
+          fetchRankingAPI('/api/rankings/dates/LATAM/1'),
         ])
 
         const allDates = Array.from(
@@ -91,13 +87,9 @@ export default function StatsPage() {
       setError('')
 
       try {
-        const res = await fetch(
-          `${API_URL}/api/rankings/consolidated-global?date=${selectedDate}&limit=100`,
-          { cache: 'no-store' }
+        const json: ConsolidatedGlobalData = await fetchRankingAPI(
+          `/api/rankings/consolidated-global?date=${selectedDate}&limit=100`
         )
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
-
-        const json: ConsolidatedGlobalData = await res.json()
         setData(json)
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Error cargando datos')
