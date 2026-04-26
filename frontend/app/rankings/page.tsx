@@ -126,7 +126,7 @@ export default function RankingsPage() {
 
   // Cargar clusters cuando cambie la región
   useEffect(() => {
-    if (!region) {
+    if (!region || region === 'GLOBAL') {
       setClusters([])
       return
     }
