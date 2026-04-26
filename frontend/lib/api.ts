@@ -1,8 +1,8 @@
 ﻿import { API_URL } from './config'
 
-const API_KEY = process.env.NEXT_PUBLIC_RANKING_API_KEY || ''
+const API_KEY = process.env.NEXT_PUBLIC_API_KEY || ''
 
-export async function fetchRankingAPI(endpoint: string, options?: RequestInit) {
+export async function fetchAPI(endpoint: string, options?: RequestInit) {
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
     'x-api-key': API_KEY,
@@ -21,3 +21,6 @@ export async function fetchRankingAPI(endpoint: string, options?: RequestInit) {
 
   return response.json()
 }
+
+// Alias for backward compatibility
+export const fetchRankingAPI = fetchAPI

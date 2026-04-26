@@ -7,7 +7,7 @@ export const apiKeyMiddleware = (
 ) => {
   const apiKey = req.headers['x-api-key'] as string
 
-  if (!apiKey || apiKey !== process.env.RANKING_API_KEY) {
+  if (!apiKey || apiKey !== process.env.API_KEY) {
     return res.status(401).json({ error: 'Unauthorized: Invalid or missing API key' })
   }
 

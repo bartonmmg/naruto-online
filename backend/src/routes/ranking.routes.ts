@@ -11,12 +11,8 @@ import {
   compareRankings,
   getAvailableDates,
 } from '../controllers/ranking.controller.js';
-import { apiKeyMiddleware } from '../middleware/apiKey.js';
 
 const router = Router();
-
-// Apply API key middleware to all ranking endpoints
-router.use(apiKeyMiddleware);
 
 // Metadata endpoints
 router.get('/regions', getRegions);

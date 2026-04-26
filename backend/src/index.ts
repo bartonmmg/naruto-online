@@ -4,6 +4,7 @@ import dotenv from 'dotenv'
 import { authRouter } from './routes/auth.routes.js'
 import guidesRouter from './routes/guides.routes.js'
 import rankingRouter from './routes/ranking.routes.js'
+import { apiKeyMiddleware } from './middleware/apiKey.js'
 
 // Load environment variables (try .env.local first, then .env)
 dotenv.config({ path: '.env.local' })
@@ -17,19 +18,24 @@ const corsOptions = {
   origin: process.env.FRONTEND_URL || '*',
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key'],
 }
 
 app.use(cors(corsOptions))
 app.use(express.json())
 
-app.use('/auth', authRouter)
-app.use('/guides', guidesRouter)
-app.use('/api/rankings', rankingRouter)
-
+// Health check endpoint (public, no auth required)
 app.get('/health', (req, res) => {
   res.json({ status: 'ok' })
 })
+
+// Public auth endpoints (no API key required)
+app.use('/auth', authRouter)
+
+// Protected endpoints (API key required)
+app.use(apiKeyMiddleware)
+app.use('/guides', guidesRouter)
+app.use('/api/rankings', rankingRouter)
 
 const server = app.listen(PORT, () => {
   console.log(`🚀 Backend running on http://localhost:${PORT}`)
