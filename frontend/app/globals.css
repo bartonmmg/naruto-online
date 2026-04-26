@@ -370,6 +370,11 @@ input:focus {
   animation: character-breathe 4s ease-in-out infinite;
 }
 
+/* ── Video styling ────────────────────── */
+video {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
 
 /* ── Character animations ────────────────────── */
 [data-character] {

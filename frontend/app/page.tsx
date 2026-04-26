@@ -89,18 +89,22 @@ export default function Home() {
 
       {/* ── HERO ─────────────────────────────────────── */}
       <section className="relative min-h-screen flex items-center justify-center px-6 grid-bg overflow-hidden bg-bg-primary">
-        {/* Video background */}
-        <video
-          autoPlay
-          muted
-          loop
-          playsInline
-          className="absolute inset-0 w-full h-full object-cover"
-          style={{ aspectRatio: '16 / 9' }}
-          controlsList="nodownload nofullscreen noremoteplayback"
-        >
-          <source src="/videos/Naruto Online - Official Cinematic Trailer.mp4" type="video/mp4" />
-        </video>
+        {/* Video background with native loop */}
+        <div className="absolute inset-0 w-full h-full overflow-hidden">
+          <video
+            autoPlay
+            muted
+            loop
+            playsInline
+            className="absolute inset-0 w-full h-full object-cover"
+            style={{
+              playbackRate: 0.25
+            }}
+            controlsList="nodownload nofullscreen noremoteplayback"
+          >
+            <source src="/videos/village.mp4" type="video/mp4" />
+          </video>
+        </div>
 
         {/* Video overlay — Low opacity */}
         <div className="absolute inset-0 bg-bg-primary/60 pointer-events-none z-5" />
