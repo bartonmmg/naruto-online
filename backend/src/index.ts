@@ -3,6 +3,7 @@ import cors from 'cors'
 import dotenv from 'dotenv'
 import { authRouter } from './routes/auth.routes.js'
 import guidesRouter from './routes/guides.routes.js'
+import rankingRouter from './routes/ranking.routes.js'
 
 dotenv.config()
 
@@ -22,6 +23,7 @@ app.use(express.json())
 
 app.use('/auth', authRouter)
 app.use('/guides', guidesRouter)
+app.use('/api/rankings', rankingRouter)
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok' })

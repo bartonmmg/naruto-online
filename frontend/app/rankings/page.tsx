@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import Link from 'next/link'
 import {
   Search,
   Swords,
@@ -9,30 +10,30 @@ import {
   LayoutGrid,
   List,
   X,
+  BarChart2,
 } from 'lucide-react'
 import Navbar from '@/components/Navbar'
 import MedalImage from '@/components/MedalImage'
-import rankingData from '@/lib/rankings/power-ranking/power-ranking-4-2026.json'
 
 interface Player {
   rank: number
   name: string
   power: number
   level: number
-  server: string
+  server: string | null
 }
 
-const PLAYERS_DATA: Player[] = [...rankingData.players]
-  .sort((a, b) => b.power - a.power)
-  .map((p, idx) => ({
-    rank: idx + 1,
-    name: p.name,
-    power: p.power,
-    level: p.level,
-    server: p.server,
-  }))
+interface Region {
+  id: string
+  name: string
+}
 
-const SERVERS = ['Todos', ...Array.from(new Set(rankingData.players.map((p) => p.server))).sort()]
+interface Cluster {
+  id: number
+  name: string
+}
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'
 
 const MEDAL: Record<
   number,
@@ -83,18 +84,192 @@ function getRankingTitle(playerRank: number) {
 }
 
 export default function RankingsPage() {
-  const [search, setSearch] = useState('')
-  const [server, setServer] = useState('Todos')
-  const [viewMode, setViewMode] = useState<'table' | 'cards'>('table')
+  const [regions, setRegions] = useState<Region[]>([])
+  const [clusters, setClusters] = useState<Cluster[]>([])
+  const [dates, setDates] = useState<string[]>([])
+  const [servers, setServers] = useState<string[]>(['Todos'])
 
+  const [region, setRegion] = useState('GLOBAL')
+  const [cluster, setCluster] = useState(1)
+  const [date, setDate] = useState('2026-04')
+  const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [server, setServer] = useState('Todos')
+  const [displayMode, setDisplayMode] = useState<'table' | 'cards'>('table')
+
+  const [players, setPlayers] = useState<Player[]>([])
+  const [error, setError] = useState('')
+  const prevRegionRef = useRef<string>('')
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Cargar regiones al montar el componente
+  useEffect(() => {
+    const fetchRegions = async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/rankings/regions`, {
+          cache: 'no-store'
+        })
+        if (!res.ok) throw new Error('Failed to fetch regions')
+        const data = await res.json()
+        setRegions(data)
+        // Asegurar que region tiene un valor válido
+        if (data.length > 0 && !region) {
+          const defaultRegion = data.find((r: Region) => r.id === 'ES') || data[0]
+          setRegion(defaultRegion.id)
+        }
+      } catch (err) {
+        setError(`Error fetching regions: ${err}`)
+      }
+    }
+    fetchRegions()
+  }, [])
+
+  // Cargar clusters cuando cambie la región
+  useEffect(() => {
+    if (!region) {
+      setClusters([])
+      return
+    }
+
+    const fetchClusters = async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/rankings/clusters/${region}`, {
+          cache: 'no-store'
+        })
+        if (!res.ok) throw new Error('Failed to fetch clusters')
+        const data = await res.json()
+        setClusters(data)
+        if (data.length > 0 && data[0].id !== cluster) {
+          setCluster(data[0].id)
+        }
+        setError('')
+      } catch (err) {
+        setError(`Error fetching clusters: ${err}`)
+      }
+    }
+    fetchClusters()
+  }, [region])
+
+  // Cargar fechas disponibles cuando cambie región/cluster
+  useEffect(() => {
+    if (!region || !cluster) {
+      setDates([])
+      return
+    }
+
+    const fetchDates = async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/rankings/dates/${region}/${cluster}`, {
+          cache: 'no-store'
+        })
+        if (!res.ok) throw new Error('Failed to fetch dates')
+        const data = await res.json()
+        setDates(data)
+        if (data.length > 0 && data[0] !== date) {
+          setDate(data[0])
+        }
+      } catch (err) {
+        setError(`Error fetching dates: ${err}`)
+      }
+    }
+    fetchDates()
+  }, [region, cluster, date])
+
+  // Cargar ranking cuando cambie región/cluster/fecha
+  useEffect(() => {
+    const fetchRanking = async () => {
+      setError('')
+      try {
+        let url: string
+
+        if (region === 'GLOBAL') {
+          // Global - consolidar todas las regiones
+          url = `${API_URL}/api/rankings/consolidated-global?date=${date}`
+        } else {
+          // Regional - filtro específico
+          if (!region || !cluster || !date) return
+          url = `${API_URL}/api/rankings/top100?region=${region}&cluster=${cluster}&date=${date}`
+        }
+
+        const res = await fetch(url)
+        if (!res.ok) throw new Error(`Failed to fetch ranking: ${res.status}`)
+        const data = await res.json()
+        setPlayers(data.players || [])
+
+        // Extraer servidores únicos de forma más eficiente
+        const uniqueServers = new Set<string>()
+        data.players?.forEach((p: Player) => {
+          if (p.server) uniqueServers.add(p.server)
+        })
+        setServers(['Todos', ...Array.from(uniqueServers).sort()])
+        setServer('Todos')
+      } catch (err) {
+        setError(`Error fetching ranking: ${err}`)
+        setPlayers([])
+      }
+    }
+
+    if (region === 'GLOBAL' && date) {
+      fetchRanking()
+    } else if (region !== 'GLOBAL' && region && cluster && date) {
+      fetchRanking()
+    }
+  }, [region, cluster, date])
+
+  // Debounce búsqueda para mejor rendimiento
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search)
+    }, 200)
+
+    return () => clearTimeout(timer)
+  }, [search])
+
+  // Memoizar handlers para evitar re-renders
+  const handleRegionChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newRegion = e.target.value
+    setRegion(newRegion)
+    setCluster(1) // Reset cluster cuando cambia región
+    setClusters([]) // Limpiar clusters previos
+    setDates([]) // Limpiar dates previos
+  }, [])
+
+  const handleClusterChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+    setCluster(parseInt(e.target.value))
+  }, [])
+
+  const handleDateChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+    setDate(e.target.value)
+  }, [])
+
+  const handleServerChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+    setServer(e.target.value)
+  }, [])
+
+  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearch(e.target.value)
+  }, [])
+
+  const handleSearchClear = useCallback(() => {
+    setSearch('')
+  }, [])
+
+  const handleFiltersClear = useCallback(() => {
+    setSearch('')
+    setServer('Todos')
+  }, [])
+
+  const handleDisplayModeChange = useCallback((mode: 'table' | 'cards') => {
+    setDisplayMode(mode)
+  }, [])
 
   const filtered = useMemo(() => {
-    return PLAYERS_DATA.filter((p) => {
+    return players.filter((p) => {
       const matchServer = server === 'Todos' || p.server === server
-      const matchSearch = p.name.toLowerCase().includes(search.toLowerCase())
+      const matchSearch = p.name.toLowerCase().includes(debouncedSearch.toLowerCase())
       return matchServer && matchSearch
     })
-  }, [search, server])
+  }, [debouncedSearch, server, players])
 
   return (
     <main className="min-h-screen bg-[#080810] relative overflow-x-hidden">
@@ -295,9 +470,9 @@ export default function RankingsPage() {
           ═══════════════════════════════════════════════════ */}
       <div className="relative max-w-4xl mx-auto px-6 py-8 pt-28" style={{ zIndex: 10 }}>
         {/* ── Title Block ──────────────────────────────── */}
-        <div className="text-center mb-10 animate-fade-up">
+        <div className="text-center mb-10">
           <p className="text-sm font-cinzel font-black text-power-red/70 tracking-[0.3em] uppercase mb-2">
-            {rankingData.meta.region} · Cluster {rankingData.meta.cluster} · Poder de Combate
+            {region === 'GLOBAL' ? 'TOP GLOBAL' : `TOP REGIONAL - ${region}`} · {date}
           </p>
           <h1 className="text-4xl md:text-5xl font-cinzel font-black text-white leading-tight mb-3">
             Ranking de{' '}
@@ -319,102 +494,162 @@ export default function RankingsPage() {
             }}
           />
           <p className="text-sm text-white/80 max-w-md mx-auto leading-relaxed">
-            Los ninjas más poderosos de {rankingData.meta.region} (Cluster{' '}
-            {rankingData.meta.cluster}) .
+            {region === 'GLOBAL'
+              ? 'Los 100 ninjas más poderosos de España y Latinoamérica'
+              : `Los ninjas más poderosos de ${region} (Cluster ${cluster})`
+            }
           </p>
-          <div className="flex justify-center mt-4">
+          <div className="flex justify-center mt-4 gap-3">
             <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 rounded-lg border border-white/10 text-xs font-cinzel text-white/80">
               <Crown className="w-3.5 h-3.5 text-power-red/60" />
-              <span>{rankingData.players.length} Jugadores</span>
+              <span>{players.length} Jugadores</span>
             </div>
+            <Link
+              href="/rankings/stats"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-power-red/10 rounded-lg border border-power-red/25 text-xs font-cinzel text-power-red/80 hover:bg-power-red/20 hover:border-power-red/50 hover:text-power-red transition-all duration-200"
+            >
+              <BarChart2 className="w-3.5 h-3.5" />
+              <span>Estadísticas</span>
+            </Link>
           </div>
         </div>
 
         {/* ── Filters ──────────────────────────────────── */}
-        <div
-          className="bg-[#0e0e1a]/80 backdrop-blur-md border border-white/8 rounded-xl p-4 mb-6 animate-fade-up"
-          style={{ animationDelay: '0.05s' }}
-        >
-          <div className="flex flex-col sm:flex-row gap-3 items-center">
-            {/* Search */}
-            <div className="flex-1 w-full">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#555] pointer-events-none" />
-                <input
-                  type="text"
-                  placeholder="Buscar ninja..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="w-full bg-white/5 border border-white/8 rounded-lg pl-9 pr-8 py-2.5 text-sm text-white placeholder:text-[#555] focus:outline-none focus:border-power-red/50 transition-all"
-                />
-                {search && (
-                  <button
-                    onClick={() => setSearch('')}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#555] hover:text-power-red transition-colors"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                )}
-              </div>
-            </div>
-            {/* Server filter */}
-            <div className="sm:w-44">
-              <div className="relative">
-                <Shield className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#555] pointer-events-none" />
-                <select
-                  value={server}
-                  onChange={(e) => setServer(e.target.value)}
-                  className="w-full bg-white/5 border border-white/8 rounded-lg pl-9 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-power-red/50 transition-all appearance-none cursor-pointer"
-                >
-                  {SERVERS.map((s) => (
-                    <option key={s} value={s} className="bg-[#0e0e1a]">
-                      {s === 'Todos' ? 'Todos los servidores' : `Servidor ${s}`}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            {/* View toggle */}
-            <div className="flex items-center gap-1 bg-white/5 rounded-lg p-1 border border-white/8">
-              <button
-                onClick={() => setViewMode('table')}
-                className={`p-2 rounded transition-all ${viewMode === 'table' ? 'bg-power-red/20 text-power-red' : 'text-[#555] hover:text-white'}`}
-                title="Vista tabla"
-              >
-                <List className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => setViewMode('cards')}
-                className={`p-2 rounded transition-all ${viewMode === 'cards' ? 'bg-power-red/20 text-power-red' : 'text-[#555] hover:text-white'}`}
-                title="Vista cards"
-              >
-                <LayoutGrid className="w-4 h-4" />
-              </button>
-            </div>
+        {error && (
+          <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 text-red-400 text-sm mb-6">
+            {error}
           </div>
-          {(search || server !== 'Todos') && (
-            <div className="mt-3 flex items-center gap-2">
-              <span
-                className={`text-xs font-cinzel ${filtered.length > 0 ? 'text-power-red' : 'text-[#555]'}`}
-              >
-                {filtered.length} resultado{filtered.length !== 1 ? 's' : ''}
-              </span>
-              <button
-                onClick={() => {
-                  setSearch('')
-                  setServer('Todos')
-                }}
-                className="text-xs text-power-red/60 hover:text-power-red font-cinzel transition-colors flex items-center gap-1"
-              >
-                <X className="w-3 h-3" /> Limpiar
-              </button>
+        )}
+        <>
+          {/* Main Filters */}
+            <div
+              className="bg-[#0e0e1a]/80 backdrop-blur-md border border-white/8 rounded-xl p-5 mb-6"
+            >
+              {/* Row 1: Regional Filters */}
+              <div className="mb-5">
+                <p className="text-xs font-cinzel text-white/60 uppercase tracking-widest mb-3">Filtros</p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5 pb-4 border-b border-white/5">
+                  {/* Region */}
+                  <select
+                    value={region}
+                    onChange={handleRegionChange}
+                    className="bg-white/5 border border-white/8 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-power-red/50 appearance-none cursor-pointer"
+                  >
+                    <option value="GLOBAL" className="bg-[#0e0e1a]">Global</option>
+                    {regions.map((r) => (
+                      <option key={r.id} value={r.id} className="bg-[#0e0e1a]">
+                        {r.name}
+                      </option>
+                    ))}
+                  </select>
+
+                  {/* Cluster - Only show when not Global */}
+                  {region !== 'GLOBAL' && (
+                    <select
+                      value={cluster}
+                      onChange={handleClusterChange}
+                      className="bg-white/5 border border-white/8 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-power-red/50 appearance-none cursor-pointer"
+                    >
+                      {clusters.map((c) => (
+                        <option key={c.id} value={c.id} className="bg-[#0e0e1a]">
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+
+                  {/* Date - Only show when not Global */}
+                  {region !== 'GLOBAL' && (
+                    <select
+                      value={date}
+                      onChange={handleDateChange}
+                      className="bg-white/5 border border-white/8 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-power-red/50 appearance-none cursor-pointer"
+                    >
+                      {dates.map((d) => (
+                        <option key={d} value={d} className="bg-[#0e0e1a]">
+                          {d}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+
+                  {/* Server filter - Always show */}
+                  <select
+                    value={server}
+                    onChange={handleServerChange}
+                    className="bg-white/5 border border-white/8 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-power-red/50 appearance-none cursor-pointer"
+                  >
+                    {servers.map((s) => (
+                      <option key={s} value={s} className="bg-[#0e0e1a]">
+                        {s === 'Todos' ? 'Todos los servidores' : `Servidor ${s}`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Row 2: Search & Display Options */}
+              <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+                {/* Search */}
+                <div className="flex-1 relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#555] pointer-events-none" />
+                  <input
+                    type="text"
+                    placeholder="Buscar ninja..."
+                    value={search}
+                    onChange={handleSearchChange}
+                    className="w-full bg-white/5 border border-white/8 rounded-lg pl-9 pr-8 py-2.5 text-sm text-white placeholder:text-[#555] focus:outline-none focus:border-power-red/50 transition-all"
+                  />
+                  {search && (
+                    <button
+                      onClick={handleSearchClear}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[#555] hover:text-power-red transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Display Mode toggle */}
+                <div className="flex items-center gap-1 bg-white/5 rounded-lg p-1 border border-white/8 shrink-0">
+                  <button
+                    onClick={() => handleDisplayModeChange('table')}
+                    className={`p-2 rounded transition-all ${displayMode === 'table' ? 'bg-power-red/20 text-power-red' : 'text-[#555] hover:text-white'}`}
+                    title="Vista tabla"
+                  >
+                    <List className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => handleDisplayModeChange('cards')}
+                    className={`p-2 rounded transition-all ${displayMode === 'cards' ? 'bg-power-red/20 text-power-red' : 'text-[#555] hover:text-white'}`}
+                    title="Vista cards"
+                  >
+                    <LayoutGrid className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              {(search || server !== 'Todos') && (
+                <div className="mt-3 flex items-center gap-2 text-sm">
+                  <span
+                    className={`text-xs font-cinzel ${filtered.length > 0 ? 'text-power-red' : 'text-[#555]'}`}
+                  >
+                    {filtered.length} resultado{filtered.length !== 1 ? 's' : ''}
+                  </span>
+                  <button
+                    onClick={handleFiltersClear}
+                    className="text-xs text-power-red/60 hover:text-power-red font-cinzel transition-colors flex items-center gap-1"
+                  >
+                    <X className="w-3 h-3" /> Limpiar
+                  </button>
+                </div>
+              )}
             </div>
-          )}
-        </div>
+        </>
 
         {/* ── Rankings ─────────────────────────────────── */}
-        <div className="animate-fade-up" style={{ animationDelay: '0.1s' }}>
-          {viewMode === 'table' ? (
+        <div>
+          {displayMode === 'table' ? (
             /* ──── TABLE VIEW ──── */
             <div className="bg-[#0e0e1a]/80 backdrop-blur-md border border-white/8 rounded-2xl overflow-hidden">
               {/* Header */}
@@ -455,9 +690,9 @@ export default function RankingsPage() {
                     <div
                       key={player.rank}
                       className={`
-                        relative grid grid-cols-12 gap-2 px-6 py-3.5 items-center border-b border-white/[0.04] last:border-b-0
-                        transition-all duration-200 group
-                        ${isTop3 ? 'bg-white/[0.03]' : 'hover:bg-white/[0.03]'}
+                        relative grid grid-cols-12 gap-2 px-6 py-4 items-center border-b border-white/[0.04] last:border-b-0
+                        group overflow-hidden
+                        ${isTop3 ? 'bg-white/[0.05]' : 'hover:bg-white/[0.03]'}
                       `}
                       style={{
                         ...(isTop3
@@ -467,9 +702,15 @@ export default function RankingsPage() {
                           : {}),
                       }}
                     >
+                      {/* Background ninja tools detail */}
+                      <img
+                        src="/images/tools/assets-ninja-tools.png"
+                        alt="ninja tools"
+                        className="absolute -right-6 -bottom-2 w-48 h-48 opacity-[0.10] group-hover:opacity-[0.16] transition-opacity pointer-events-none"
+                      />
 
                       {/* Rank # */}
-                      <div className="col-span-1 flex items-center justify-center">
+                      <div className="col-span-1 flex items-center justify-center relative z-10">
                         {isTop3 && medal ? (
                           <div className="w-8 h-7 flex items-center justify-center">
                             {medal.image ? (
@@ -491,12 +732,12 @@ export default function RankingsPage() {
                       </div>
 
                       {/* Name */}
-                      <div className="col-span-5 flex items-center gap-2.5">
+                      <div className="col-span-5 flex items-center gap-2.5 relative z-10">
                         <div
                           className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-cinzel font-black flex-shrink-0 transition-all group-hover:scale-110 ${
                             isTop3 && medal
                               ? `${medal.bg} ${medal.color} border ${medal.border}`
-                              : 'bg-white/5 text-white border border-white/10 group-hover:border-power-red/30'
+                              : 'bg-white/5 text-white border border-white/10 group-hover:border-white/30'
                           }`}
                         >
                           {player.name[0]}
@@ -505,50 +746,49 @@ export default function RankingsPage() {
                           className={`text-sm font-cinzel font-bold truncate transition-colors ${
                             isTop3 && medal
                               ? medal.color
-                              : 'text-white/90 group-hover:text-power-red'
+                              : 'text-white/90 group-hover:text-white'
                           }`}
                         >
                           {player.name}
                         </span>
                       </div>
 
-                      {/* Level */}
-                      <div className="col-span-1 hidden sm:block">
-                        <span className="text-xs font-cinzel font-bold text-white/60 group-hover:text-power-red/80 transition-colors">
+                      {/* Level - Enhanced */}
+                      <div className="col-span-1 hidden sm:flex items-center gap-2 relative z-10">
+                        <span className="text-[10px] font-cinzel text-white/50">⚡</span>
+                        <span className="text-sm font-cinzel font-bold text-white group-hover:text-white/100 transition-colors">
                           {player.level}
                         </span>
                       </div>
 
-                      {/* Power */}
-                      <div className="col-span-4 hidden sm:flex items-center justify-end gap-2">
-                        <Swords
-                          className={`w-3.5 h-3.5 flex-shrink-0 transition-colors ${
+                      {/* Power - Enhanced with icon */}
+                      <div className="col-span-4 hidden sm:flex items-center justify-end gap-3 relative z-10">
+                        <div className="flex items-center gap-1.5">
+                          <img
+                            src="/images/tools/kunai.png"
+                            alt="kunai"
+                            className="w-4 h-4 object-contain opacity-70 group-hover:opacity-100 transition-opacity"
+                          />
+                          <span className={`text-sm font-cinzel font-bold tabular-nums transition-colors text-right ${
                             isTop3 && medal
                               ? medal.color
-                              : 'text-power-red/50 group-hover:text-power-red'
-                          }`}
-                        />
-                        <span
-                          className={`text-sm font-cinzel font-bold tabular-nums transition-colors text-right ${
-                            isTop3 && medal
-                              ? medal.color
-                              : 'text-white/80 group-hover:text-power-red'
-                          }`}
-                        >
-                          {(player.power / 1000000).toFixed(2)}M
-                        </span>
+                              : 'text-white/90 group-hover:text-white'
+                          }`}>
+                            {(player.power / 1000000).toFixed(1)}M
+                          </span>
+                        </div>
                       </div>
 
                       {/* Server */}
-                      <div className="col-span-1 text-right">
+                      <div className="col-span-1 text-right relative z-10">
                         <span
                           className={`text-[10px] font-cinzel px-2 py-0.5 rounded border inline-block ${
-                            player.server === 'S??'
+                            !player.server
                               ? 'text-white/40 bg-white/[0.02] border-white/5'
-                              : 'text-white bg-white/[0.03] border-white/8 group-hover:border-power-red/20'
+                              : 'text-white bg-white/[0.05] border-white/10 group-hover:border-white/20'
                           }`}
                         >
-                          {player.server}
+                          {player.server || 'S??'}
                         </span>
                       </div>
                     </div>
@@ -568,100 +808,129 @@ export default function RankingsPage() {
                   <p className="text-xs text-[#444] mt-2">Prueba con otros filtros</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                   {filtered.map((player) => {
                     const medal = MEDAL[player.rank]
                     const isTop3 = player.rank <= 3
-                    const playerRank = getRank(player.level)
-                    const titleImg = TITLE_IMAGES[player.rank]
+                    const rankIn4to10 = player.rank >= 4 && player.rank <= 10
 
                     return (
                       <div
                         key={player.rank}
                         className={`
-                          bg-[#0e0e1a]/80 backdrop-blur-md rounded-xl p-4 flex flex-col items-center
-                          transition-all duration-200 hover:scale-[1.03] cursor-default
+                          relative group overflow-hidden rounded-2xl
                           ${
                             isTop3 && medal
-                              ? `border-2 ${medal.border} ${medal.bg}`
-                              : 'border border-white/8 hover:border-power-red/20'
+                              ? 'bg-gradient-to-br from-[#1a1a2e] to-[#0f0f1a] border-2 border-white/15 shadow-xl shadow-white/5'
+                              : 'bg-gradient-to-br from-[#151520] to-[#0a0a12] border border-white/10 hover:border-white/20 hover:shadow-xl hover:shadow-white/5'
                           }
                         `}
                       >
-                        {/* Title image for top 1 & 2 */}
-                        {/*   {titleImg && (
-                          <div className="relative w-full h-10 mb-2">
-                            <Image src={titleImg} alt={`Top ${player.rank} titulo`} fill className="object-contain" />
-                          </div>
-                        )} */}
+                        {/* Background assets - higher opacity */}
+                        <img
+                          src="/images/tools/assets-ninja-tools.png"
+                          alt="ninja tools"
+                          className="absolute -bottom-6 -right-6 w-48 h-48 opacity-[0.12] group-hover:opacity-[0.18] transition-opacity pointer-events-none"
+                        />
 
-                        {/* Medal for top 3 / Rank number for others */}
-                        {isTop3 && medal ? (
-                          <div className="w-16 h-12 mb-2 flex items-center justify-center">
-                            {medal.image ? (
-                              <MedalImage
-                                src={medal.image}
-                                emoji={medal.emoji}
-                                alt={`Top ${player.rank}`}
-                                className="w-full h-full object-contain"
-                              />
-                            ) : (
-                              <span className="text-3xl">{medal.emoji}</span>
-                            )}
-                          </div>
-                        ) : (
-                          <div className="w-9 h-9 rounded-full bg-white/5 border border-white/10 flex items-center justify-center mb-2">
-                            <span className="text-[10px] font-cinzel font-bold text-[#777]">
-                              #{player.rank}
-                            </span>
-                          </div>
+                        {/* Shuriken corner for top 3 */}
+                        {isTop3 && (
+                          <img
+                            src="/images/tools/shuriken.png"
+                            alt="shuriken"
+                            className="absolute -top-6 -right-6 w-24 h-24 opacity-[0.15] group-hover:opacity-[0.22] transition-opacity pointer-events-none rotate-45"
+                          />
                         )}
 
-                        {/* Name */}
-                        <p
-                          className={`font-cinzel font-black text-sm text-center mb-1 line-clamp-2 ${
-                            isTop3 && medal ? medal.color : 'text-white/90'
-                          }`}
-                        >
-                          {player.name}
-                        </p>
+                        <div className="relative px-6 py-6 flex flex-col h-full z-10">
+                          {/* Top Section: Medal/Rank + Server */}
+                          <div className="flex items-start justify-between gap-3 mb-5">
+                            {/* Medal/Rank Badge */}
+                            <div className="flex items-center gap-3">
+                              {isTop3 && medal ? (
+                                <div className="w-14 h-14 flex items-center justify-center flex-shrink-0">
+                                  {medal.image ? (
+                                    <MedalImage
+                                      src={medal.image}
+                                      emoji={medal.emoji}
+                                      alt={`Top ${player.rank}`}
+                                      className="w-full h-full object-contain"
+                                    />
+                                  ) : (
+                                    <span className="text-3xl">{medal.emoji}</span>
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 border-2 border-white/20 bg-white/8">
+                                  {rankIn4to10 ? (
+                                    <img src="/images/tools/headset.png" alt="headset" className="w-6 h-6 object-contain" />
+                                  ) : (
+                                    <img src="/images/tools/kunai.png" alt="kunai" className="w-6 h-6 object-contain" />
+                                  )}
+                                </div>
+                              )}
+                              <div>
+                                <p className="text-[10px] font-cinzel text-white/50 uppercase tracking-widest">Rank</p>
+                                <p className={`font-cinzel font-black text-lg ${isTop3 && medal ? medal.color : 'text-white'}`}>
+                                  #{player.rank}
+                                </p>
+                              </div>
+                            </div>
 
-                        {/* Ranking Title Badge — Personalized by rank */}
-                        {(() => {
-                          const title = getRankingTitle(player.rank)
-                          let badgeColor =
-                            'text-nature-green bg-nature-green/10 border-nature-green/20'
-                          if (player.rank === 1)
-                            badgeColor = 'text-sage-gold bg-sage-gold/10 border-sage-gold/20'
-                          else if (player.rank === 2)
-                            badgeColor = 'text-[#C0C0C0] bg-[#C0C0C0]/10 border-[#C0C0C0]/20'
-                          else if (player.rank === 3)
-                            badgeColor = 'text-[#CD7F32] bg-[#CD7F32]/10 border-[#CD7F32]/20'
-                          else if (player.rank <= 10)
-                            badgeColor =
-                              'text-accent-orange bg-accent-orange/10 border-accent-orange/20'
-                          else if (player.rank <= 50)
-                            badgeColor = 'text-chakra-blue bg-chakra-blue/10 border-chakra-blue/20'
-                          return (
-                            <span
-                              className={`px-2 py-1 rounded text-[9px] font-cinzel font-bold ${badgeColor} border mb-2 text-center line-clamp-2 w-full`}
-                            >
-                              {title.icon} {title.name}
-                            </span>
-                          )
-                        })()}
+                            {/* Server Badge */}
+                            <div className={`text-[10px] font-cinzel font-bold px-2.5 py-1.5 rounded border flex-shrink-0 ${
+                              !player.server
+                                ? 'text-white/40 bg-white/5 border-white/10'
+                                : 'text-white/80 bg-white/10 border-white/15'
+                            }`}>
+                              {player.server || 'S??'}
+                            </div>
+                          </div>
 
-                        {/* Power */}
-                        <div className="flex items-center gap-1 font-cinzel font-black text-sm text-white">
-                          <Swords className="w-3 h-3 text-power-red" />
-                          {(player.power / 1000000).toFixed(2)}M
-                        </div>
+                          {/* Ninja Name */}
+                          <h3 className={`font-cinzel font-black text-xl leading-tight break-words mb-5 ${
+                            isTop3 && medal ? medal.color : 'text-white'
+                          }`}>
+                            {player.name}
+                          </h3>
 
-                        {/* Server + Level */}
-                        <div className="flex items-center gap-2 mt-2 text-[10px] text-white/70 font-cinzel">
-                          <span>Lv{player.level}</span>
-                          <span className="text-white/30">·</span>
-                          <span>{player.server}</span>
+                          {/* Animated Divider */}
+                          <div className="mb-5 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent group-hover:via-white/30 transition-all duration-300" />
+
+                          {/* Stats Section - Informative */}
+                          <div className="flex-grow space-y-5">
+                            {/* Power */}
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between">
+                                <p className="text-xs font-cinzel text-white/60 uppercase tracking-widest">Poder</p>
+                                <p className="font-cinzel font-black text-xl text-white">
+                                  {(player.power / 1000000).toFixed(1)}M
+                                </p>
+                              </div>
+                              <div className="h-1.5 bg-gradient-to-r from-white/15 via-white/25 to-white/15 rounded-full overflow-hidden">
+                                <div
+                                  className="h-full bg-gradient-to-r from-white/30 via-white/50 to-white/30 animate-pulse"
+                                  style={{ width: `${Math.min((player.power / 15000000) * 100, 100)}%` }}
+                                />
+                              </div>
+                            </div>
+
+                            {/* Level */}
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between">
+                                <p className="text-xs font-cinzel text-white/60 uppercase tracking-widest">Nivel</p>
+                                <p className="font-cinzel font-black text-xl text-white">
+                                  {player.level}
+                                </p>
+                              </div>
+                              <div className="h-1.5 bg-gradient-to-r from-white/15 via-white/25 to-white/15 rounded-full overflow-hidden">
+                                <div
+                                  className="h-full bg-gradient-to-r from-white/30 via-white/50 to-white/30 animate-pulse"
+                                  style={{ width: `${(player.level / 115) * 100}%` }}
+                                />
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     )
@@ -675,17 +944,13 @@ export default function RankingsPage() {
         {/* ── Footer ───────────────────────────────────── */}
         <div className="mt-12 text-center border-t border-white/5 pt-8">
           <p className="text-xs text-[#555] font-cinzel tracking-wider mb-1">
-            Ranking de Poder {rankingData.meta.region} · {rankingData.players.length} jugadores
+            Ranking de Poder {region} · {players.length} jugadores
           </p>
           <p className="text-xs text-[#444] font-cinzel">
-            Actualizado{' '}
-            {new Date(rankingData.meta.date).toLocaleDateString('es-MX', {
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric',
-            })}
+            Actualizado {date}
           </p>
         </div>
+
       </div>
     </main>
   )

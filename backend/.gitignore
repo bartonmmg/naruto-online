@@ -25,6 +25,7 @@ lerna-debug.log*
 # database
 *.db
 *.sqlite
+data/
 
 # IDE
 .vscode/

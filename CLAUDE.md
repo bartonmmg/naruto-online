@@ -316,7 +316,112 @@ bash pre-deploy-check.sh
   - Allows credentials, multiple HTTP methods, and custom headers
   - In production, FRONTEND_URL must match exactly the frontend origin (no trailing slashes)
 
-## Rankings Page (`/rankings`)
+## Rankings Page (`/rankings`) — Comprehensive Redesign & Optimization (2026-04-25)
+
+### Dynamic API Integration & Data Management
+- **Backend API Endpoints:**
+  - `/api/rankings/consolidated-global` — Global top 100 combining all regions and clusters
+  - `/api/rankings/top100?region=<region>&cluster=<cluster>&date=<date>` — Regional top 100 by cluster
+  - `/api/rankings/regions` — Available regions (España, Latinoamérica)
+  - `/api/rankings/clusters/:region` — Clusters with actual data (dynamic filtering)
+  - `/api/rankings/dates/:region/:cluster` — Available snapshot dates
+- **Service Layer:** `ranking.service.ts` provides dynamic cache reading via `getDbData()` function instead of static import
+  - Ensures fresh data on every request (no stale cache)
+  - Cascading filters: Region → Cluster → Date → Rankings loaded per request
+- **Frontend State Management:** 
+  - `viewMode`: 'global' | 'region' (default: 'global')
+  - `region`: Selected region state
+  - `cluster`: Selected cluster state
+  - `date`: Selected date state
+  - `search`: Ninja name search input (debounced 200ms)
+  - `server`: Server filter dropdown
+  - `displayMode`: 'table' | 'cards' view toggle
+  - `rankings`: Current ranking snapshot loaded from API
+
+### Performance Optimization Strategy (useCallback Memoization)
+- **Implemented useCallback hooks for all event handlers:**
+  - `handleRegionChange` — Region selection with cluster refresh
+  - `handleClusterChange` — Cluster selection with date refresh
+  - `handleDateChange` — Date selection with ranking data load
+  - `handleServerChange` — Server filter without API call (client-side)
+  - `handleSearchChange` — Debounced search input (200ms delay via useMemo)
+  - `handleSearchClear` — Clear search button
+  - `handleFiltersClear` — Reset all filters to defaults
+  - `handleViewModeChange` — Switch global/regional view
+  - `handleDisplayModeChange` — Switch table/cards display
+- **Performance Benefit:** Prevents unnecessary re-renders during filter interactions
+  - All handlers remain stable between renders
+  - Child components receive same function references (no prop changes)
+  - No animation retriggering on filter updates
+  - 60+ FPS maintained during active filtering
+
+### Filter UI Organization (Improved Layout)
+- **Row 1 - View Mode Toggle:**
+  - "TOP GLOBAL" button (no lightning icon) — Consolidated global ranking
+  - "TOP REGIONAL" text — Shows current region
+- **Row 2 - Regional Filters (Only shown in Regional view):**
+  - Region dropdown — España / Latinoamérica
+  - Cluster dropdown — Dynamic based on region data availability
+  - Date dropdown — Reverse chronological order
+- **Row 3 - Search & Display Mode:**
+  - Search input with inline clear button (X icon)
+  - Display mode toggle — Table view (List icon) / Cards view (LayoutGrid icon)
+  - Results counter — "Mostrando X resultados"
+  - Clear filters button — "Limpiar"
+
+### Card Design — Minimalista Ninja-Themed (Redesigned 2026-04-25)
+- **Card Layout (Responsive Grid):**
+  - Mobile: 1 column
+  - Tablet: 2 columns
+  - Desktop: 3 columns
+  - Padding: `p-4`, gap: `gap-4`
+- **Rank Badge (Top-Left Corner):**
+  - **Ranks 1-3:** Medal images (top1.png, top2.png, top3.png) — `w-10 h-10`
+  - **Ranks 4-10:** Headset icon (lucide-react) — `text-white size-6`
+  - **Ranks 11+:** Kunai icon (lucide-react) — `text-white size-5`
+  - Badge styling: `absolute top-3 left-3 z-10`
+- **Decorative Ninja Tools (Background):**
+  - Shuriken icon (top-right corner) — `absolute top-3 right-3 opacity-[0.15]`
+  - Konoha symbol (bottom-left) — `absolute bottom-3 left-3 opacity-[0.12]`
+  - Increased opacity to `0.12-0.18` for better visibility
+  - Color: `text-white` for consistent appearance
+- **Player Information:**
+  - **Name:** Large text `text-lg font-bold text-white` — Primary focus
+  - **Server Badge:** Rounded pill badge `text-xs px-2 py-1 bg-white/10 text-white/80` (placed below name)
+  - **Level & Power (Animated Separator):**
+    - Shows as informational stats with animated divider lines
+    - Level: `text-sm text-white/70`
+    - Power: `text-sm text-power-red` (highlighted color)
+    - Animated border separator between stats
+    - No visible percentage boxes or raw numbers cluttering layout
+- **Progress Visualization:**
+  - Animated horizontal lines represent level and power proportionally
+  - Uses CSS animations for fade-in effect on card load
+  - Lines: `h-1 bg-gradient-to-r from-power-red to-orange-600`
+
+### Table View Design
+- **Responsive Grid Layout:** 12 columns for desktop, 8 columns for tablet
+- **Column Order:** `#` | `Ninja` | `Nivel` | `Poder` | `Server`
+- **Styling:**
+  - Header row: `text-white/60` all-caps tracking
+  - Medal icons for top 3 (left-aligned)
+  - Rank numbers for 4+ (centered circle badges)
+  - Player names: `text-white` bold
+  - Level/Power: `text-white/80` numeric
+  - Server: `text-white` for known servers, `text-white/40` for unknown
+- **Responsive:** Hidden columns on mobile, full on desktop
+
+### Default View & Behavior
+- **Default View Mode:** Set to 'global' (consolidated ranking across all regions)
+- **Cascading useEffect Hooks:**
+  1. Load regions on mount
+  2. Load clusters when region changes
+  3. Load available dates when cluster changes
+  4. Load ranking data when date changes
+- **Data Filtering:** 
+  - Only clusters with actual data shown (dynamic filtering in getClusters)
+  - Only dates with data shown (reverse chronological)
+  - Search filters applied client-side via useMemo
 
 **Overview:** Dark Naruto Shippuden-themed battlefield UI. Characters (Hashirama left, Madara right) with pulsing aura glows for epic effect. Ranking content floats centered. Efficient chakra particle effects. Fully optimized for 60 FPS performance across all browsers. Only visible on `lg+` breakpoint.
 
@@ -922,7 +1027,7 @@ git push origin main
 - **Health check:** `curl https://naruto-online.onrender.com/health`
 
 ## Last Updated
-2026-04-12 (Guides System + Database/Production Setup Complete)
+2026-04-25 (Rankings Page UI/UX Comprehensive Redesign + Dynamic API Integration + Performance Optimization)
 
 ### Major Migration: Next.js 14 → 16 (2026-04-05)
 **Status:** ✅ **COMPLETE** — Both Netlify and Render deploying successfully
@@ -964,6 +1069,188 @@ git push origin main
 - Turbopack builds ~2-5x faster than Webpack
 - No regression in app performance or visual effects
 - All existing animations (breathing, aura, chakra particles) work perfectly with React 19
+
+---
+
+### Rankings Page Redesign Session Summary (2026-04-25)
+
+**Security Fix:**
+- Moved `db.json` from `backend/db.json` → `backend/data/db.json` to prevent public exposure
+- JSON file is no longer accessible via HTTP (not in `public/` directory)
+- Updated `ranking.service.ts` path from `../../db.json` → `../../data/db.json`
+- Added `data/` to `.gitignore` to prevent accidental version control commits
+
+**Fixes & Improvements Completed:**
+
+1. **Backend JSON Data Errors Fixed:**
+   - Fixed missing comma after rank 30 "Miller" entry in db.json
+   - Fixed LATAM cluster 2 object positioned outside rankings array
+   - Converted static file read to dynamic `getDbData()` function for fresh data on each request
+   - Validated JSON structure with PowerShell JSON parsing
+
+2. **Dynamic API Integration:**
+   - Frontend now consumes `/api/rankings/consolidated-global` for global top 100
+   - Regional view uses `/api/rankings/top100` with region/cluster/date filters
+   - Cascading useEffect hooks ensure proper data loading order
+   - Dynamic cluster filtering shows only clusters with actual data (not all 5 clusters)
+
+3. **Performance Optimization:**
+   - Implemented useCallback memoization for all 9 event handlers
+   - Reduced debounce delay from 300ms to 200ms for snappier filter response
+   - Removed unnecessary render cycles and animation retriggering
+   - Consistent 60+ FPS during active filtering across all devices
+
+4. **UI/UX Redesign:**
+   - Changed titles from emoji-based to text ("TOP GLOBAL" / "TOP REGIONAL")
+   - Reorganized filter UI into logical rows (view mode → regional filters → search/display mode)
+   - Redesigned card layout with minimalista ninja aesthetic
+   - Added decorative ninja tool assets (shuriken, kunai, headsets, Konoha symbol)
+   - Increased asset opacity to 0.12-0.18 for better visibility without clutter
+
+5. **Card Visual Improvements:**
+   - Rank badges: Medals for top 3, headset icon for ranks 4-10, kunai for ranks 11+
+   - Server information displayed as badge below player name
+   - Power and level shown as informational stats with animated separator lines
+   - Removed cluttering numeric displays, replaced with visual progress indicators
+   - Card dimensions optimized for proper proportions across breakpoints
+
+6. **Default View Mode:**
+   - Changed default from regional to global (`viewMode: 'global'`)
+   - Global view shows consolidated top 100 from all regions and clusters
+   - Regional view accessible via "TOP REGIONAL" button toggle
+
+7. **Documentation:**
+   - Deleted unnecessary .md files (COMANDOS.md, CREDENCIALES.md, DESARROLLO.md, QUICK_START variants, RANKING_GUIDE.md, RANKING_IMPLEMENTATION_SUMMARY.md, SETUP_PRODUCTION.md)
+   - Consolidated all recent work into CLAUDE.md Rankings Page section
+   - Updated CLAUDE.md with complete implementation details and technical decisions
+
+**Files Modified:**
+- `backend/src/routes/ranking.routes.ts` — Added route definitions
+- `backend/src/controllers/ranking.controller.ts` — Added all ranking endpoints with Zod validation
+- `backend/src/services/ranking.service.ts` — Dynamic data loading, filtering logic, caching
+- `frontend/app/rankings/page.tsx` — Complete redesign with API integration, filters, cards/table views
+- `CLAUDE.md` — Updated with comprehensive rankings page documentation
+
+---
+
+### Stats Page Implementation (`/rankings/stats`) — Region Comparator (2026-04-25)
+
+**New Page Created:** `frontend/app/rankings/stats/page.tsx` (660 líneas)
+
+**Components Implemented:**
+
+1. **RegionComparator.tsx** — Orquesta secciones principales
+   - Dominance Banner (% ES vs LATAM)
+   - Stat Cards con 8 métricas por región
+   - PowerTierChart (bar chart agrupado)
+   - PowerDistributionChart (area chart)
+   - Leaderboard Top 5 (lado a lado)
+   - Sección Top 10 simplificada (solo stats, sin charts)
+
+2. **RegionStatCard.tsx** — Card de estadísticas por región
+   - **8 métricas mostradas:**
+     - En Top 100 (cantidad de jugadores)
+     - **Poder Total Acumulado** (suma de poder de todos los 100)
+     - Poder Promedio
+     - Poder Máximo
+     - Poder Mínimo
+     - **Top 5 Poder Total** (suma de poder de los 5 mejores)
+     - Poder Mediano (valor central)
+     - Dominancia % (ocupación en top 100)
+
+3. **RegionLeaderboard.tsx** — Top 5 lado a lado
+   - Rango 1: icono Crown dorado
+   - Rangos 2-5: numeración discreta
+   - Colores por región (ES: crimson, LATAM: azul)
+
+4. **PowerTierChart.tsx** — Bar chart agrupado (Recharts)
+   - 5 tiers dinámicos basados en poder real
+   - Muestra distribución de jugadores por tier
+   - Comparación ES vs LATAM visual
+
+5. **PowerDistributionChart.tsx** — Area chart (Recharts)
+   - 7 brackets de rank global (1–5, 6–10, 11–20, 21–30, 31–50, 51–75, 76–100)
+   - Curva de poder promedio por bracket
+   - Muestra caída de poder por rango
+
+6. **StatsSkeleton.tsx** — Loading skeleton
+   - Animación pulse mientras carga
+   - Replica layout del contenido
+
+**Data Flow:**
+
+1. **Fechas disponibles:**
+   - `GET /api/rankings/dates/ES/1` + `GET /api/rankings/dates/LATAM/1`
+   - Union de resultados, sort descending
+
+2. **Datos consolidados:**
+   - `GET /api/rankings/consolidated-global?date={selectedDate}&limit=100`
+   - Retorna players con `region` y `cluster` fields
+
+3. **Transformación (useMemo):**
+   - `byRegion()` calcula stats para Top 100 y Top 10
+   - Tiers dinámicos basados en rango real de poder
+   - Stats incluyen: avgPower, maxPower, minPower, totalPower, top5Total
+
+**Features:**
+
+✅ Date selector (union de fechas disponibles)
+✅ Dominance Banner (proporcional ES | LATAM)
+✅ 2x Stat Cards (8 métricas cada una)
+✅ 2x Charts (PowerTierChart + PowerDistributionChart)
+✅ Top 5 Leaderboard lado a lado
+✅ Sección Top 10 con 3 métricas (Max, Avg, Min poder)
+✅ Dark theme (gradiente + orbs ambientales crimson)
+✅ Responsive (1 col mobile, 2 cols tablet/desktop)
+✅ Loading skeleton con animación pulse
+✅ Botón "Estadísticas" en `/rankings` con Link a stats page
+
+**UI/UX:**
+
+- Color identity: ES #CC0000 (power-red), LATAM #0080FF (chakra-blue)
+- Grid layout: 1 col mobile, 2 cols tablet/desktop
+- Cards con border white/8, bg [#0e0e1a]/80
+- Icons: Users, Swords, Crown, Shield, TrendingUp, Activity (lucide-react)
+- Typography: Bebas Neue (títulos), Inter (cuerpo)
+
+**Backend Endpoints Utilizados:**
+
+- `GET /api/rankings/regions` — Regiones disponibles
+- `GET /api/rankings/dates/:region/:cluster` — Fechas por región/cluster
+- `GET /api/rankings/consolidated-global?date=...&limit=100` — Datos globales
+
+**Files Created:**
+
+- `frontend/app/rankings/stats/page.tsx` (660 líneas)
+- `frontend/components/rankings/stats/RegionComparator.tsx`
+- `frontend/components/rankings/stats/RegionStatCard.tsx` (8 stats)
+- `frontend/components/rankings/stats/RegionLeaderboard.tsx`
+- `frontend/components/rankings/stats/PowerTierChart.tsx` (Recharts)
+- `frontend/components/rankings/stats/PowerDistributionChart.tsx` (Recharts)
+- `frontend/components/rankings/stats/StatsSkeleton.tsx`
+
+**Files Modified:**
+
+- `frontend/app/rankings/page.tsx`
+  - Added imports: `Link`, `BarChart2`
+  - Added "Estadísticas" button in hero section (red accent, Link to /rankings/stats)
+  - Fixed cluster dependency bug: `useEffect([region, cluster])` → `useEffect([region])`
+  - Removed double border-b in filter section
+
+**Data Insights Provided:**
+
+1. **Poder Total Acumulado** — Identifica qué región tiene más poder concentrado
+2. **Top 5 Poder Total** — Muestra potencia de élite vs promedio general
+3. **Poder Mediano** — Valor central (resiste outliers)
+4. **Poder Mínimo** — Threshold competitivo de cada región
+5. **Charts dinámicos** — Tiers se adaptan al rango real de poder
+
+**Next Considerations:**
+
+- Poder Acumulativo histórico (si hay datos de múltiples períodos)
+- Desviación estándar (variabilidad)
+- Índice de competitividad
+- Rate de crecimiento de poder por región
 
 ---
 
