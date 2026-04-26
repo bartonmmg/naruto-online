@@ -5,6 +5,8 @@ import { authRouter } from './routes/auth.routes.js'
 import guidesRouter from './routes/guides.routes.js'
 import rankingRouter from './routes/ranking.routes.js'
 
+// Load environment variables (try .env.local first, then .env)
+dotenv.config({ path: '.env.local' })
 dotenv.config()
 
 const app = express()
