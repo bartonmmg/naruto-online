@@ -1327,11 +1327,18 @@ curl -H "x-api-key: YOUR_API_KEY" https://naruto-online.onrender.com/api/ranking
 - ✅ Allows frontend to access API while blocking external users
 - ✅ Public auth endpoints allow new user registration/login
 - ✅ API key is never exposed in client code (in env var, not hardcoded)
-- ⚠️ Still need to configure `API_KEY` in Render and `NEXT_PUBLIC_API_KEY` in Netlify dashboards
+- ✅ Configured in both Render and Netlify dashboards (2026-04-26)
 
-### Next Steps (Production Deployment)
-1. Generate secure random API key (≥32 characters)
-2. Configure in Render Dashboard: `API_KEY = <key>`
-3. Configure in Netlify Dashboard: `NEXT_PUBLIC_API_KEY = <same-key>`
-4. Redeploy both services
-5. Test with curl commands above to verify protection is active
+### Implementation Details
+- **Axios Interceptor:** Adds `x-api-key` header to all requests (axios pattern)
+- **Fetch Helper:** `fetchAPI()` and `fetchRankingAPI()` for fetch-based requests
+- **JWT Preserved:** Still includes Bearer token for authenticated routes
+- **Backward Compatible:** Guides pages use `import api` (default), Rankings use `fetchRankingAPI` (named)
+
+### Production Status (2026-04-26)
+- ✅ API Key middleware deployed to Render
+- ✅ Frontend axios client updated with API Key interceptor
+- ✅ Environment variables configured in both dashboards
+- ✅ All ranking endpoints protected (401 without key)
+- ✅ Public auth endpoints still accessible (register/login)
+- ✅ Guides endpoints protected by API Key
