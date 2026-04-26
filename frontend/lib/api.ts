@@ -1,11 +1,33 @@
-﻿import { API_URL } from './config'
+﻿import axios from 'axios'
+import { API_URL } from './config'
 
-const API_KEY = process.env.NEXT_PUBLIC_API_KEY || ''
+const api = axios.create({
+  baseURL: API_URL,
+})
 
+// Add JWT token if available
+api.interceptors.request.use(config => {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
+
+  // Add API key for ranking endpoints (guides, rankings, etc.)
+  const apiKey = process.env.NEXT_PUBLIC_API_KEY || ''
+  if (apiKey) {
+    config.headers['x-api-key'] = apiKey
+  }
+
+  return config
+})
+
+export default api
+
+// Export named functions for direct fetch usage (ranking pages)
 export async function fetchAPI(endpoint: string, options?: RequestInit) {
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
-    'x-api-key': API_KEY,
+    'x-api-key': process.env.NEXT_PUBLIC_API_KEY || '',
     ...options?.headers,
   }
 
@@ -22,5 +44,5 @@ export async function fetchAPI(endpoint: string, options?: RequestInit) {
   return response.json()
 }
 
-// Alias for backward compatibility
+// Alias for backward compatibility with ranking pages
 export const fetchRankingAPI = fetchAPI
