@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useRef } from 'react'
 import Link from 'next/link'
 import {
   Zap,
@@ -54,6 +55,15 @@ const RANKS = [
 ]
 
 export default function Home() {
+  const videoRef = useRef<HTMLVideoElement>(null)
+
+  useEffect(() => {
+    const video = videoRef.current
+    if (video) {
+      video.playbackRate = 0.25
+    }
+  }, [])
+
   return (
     <main className="min-h-screen bg-bg-primary overflow-x-hidden">
       <Navbar />
@@ -92,14 +102,12 @@ export default function Home() {
         {/* Video background with native loop */}
         <div className="absolute inset-0 w-full h-full overflow-hidden">
           <video
+            ref={videoRef}
             autoPlay
             muted
             loop
             playsInline
             className="absolute inset-0 w-full h-full object-cover"
-            style={{
-              playbackRate: 0.25
-            }}
             controlsList="nodownload nofullscreen noremoteplayback"
           >
             <source src="/videos/village.mp4" type="video/mp4" />
