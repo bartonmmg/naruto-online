@@ -60,7 +60,7 @@ export default function Home() {
   useEffect(() => {
     const video = videoRef.current
     if (video) {
-      video.playbackRate = 0.25
+      video.playbackRate = 0.5
     }
   }, [])
 
