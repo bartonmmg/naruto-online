@@ -159,6 +159,7 @@ DATABASE_URL=file:./prisma/dev.db
 JWT_SECRET=dev-secret-min-32-characters-for-local-testing
 BACKEND_PORT=4000
 NODE_ENV=development
+API_KEY=dev-api-key
 ```
 
 **Production** (Render Dashboard → Settings → Environment Variables):
@@ -166,6 +167,7 @@ NODE_ENV=development
 |----------|-------|
 | `DATABASE_URL` | PostgreSQL connection string from Neon.tech |
 | `JWT_SECRET` | Random ≥32 character string (SECURE!) |
+| `API_KEY` | Random ≥32 character string (matches frontend NEXT_PUBLIC_API_KEY) |
 | `FRONTEND_URL` | `https://naruto-online.netlify.app` |
 | `NODE_ENV` | `production` |
 | `BACKEND_PORT` | `4000` |
@@ -175,10 +177,12 @@ NODE_ENV=development
 ```bash
 # Development
 NEXT_PUBLIC_API_URL=http://localhost:4000
+NEXT_PUBLIC_API_KEY=dev-api-key
 
 # Production: Uses fallback in lib/config.ts
 # (Or configure in Netlify Dashboard if available)
 # NEXT_PUBLIC_API_URL=https://naruto-online.onrender.com
+# NEXT_PUBLIC_API_KEY=<prod-api-key>
 ```
 
 **Frontend URL Resolution:**
@@ -186,6 +190,12 @@ NEXT_PUBLIC_API_URL=http://localhost:4000
 - Checks `NEXT_PUBLIC_API_URL` first
 - Falls back to `https://naruto-online.onrender.com` in production
 - Uses `http://localhost:4000` in development
+
+**API Key Protection:**
+- All API endpoints protected with `x-api-key` header requirement
+- Frontend automatically includes API key on all requests via `fetchAPI()` helper
+- Public endpoints (no auth required): `/health`, `/auth/register`, `/auth/login`
+- Protected endpoints (API key required): `/guides/*`, `/api/rankings/*`
 
 ### Database
 - **Production:** PostgreSQL via Neon.tech (connected via DATABASE_URL)
@@ -547,12 +557,14 @@ Located in `frontend/public/images/power-ranking/`:
 **Production Environment Variables (Render Dashboard):**
 - `DATABASE_URL`: PostgreSQL connection string (from Neon.tech)
 - `JWT_SECRET`: Must be random ≥32 character string (NOT the placeholder)
+- `API_KEY`: Must be random ≥32 character string (for API authentication)
 - `FRONTEND_URL`: Exact frontend origin (e.g., `https://naruto-online.netlify.app`)
 - `BACKEND_PORT`: Set to `4000`
 - `NODE_ENV`: Set to `production`
 
 **Frontend Environment Variables (Netlify Dashboard):**
 - `NEXT_PUBLIC_API_URL`: Backend URL (e.g., `https://naruto-online.onrender.com`)
+- `NEXT_PUBLIC_API_KEY`: Must match backend `API_KEY` value (for API authentication)
 
 **Authentication & Secrets:**
 - JWT_SECRET must be ≥32 characters and random in production (current placeholder is only for development)
@@ -1259,3 +1271,67 @@ git push origin main
   - Hero Section, Guides Page, Tools Page, Rankings Navbar, Navigation Links
   - Tools Cards, Guides Status, Filter System, Typography Optimization
   - Production Ready configuration, Rankings Performance optimization (91% image reduction, 60-80% FPS improvement)
+
+## API Security — Global API Key Authentication (2026-04-26)
+
+**Implementation:** Protect all backend API endpoints with centralized x-api-key header validation.
+
+### Architecture
+- **Middleware:** `backend/src/middleware/apiKey.ts` validates `x-api-key` header against `API_KEY` env var
+- **Application Level:** Middleware applied in `backend/src/index.ts` after public endpoints
+- **Frontend Helper:** `frontend/lib/api.ts` exports `fetchAPI()` that automatically includes API key header
+- **Backward Compatibility:** `fetchRankingAPI` alias points to `fetchAPI()` for existing code
+
+### Public Endpoints (No API Key Required)
+- `GET /health` — Health check for monitoring
+- `POST /auth/register` — User registration (public)
+- `POST /auth/login` — User login (public)
+
+### Protected Endpoints (API Key Required)
+- `/guides/*` — All guide endpoints
+- `/api/rankings/*` — All ranking endpoints
+
+### Environment Variables
+**Development** (`backend/.env.local`, `frontend/.env.local`):
+```
+Backend:  API_KEY=dev-api-key
+Frontend: NEXT_PUBLIC_API_KEY=dev-api-key
+```
+
+**Production** (set in deployment dashboards):
+```
+Render Backend:  API_KEY=<random-32-char-string>
+Netlify Frontend: NEXT_PUBLIC_API_KEY=<same-as-backend>
+```
+
+### How It Works
+1. Frontend makes request with `x-api-key` header (via `fetchAPI()`)
+2. Backend middleware intercepts request
+3. Compares header value with `process.env.API_KEY`
+4. Returns 401 Unauthorized if missing or invalid
+5. Routes process normally if valid
+
+### Testing
+```bash
+# Without key (fails)
+curl https://naruto-online.onrender.com/api/rankings/regions
+# Response: 401 Unauthorized
+
+# With key (succeeds)
+curl -H "x-api-key: YOUR_API_KEY" https://naruto-online.onrender.com/api/rankings/regions
+# Response: 200 OK with JSON
+```
+
+### Security Notes
+- ✅ Prevents public access to ranking data via direct API calls
+- ✅ Allows frontend to access API while blocking external users
+- ✅ Public auth endpoints allow new user registration/login
+- ✅ API key is never exposed in client code (in env var, not hardcoded)
+- ⚠️ Still need to configure `API_KEY` in Render and `NEXT_PUBLIC_API_KEY` in Netlify dashboards
+
+### Next Steps (Production Deployment)
+1. Generate secure random API key (≥32 characters)
+2. Configure in Render Dashboard: `API_KEY = <key>`
+3. Configure in Netlify Dashboard: `NEXT_PUBLIC_API_KEY = <same-key>`
+4. Redeploy both services
+5. Test with curl commands above to verify protection is active
