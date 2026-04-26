@@ -1039,6 +1039,40 @@ git push origin main
 - **Health check:** `curl https://naruto-online.onrender.com/health`
 
 ## Last Updated
+2026-04-26 (Loading Spinner with Shuriken + Video Background)
+
+### Loading Spinner Implementation (2026-04-26)
+**Status:** ✅ **COMPLETE** — Animated shuriken with pulsing glow effect
+
+**What's New:**
+- ✅ **New Component:** `frontend/components/LoadingSpinner.tsx`
+- ✅ **Features:**
+  - Shuriken image rotating continuously
+  - Red glow effect that pulses (0.3 → 0.6 opacity over 2s)
+  - Customizable sizes: `sm` (16x16), `md` (24x24), `lg` (40x40)
+  - Full-screen or inline modes
+  - Customizable loading message + "Espera unos momentos..." subtitle
+  
+**Where Applied:**
+- ✅ `/rankings` — Shows loading when fetching ranking data
+- ✅ `/guides` — Shows loading when fetching guides
+- ✅ `/rankings/stats` — Shows loading via StatsSkeleton wrapper
+
+**Design Details:**
+- Uses `/images/tools/shuriken.png` asset
+- Drop-shadow glow: `drop-shadow(0 0 10px → 30px rgba(204, 0, 0, 0.3 → 0.6))`
+- Pulsing animation synchronized with rotation (2s cycle)
+- Minimalista ninja aesthetic, fits dark HDRV theme
+
+**Video Background Implementation (2026-04-26)**
+- Replaced static PNG background in home page hero section
+- Native HTML5 `<video>` element with `/videos/Naruto Online - Official Cinematic Trailer.mp4`
+- Attributes: `autoPlay`, `muted`, `loop`, `playsInline`
+- Controls hidden: `controlsList="nodownload nofullscreen noremoteplayback"`
+- Maintains same functionality as image (full viewport coverage, overlay for text readability)
+
+---
+
 2026-04-25 (Rankings Page UI/UX Comprehensive Redesign + Dynamic API Integration + Performance Optimization)
 
 ### Major Migration: Next.js 14 → 16 (2026-04-05)

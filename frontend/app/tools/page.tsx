@@ -2,7 +2,17 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { ChevronLeft, Ticket, Swords, Map, BookOpen, Wrench, Lock, ChevronRight, CheckCircle } from 'lucide-react'
+import {
+  ChevronLeft,
+  Ticket,
+  Swords,
+  Map,
+  BookOpen,
+  Wrench,
+  Lock,
+  ChevronRight,
+  CheckCircle,
+} from 'lucide-react'
 import Navbar from '@/components/Navbar'
 
 interface Tool {
@@ -19,9 +29,10 @@ const TOOLS: Tool[] = [
   {
     id: 'coupons',
     name: 'Calculadora de Cupones',
-    description: 'Calcula cuántos cupones puedes coleccionar en un período de tiempo según tus eventos activos.',
-    href: '/tools/coupons',
-    available: true,
+    description:
+      'Calcula cuántos cupones puedes coleccionar en un período de tiempo según tus eventos activos.',
+    href: 'null', // /tools/coupons
+    available: false,
     color: 'text-accent-orange',
     badge: 'Disponible',
   },
@@ -54,26 +65,35 @@ const TOOLS: Tool[] = [
 export default function ToolsPage() {
   const [selectedFilter, setSelectedFilter] = useState('Todos')
 
-  const filteredTools = selectedFilter === 'Todos'
-    ? TOOLS
-    : selectedFilter === 'Disponibles'
-      ? TOOLS.filter(t => t.available)
-      : TOOLS.filter(t => !t.available)
+  const filteredTools =
+    selectedFilter === 'Todos'
+      ? TOOLS
+      : selectedFilter === 'Disponibles'
+        ? TOOLS.filter((t) => t.available)
+        : TOOLS.filter((t) => !t.available)
 
   return (
-    <main className="min-h-screen bg-bg-primary overflow-x-hidden" style={{
-      backgroundImage: 'url(/images/bg/herramientas.png), linear-gradient(rgba(196, 30, 58, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(196, 30, 58, 0.03) 1px, transparent 1px)',
-      backgroundPosition: 'center, 0, 0',
-      backgroundSize: 'cover, 40px 40px, 40px 40px',
-      backgroundAttachment: 'fixed, scroll, scroll',
-    }}>
+    <main
+      className="min-h-screen bg-bg-primary overflow-x-hidden"
+      style={{
+        backgroundImage:
+          'url(/images/bg/herramientas.png), linear-gradient(rgba(196, 30, 58, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(196, 30, 58, 0.03) 1px, transparent 1px)',
+        backgroundPosition: 'center, 0, 0',
+        backgroundSize: 'cover, 40px 40px, 40px 40px',
+        backgroundAttachment: 'fixed, scroll, scroll',
+      }}
+    >
       {/* Herramientas background overlay — Low opacity */}
       <div className="fixed inset-0 bg-bg-primary/70 pointer-events-none z-0" />
 
       {/* Ambient */}
       <div className="fixed top-0 left-0 w-full h-full pointer-events-none overflow-hidden z-1">
-        <div className="absolute top-0 right-1/3 w-96 h-96 rounded-full opacity-15"
-          style={{ background: 'radial-gradient(circle, rgba(196,30,58,0.15) 0%, transparent 70%)' }} />
+        <div
+          className="absolute top-0 right-1/3 w-96 h-96 rounded-full opacity-15"
+          style={{
+            background: 'radial-gradient(circle, rgba(196,30,58,0.15) 0%, transparent 70%)',
+          }}
+        />
       </div>
 
       <Navbar />
@@ -89,14 +109,14 @@ export default function ToolsPage() {
               Herramientas Ninja
             </h1>
             <p className="text-white/70 max-w-2xl text-base leading-relaxed">
-              Calculadoras, guías y utilidades diseñadas para optimizar tu progreso en Naruto Online.
-              Domina el juego con herramientas exclusivas de la comunidad.
+              Calculadoras, guías y utilidades diseñadas para optimizar tu progreso en Naruto
+              Online. Domina el juego con herramientas exclusivas de la comunidad.
             </p>
           </div>
 
           {/* Filter */}
           <div className="flex flex-wrap gap-3">
-            {['Todos', 'Disponibles', 'Próximamente'].map(filter => (
+            {['Todos', 'Disponibles', 'Próximamente'].map((filter) => (
               <button
                 key={filter}
                 onClick={() => setSelectedFilter(filter)}
@@ -128,9 +148,13 @@ export default function ToolsPage() {
                 >
                   {/* Header */}
                   <div className="flex items-start justify-between mb-6">
-                    <div className={`w-14 h-14 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform ${
-                      tool.available ? 'bg-accent-orange/10 border border-accent-orange/20' : 'bg-bg-elevated border border-border'
-                    }`}>
+                    <div
+                      className={`w-14 h-14 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform ${
+                        tool.available
+                          ? 'bg-accent-orange/10 border border-accent-orange/20'
+                          : 'bg-bg-elevated border border-border'
+                      }`}
+                    >
                       <img
                         src="/images/tools/shuriken.png"
                         alt={tool.name}
@@ -154,14 +178,14 @@ export default function ToolsPage() {
                   <h3 className="text-lg font-montserrat font-bold text-text-primary mb-3 group-hover:text-accent-orange transition-colors">
                     {tool.name}
                   </h3>
-                  <p className="text-sm text-white/70 leading-relaxed mb-6">
-                    {tool.description}
-                  </p>
+                  <p className="text-sm text-white/70 leading-relaxed mb-6">{tool.description}</p>
 
                   {/* Footer */}
                   {tool.available && (
                     <div className="flex items-center justify-between pt-4 border-t border-border/50">
-                      <span className="text-xs text-accent-orange font-cinzel">Abrir herramienta</span>
+                      <span className="text-xs text-accent-orange font-cinzel">
+                        Abrir herramienta
+                      </span>
                       <ChevronRight className="w-4 h-4 text-accent-orange group-hover:translate-x-1 transition-transform" />
                     </div>
                   )}
@@ -173,9 +197,7 @@ export default function ToolsPage() {
                   {CardContent}
                 </Link>
               ) : (
-                <div key={tool.id}>
-                  {CardContent}
-                </div>
+                <div key={tool.id}>{CardContent}</div>
               )
             })}
           </div>
@@ -186,7 +208,8 @@ export default function ToolsPage() {
               ¿Necesitas más herramientas?
             </h2>
             <p className="text-white/70 mb-8">
-              Únete a nuestra comunidad y sugiere nuevas herramientas. Tu idea podría ser la próxima.
+              Únete a nuestra comunidad y sugiere nuevas herramientas. Tu idea podría ser la
+              próxima.
             </p>
             <Link
               href="/"

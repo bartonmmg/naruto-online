@@ -15,6 +15,7 @@ import {
 import { fetchRankingAPI } from '@/lib/api'
 import Navbar from '@/components/Navbar'
 import MedalImage from '@/components/MedalImage'
+import LoadingSpinner from '@/components/LoadingSpinner'
 
 interface Player {
   rank: number
@@ -99,6 +100,7 @@ export default function RankingsPage() {
 
   const [players, setPlayers] = useState<Player[]>([])
   const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
   const prevRegionRef = useRef<string>('')
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
@@ -166,6 +168,7 @@ export default function RankingsPage() {
   // Cargar ranking cuando cambie región/cluster/fecha
   useEffect(() => {
     const loadRanking = async () => {
+      setLoading(true)
       setError('')
       try {
         let endpoint: string
@@ -192,6 +195,8 @@ export default function RankingsPage() {
       } catch (err) {
         setError(`Error fetching ranking: ${err}`)
         setPlayers([])
+      } finally {
+        setLoading(false)
       }
     }
 
@@ -635,7 +640,9 @@ export default function RankingsPage() {
 
         {/* ── Rankings ─────────────────────────────────── */}
         <div>
-          {displayMode === 'table' ? (
+          {loading ? (
+            <LoadingSpinner message="Cargando listado de ninjas" size="md" />
+          ) : displayMode === 'table' ? (
             /* ──── TABLE VIEW ──── */
             <div className="bg-[#0e0e1a]/80 backdrop-blur-md border border-white/8 rounded-2xl overflow-hidden">
               {/* Header */}

@@ -2,11 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { ChevronLeft, BookOpen, Scroll, Loader2, Plus } from 'lucide-react'
+import { ChevronLeft, BookOpen, Scroll, Plus } from 'lucide-react'
 import { useAuth } from '@/lib/hooks/useAuth'
 import { Guide, CATEGORY_LABELS, DIFFICULTY_LABELS } from '@/lib/types'
 import Navbar from '@/components/Navbar'
 import Button from '@/components/ui/Button'
+import LoadingSpinner from '@/components/LoadingSpinner'
 import api from '@/lib/api'
 
 export default function GuidesPage() {
@@ -122,9 +123,7 @@ export default function GuidesPage() {
       <section className="py-20 px-6 relative">
         <div className="max-w-6xl mx-auto relative z-10">
           {loading ? (
-            <div className="flex items-center justify-center py-20">
-              <Loader2 className="w-8 h-8 animate-spin text-accent-orange" />
-            </div>
+            <LoadingSpinner message="Cargando guías" size="md" />
           ) : (
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
