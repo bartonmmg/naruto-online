@@ -9,14 +9,14 @@ export async function fetchRankingAPI(endpoint: string, options?: RequestInit) {
     ...options?.headers,
   }
 
-  const response = await fetch(${API_URL}${endpoint}, {
+  const response = await fetch(`${API_URL}${endpoint}`, {
     ...options,
     headers,
     cache: options?.cache || 'no-store',
   })
 
   if (!response.ok) {
-    throw new Error(API Error: ${response.status} ${response.statusText})
+    throw new Error(`API Error: ${response.status} ${response.statusText}`)
   }
 
   return response.json()
