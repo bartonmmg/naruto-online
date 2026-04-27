@@ -18,6 +18,9 @@ interface Player {
   server: string | null;
   level: number;
   power: number;
+  firstAttack?: number | null;
+  criticalHit?: number | null;
+  criticalDamage?: number | null;
 }
 
 interface RankingSnapshot {

@@ -11,6 +11,9 @@ import {
   List,
   X,
   BarChart2,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown,
 } from 'lucide-react'
 import { fetchRankingAPI } from '@/lib/api'
 import Navbar from '@/components/Navbar'
@@ -23,6 +26,9 @@ interface Player {
   power: number
   level: number
   server: string | null
+  firstAttack?: number | null
+  criticalHit?: number | null
+  criticalDamage?: number | null
 }
 
 interface Region {
@@ -89,6 +95,8 @@ export default function RankingsPage() {
   const [clusters, setClusters] = useState<Cluster[]>([])
   const [dates, setDates] = useState<string[]>([])
   const [servers, setServers] = useState<string[]>(['Todos'])
+  const [serverSearch, setServerSearch] = useState('')
+  const [showServerDropdown, setShowServerDropdown] = useState(false)
 
   const [region, setRegion] = useState('GLOBAL')
   const [cluster, setCluster] = useState(1)
@@ -97,12 +105,15 @@ export default function RankingsPage() {
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [server, setServer] = useState('Todos')
   const [displayMode, setDisplayMode] = useState<'table' | 'cards'>('table')
+  const [sortBy, setSortBy] = useState<'rank' | 'power' | 'firstAttack' | 'criticalHit' | 'criticalDamage'>('rank')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
 
   const [players, setPlayers] = useState<Player[]>([])
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const prevRegionRef = useRef<string>('')
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const serverDropdownRef = useRef<HTMLDivElement>(null)
 
   // Cargar regiones al montar el componente
   useEffect(() => {
@@ -185,13 +196,19 @@ export default function RankingsPage() {
         const data = await fetchRankingAPI(endpoint)
         setPlayers(data.players || [])
 
-        // Extraer servidores únicos de forma más eficiente
+        // Extraer servidores únicos y ordenar por número
         const uniqueServers = new Set<string>()
         data.players?.forEach((p: Player) => {
           if (p.server) uniqueServers.add(p.server)
         })
-        setServers(['Todos', ...Array.from(uniqueServers).sort()])
+        const sortedServers = Array.from(uniqueServers).sort((a, b) => {
+          const numA = parseInt(a.replace(/\D/g, '')) || 0
+          const numB = parseInt(b.replace(/\D/g, '')) || 0
+          return numA - numB
+        })
+        setServers(['Todos', ...sortedServers])
         setServer('Todos')
+        setServerSearch('')
       } catch (err) {
         setError(`Error fetching ranking: ${err}`)
         setPlayers([])
@@ -215,6 +232,20 @@ export default function RankingsPage() {
 
     return () => clearTimeout(timer)
   }, [search])
+
+  // Cerrar dropdown de servidores al hacer clic fuera
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (serverDropdownRef.current && !serverDropdownRef.current.contains(event.target as Node)) {
+        setShowServerDropdown(false)
+      }
+    }
+
+    if (showServerDropdown) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showServerDropdown])
 
   // Memoizar handlers para evitar re-renders
   const handleRegionChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -254,13 +285,56 @@ export default function RankingsPage() {
     setDisplayMode(mode)
   }, [])
 
+  const filteredServers = useMemo(() => {
+    if (!serverSearch) return servers
+    return servers.filter((s) => {
+      if (s === 'Todos') return true
+      return s.toLowerCase().includes(serverSearch.toLowerCase())
+    })
+  }, [serverSearch, servers])
+
   const filtered = useMemo(() => {
-    return players.filter((p) => {
+    const filteredPlayers = players.filter((p) => {
       const matchServer = server === 'Todos' || p.server === server
       const matchSearch = p.name.toLowerCase().includes(debouncedSearch.toLowerCase())
       return matchServer && matchSearch
     })
-  }, [debouncedSearch, server, players])
+
+    // Si está ordenando por rank, mantener el orden original (ya viene ordenado por poder)
+    if (sortBy === 'rank') {
+      return sortOrder === 'asc'
+        ? filteredPlayers
+        : [...filteredPlayers].reverse()
+    }
+
+    // Para otras columnas: jugadores con valor primero (ordenados por la columna),
+    // luego los null al final (ordenados por poder desc)
+    return [...filteredPlayers].sort((a, b) => {
+      const aVal = a[sortBy] as number | null | undefined
+      const bVal = b[sortBy] as number | null | undefined
+      const aNull = aVal == null
+      const bNull = bVal == null
+
+      // Null siempre al final, ordenados por poder desc
+      if (aNull && bNull) return b.power - a.power
+      if (aNull) return 1
+      if (bNull) return -1
+
+      // Ambos tienen valor: ordenar según sortOrder
+      return sortOrder === 'asc' ? aVal - bVal : bVal - aVal
+    })
+  }, [debouncedSearch, server, players, sortBy, sortOrder])
+
+  const handleSort = useCallback((column: typeof sortBy) => {
+    if (sortBy === column) {
+      // Si ya está ordenando por esta columna, cambiar dirección
+      setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'))
+    } else {
+      // Nueva columna: empezar en desc (mayor a menor para stats)
+      setSortBy(column)
+      setSortOrder(column === 'rank' ? 'asc' : 'desc')
+    }
+  }, [sortBy])
 
   return (
     <main className="min-h-screen bg-[#080810] relative overflow-x-hidden">
@@ -459,7 +533,7 @@ export default function RankingsPage() {
       {/* ═══════════════════════════════════════════════════
           MAIN CONTENT — Centered Ranking
           ═══════════════════════════════════════════════════ */}
-      <div className="relative max-w-4xl mx-auto px-6 py-8 pt-28" style={{ zIndex: 10 }}>
+      <div className="relative max-w-4xl mx-auto px-6 py-8 pt-28" style={{ zIndex: 10, overflow: 'visible' }}>
         {/* ── Title Block ──────────────────────────────── */}
         <div className="text-center mb-10">
           <p className="text-sm font-cinzel font-black text-power-red/70 tracking-[0.3em] uppercase mb-2">
@@ -514,68 +588,115 @@ export default function RankingsPage() {
         <>
           {/* Main Filters */}
             <div
-              className="bg-[#0e0e1a]/80 backdrop-blur-md border border-white/8 rounded-xl p-5 mb-6"
+              className="relative bg-[#0e0e1a]/80 backdrop-blur-md border border-white/8 rounded-xl p-5 mb-6"
+              style={{ overflow: 'visible', zIndex: 50 }}
             >
               {/* Row 1: Regional Filters */}
               <div className="mb-5">
                 <p className="text-xs font-cinzel text-white/60 uppercase tracking-widest mb-3">Filtros</p>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5 pb-4 border-b border-white/5">
-                  {/* Region */}
-                  <select
-                    value={region}
-                    onChange={handleRegionChange}
-                    className="bg-white/5 border border-white/8 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-power-red/50 appearance-none cursor-pointer"
-                  >
-                    <option value="GLOBAL" className="bg-[#0e0e1a]">Global</option>
-                    {regions.map((r) => (
-                      <option key={r.id} value={r.id} className="bg-[#0e0e1a]">
-                        {r.name}
-                      </option>
-                    ))}
-                  </select>
-
-                  {/* Cluster - Only show when not Global */}
-                  {region !== 'GLOBAL' && (
+                <div className="flex flex-col gap-3 mb-5 pb-4 border-b border-white/5">
+                  {/* Region, Cluster, Date in one row */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {/* Region */}
                     <select
-                      value={cluster}
-                      onChange={handleClusterChange}
+                      value={region}
+                      onChange={handleRegionChange}
                       className="bg-white/5 border border-white/8 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-power-red/50 appearance-none cursor-pointer"
                     >
-                      {clusters.map((c) => (
-                        <option key={c.id} value={c.id} className="bg-[#0e0e1a]">
-                          {c.name}
+                      <option value="GLOBAL" className="bg-[#0e0e1a]">Global</option>
+                      {regions.map((r) => (
+                        <option key={r.id} value={r.id} className="bg-[#0e0e1a]">
+                          {r.name}
                         </option>
                       ))}
                     </select>
-                  )}
 
-                  {/* Date - Only show when not Global */}
-                  {region !== 'GLOBAL' && (
-                    <select
-                      value={date}
-                      onChange={handleDateChange}
-                      className="bg-white/5 border border-white/8 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-power-red/50 appearance-none cursor-pointer"
+                    {/* Cluster - Only show when not Global */}
+                    {region !== 'GLOBAL' && (
+                      <select
+                        value={cluster}
+                        onChange={handleClusterChange}
+                        className="bg-white/5 border border-white/8 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-power-red/50 appearance-none cursor-pointer"
+                      >
+                        {clusters.map((c) => (
+                          <option key={c.id} value={c.id} className="bg-[#0e0e1a]">
+                            {c.name}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+
+                    {/* Date - Only show when not Global */}
+                    {region !== 'GLOBAL' && (
+                      <select
+                        value={date}
+                        onChange={handleDateChange}
+                        className="bg-white/5 border border-white/8 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-power-red/50 appearance-none cursor-pointer"
+                      >
+                        {dates.map((d) => (
+                          <option key={d} value={d} className="bg-[#0e0e1a]">
+                            {d}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+
+                  {/* Server filter - Always show with search (full width) */}
+                  <div ref={serverDropdownRef} className="relative">
+                    <button
+                      onClick={() => setShowServerDropdown(!showServerDropdown)}
+                      className="w-full bg-white/5 border border-white/8 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-power-red/50 cursor-pointer text-left flex items-center justify-between"
                     >
-                      {dates.map((d) => (
-                        <option key={d} value={d} className="bg-[#0e0e1a]">
-                          {d}
-                        </option>
-                      ))}
-                    </select>
-                  )}
-
-                  {/* Server filter - Always show */}
-                  <select
-                    value={server}
-                    onChange={handleServerChange}
-                    className="bg-white/5 border border-white/8 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-power-red/50 appearance-none cursor-pointer"
-                  >
-                    {servers.map((s) => (
-                      <option key={s} value={s} className="bg-[#0e0e1a]">
-                        {s === 'Todos' ? 'Todos los servidores' : `Servidor ${s}`}
-                      </option>
-                    ))}
-                  </select>
+                      <span>
+                        {server === 'Todos' ? 'Todos los servidores' : `Servidor ${server}`}
+                      </span>
+                      <svg className={`w-4 h-4 transition-transform flex-shrink-0 ${showServerDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                      </svg>
+                    </button>
+                    {showServerDropdown && (
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-[#0e0e1a] border border-white/8 rounded-lg shadow-lg z-[100] flex flex-col">
+                        {/* Search input */}
+                        <div className="p-2 border-b border-white/5 sticky top-0 bg-[#0e0e1a]">
+                          <input
+                            type="text"
+                            placeholder="Buscar servidor..."
+                            value={serverSearch}
+                            onChange={(e) => setServerSearch(e.target.value)}
+                            className="w-full bg-white/5 border border-white/8 rounded px-2 py-1.5 text-xs text-white placeholder:text-[#555] focus:outline-none focus:border-power-red/50"
+                            autoFocus
+                          />
+                        </div>
+                        {/* Server options */}
+                        <div className="overflow-y-auto max-h-64">
+                          {filteredServers.length === 0 ? (
+                            <div className="px-3 py-2 text-xs text-white/40 text-center">
+                              No hay servidores que coincidan
+                            </div>
+                          ) : (
+                            filteredServers.map((s) => (
+                              <button
+                                key={s}
+                                onClick={() => {
+                                  setServer(s)
+                                  setShowServerDropdown(false)
+                                  setServerSearch('')
+                                }}
+                                className={`w-full text-left px-3 py-2 text-sm transition-colors whitespace-nowrap ${
+                                  server === s
+                                    ? 'bg-power-red/20 text-power-red border-l-2 border-power-red'
+                                    : 'text-white hover:bg-white/5'
+                                }`}
+                              >
+                                {s === 'Todos' ? 'Todos los servidores' : `Servidor ${s}`}
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -639,30 +760,105 @@ export default function RankingsPage() {
         </>
 
         {/* ── Rankings ─────────────────────────────────── */}
-        <div>
+        <div className="relative" style={{ zIndex: 1 }}>
           {loading ? (
             <LoadingSpinner message="Cargando listado de ninjas" size="md" />
           ) : displayMode === 'table' ? (
             /* ──── TABLE VIEW ──── */
             <div className="bg-[#0e0e1a]/80 backdrop-blur-md border border-white/8 rounded-2xl overflow-hidden">
-              {/* Header */}
-              <div className="grid grid-cols-12 gap-2 px-6 py-3 border-b border-white/8 bg-white/[0.02]">
-                <div className="col-span-1 text-[10px] font-cinzel text-white/60 tracking-[0.15em] uppercase font-bold">
+              {/* Header - Desktop only */}
+              <div className="hidden sm:grid grid-cols-[40px_1.5fr_50px_90px_110px_110px_110px_60px] gap-2 px-6 py-3 border-b border-white/8 bg-white/[0.02]">
+                <button
+                  onClick={() => handleSort('rank')}
+                  className="text-xs font-montserrat text-white/60 tracking-[0.15em] uppercase font-bold flex items-center justify-center gap-1 hover:text-white transition-colors"
+                >
                   #
-                </div>
-                <div className="col-span-5 text-[10px] font-cinzel text-white/60 tracking-[0.15em] uppercase font-bold">
+                  {sortBy === 'rank' ? (
+                    sortOrder === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                  ) : (
+                    <ArrowUpDown className="w-3 h-3 opacity-30" />
+                  )}
+                </button>
+                <div className="text-xs font-montserrat text-white/60 tracking-[0.15em] uppercase font-bold flex items-center">
                   Ninja
                 </div>
-                <div className="col-span-1 text-[10px] font-cinzel text-white/60 tracking-[0.15em] uppercase font-bold hidden sm:block">
+                <div className="text-xs font-montserrat text-white/60 tracking-[0.15em] uppercase font-bold flex items-center justify-center">
                   Nivel
                 </div>
-                <div className="col-span-4 text-[10px] font-cinzel text-white/60 tracking-[0.15em] uppercase font-bold hidden sm:flex items-center justify-end gap-1.5">
-                  <Swords className="w-3 h-3 text-power-red/40" />
+                <button
+                  onClick={() => handleSort('power')}
+                  className="text-xs font-montserrat text-white/60 tracking-[0.15em] uppercase font-bold flex items-center justify-center gap-1 hover:text-white transition-colors"
+                >
                   Poder
-                </div>
-                <div className="col-span-1 text-[10px] font-cinzel text-white/60 tracking-[0.15em] uppercase font-bold text-right">
+                  {sortBy === 'power' ? (
+                    sortOrder === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                  ) : (
+                    <ArrowUpDown className="w-3 h-3 opacity-30" />
+                  )}
+                </button>
+                <button
+                  onClick={() => handleSort('firstAttack')}
+                  className="text-xs font-montserrat text-white/60 tracking-[0.15em] uppercase font-bold flex items-center justify-center gap-1 hover:text-white transition-colors text-center leading-tight"
+                >
+                  <span>Primer Ataque</span>
+                  {sortBy === 'firstAttack' ? (
+                    sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 flex-shrink-0" /> : <ArrowDown className="w-3 h-3 flex-shrink-0" />
+                  ) : (
+                    <ArrowUpDown className="w-3 h-3 opacity-30 flex-shrink-0" />
+                  )}
+                </button>
+                <button
+                  onClick={() => handleSort('criticalHit')}
+                  className="text-xs font-montserrat text-white/60 tracking-[0.15em] uppercase font-bold flex items-center justify-center gap-1 hover:text-white transition-colors text-center leading-tight"
+                >
+                  <span>Golpe Crítico</span>
+                  {sortBy === 'criticalHit' ? (
+                    sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 flex-shrink-0" /> : <ArrowDown className="w-3 h-3 flex-shrink-0" />
+                  ) : (
+                    <ArrowUpDown className="w-3 h-3 opacity-30 flex-shrink-0" />
+                  )}
+                </button>
+                <button
+                  onClick={() => handleSort('criticalDamage')}
+                  className="text-xs font-montserrat text-white/60 tracking-[0.15em] uppercase font-bold flex items-center justify-center gap-1 hover:text-white transition-colors text-center leading-tight"
+                >
+                  <span>Daño Crítico</span>
+                  {sortBy === 'criticalDamage' ? (
+                    sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 flex-shrink-0" /> : <ArrowDown className="w-3 h-3 flex-shrink-0" />
+                  ) : (
+                    <ArrowUpDown className="w-3 h-3 opacity-30 flex-shrink-0" />
+                  )}
+                </button>
+                <div className="text-xs font-montserrat text-white/60 tracking-[0.15em] uppercase font-bold flex items-center justify-center">
                   Server
                 </div>
+              </div>
+
+              {/* Mobile Sort Bar */}
+              <div className="sm:hidden flex items-center gap-2 px-4 py-3 border-b border-white/8 bg-white/[0.02] overflow-x-auto">
+                <span className="text-[10px] font-montserrat text-white/50 uppercase tracking-wider whitespace-nowrap flex-shrink-0">Ordenar:</span>
+                {([
+                  { key: 'rank', label: '#' },
+                  { key: 'power', label: 'Poder' },
+                  { key: 'firstAttack', label: '1° Ataque' },
+                  { key: 'criticalHit', label: 'Golpe Crít.' },
+                  { key: 'criticalDamage', label: 'Daño Crít.' },
+                ] as const).map((opt) => (
+                  <button
+                    key={opt.key}
+                    onClick={() => handleSort(opt.key)}
+                    className={`text-[11px] font-montserrat font-semibold px-2.5 py-1 rounded border whitespace-nowrap flex items-center gap-1 transition-colors ${
+                      sortBy === opt.key
+                        ? 'bg-power-red/20 border-power-red/40 text-power-red'
+                        : 'bg-white/5 border-white/10 text-white/70'
+                    }`}
+                  >
+                    {opt.label}
+                    {sortBy === opt.key && (
+                      sortOrder === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                    )}
+                  </button>
+                ))}
               </div>
 
               {/* Rows */}
@@ -676,21 +872,22 @@ export default function RankingsPage() {
                 </div>
               ) : (
                 filtered.map((player, index) => {
-                  const medal = MEDAL[player.rank]
-                  const isTop3 = player.rank <= 3
+                  const dynamicRank = index + 1
+                  const medal = MEDAL[dynamicRank]
+                  const isTop3 = dynamicRank <= 3
 
                   return (
                     <div
-                      key={player.rank}
+                      key={`${player.name}-${index}`}
                       className={`
-                        relative grid grid-cols-12 gap-2 px-6 py-4 items-center border-b border-white/[0.04] last:border-b-0
+                        relative border-b border-white/[0.04] last:border-b-0
                         group overflow-hidden
                         ${isTop3 ? 'bg-white/[0.05]' : 'hover:bg-white/[0.03]'}
                       `}
                       style={{
                         ...(isTop3
                           ? {
-                              borderLeft: `3px solid ${player.rank === 1 ? '#FFD700' : player.rank === 2 ? '#C0C0C0' : '#CD7F32'}`,
+                              borderLeft: `3px solid ${dynamicRank === 1 ? '#FFD700' : dynamicRank === 2 ? '#C0C0C0' : '#CD7F32'}`,
                             }
                           : {}),
                       }}
@@ -702,67 +899,62 @@ export default function RankingsPage() {
                         className="absolute -right-6 -bottom-2 w-48 h-48 opacity-[0.10] group-hover:opacity-[0.16] transition-opacity pointer-events-none"
                       />
 
-                      {/* Rank # */}
-                      <div className="col-span-1 flex items-center justify-center relative z-10">
-                        {isTop3 && medal ? (
-                          <div className="w-8 h-7 flex items-center justify-center">
-                            {medal.image ? (
-                              <MedalImage
-                                src={medal.image}
-                                emoji={medal.emoji}
-                                alt={`Top ${player.rank}`}
-                                className="w-full h-full object-contain"
-                              />
-                            ) : (
-                              <span className="text-xl">{medal.emoji}</span>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-xs font-cinzel font-bold text-[#555] w-7 inline-block text-center group-hover:text-[#888] transition-colors">
-                            {String(player.rank).padStart(2, '0')}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Name */}
-                      <div className="col-span-5 flex items-center gap-2.5 relative z-10">
-                        <div
-                          className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-cinzel font-black flex-shrink-0 transition-all group-hover:scale-110 ${
-                            isTop3 && medal
-                              ? `${medal.bg} ${medal.color} border ${medal.border}`
-                              : 'bg-white/5 text-white border border-white/10 group-hover:border-white/30'
-                          }`}
-                        >
-                          {player.name[0]}
+                      {/* ─── DESKTOP LAYOUT (sm+) ─── */}
+                      <div className="hidden sm:grid grid-cols-[40px_1.5fr_50px_90px_110px_110px_110px_60px] gap-2 px-6 py-4 items-center">
+                        {/* Rank # */}
+                        <div className="flex items-center justify-center relative z-10">
+                          {isTop3 && medal ? (
+                            <div className="w-8 h-7 flex items-center justify-center">
+                              {medal.image ? (
+                                <MedalImage
+                                  src={medal.image}
+                                  emoji={medal.emoji}
+                                  alt={`Top ${dynamicRank}`}
+                                  className="w-full h-full object-contain"
+                                />
+                              ) : (
+                                <span className="text-xl">{medal.emoji}</span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-xs font-montserrat font-bold text-[#555] w-7 inline-block text-center group-hover:text-[#888] transition-colors">
+                              {String(dynamicRank).padStart(2, '0')}
+                            </span>
+                          )}
                         </div>
-                        <span
-                          className={`text-sm font-cinzel font-bold truncate transition-colors ${
-                            isTop3 && medal
-                              ? medal.color
-                              : 'text-white/90 group-hover:text-white'
-                          }`}
-                        >
-                          {player.name}
-                        </span>
-                      </div>
 
-                      {/* Level - Enhanced */}
-                      <div className="col-span-1 hidden sm:flex items-center gap-2 relative z-10">
-                        <span className="text-[10px] font-cinzel text-white/50">⚡</span>
-                        <span className="text-sm font-cinzel font-bold text-white group-hover:text-white/100 transition-colors">
-                          {player.level}
-                        </span>
-                      </div>
+                        {/* Name */}
+                        <div className="flex items-center gap-2.5 relative z-10 min-w-0">
+                          <div
+                            className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-montserrat font-black flex-shrink-0 transition-all group-hover:scale-110 ${
+                              isTop3 && medal
+                                ? `${medal.bg} ${medal.color} border ${medal.border}`
+                                : 'bg-white/5 text-white border border-white/10 group-hover:border-white/30'
+                            }`}
+                          >
+                            {player.name[0]}
+                          </div>
+                          <span
+                            className={`text-sm font-montserrat font-bold truncate transition-colors ${
+                              isTop3 && medal
+                                ? medal.color
+                                : 'text-white/90 group-hover:text-white'
+                            }`}
+                          >
+                            {player.name}
+                          </span>
+                        </div>
 
-                      {/* Power - Enhanced with icon */}
-                      <div className="col-span-4 hidden sm:flex items-center justify-end gap-3 relative z-10">
-                        <div className="flex items-center gap-1.5">
-                          <img
-                            src="/images/tools/kunai.png"
-                            alt="kunai"
-                            className="w-4 h-4 object-contain opacity-70 group-hover:opacity-100 transition-opacity"
-                          />
-                          <span className={`text-sm font-cinzel font-bold tabular-nums transition-colors text-right ${
+                        {/* Level */}
+                        <div className="flex items-center justify-center relative z-10">
+                          <span className="text-sm font-montserrat font-bold text-white group-hover:text-white/100 transition-colors">
+                            {player.level}
+                          </span>
+                        </div>
+
+                        {/* Power */}
+                        <div className="flex items-center justify-center relative z-10">
+                          <span className={`text-sm font-montserrat font-bold tabular-nums transition-colors text-center ${
                             isTop3 && medal
                               ? medal.color
                               : 'text-white/90 group-hover:text-white'
@@ -770,19 +962,133 @@ export default function RankingsPage() {
                             {(player.power / 1000000).toFixed(1)}M
                           </span>
                         </div>
+
+                        {/* Primer Ataque */}
+                        <div className="flex items-center justify-center relative z-10">
+                          <span className="text-sm font-montserrat font-semibold tabular-nums text-white/80 group-hover:text-white transition-colors">
+                            {player.firstAttack != null ? player.firstAttack.toLocaleString() : '-'}
+                          </span>
+                        </div>
+
+                        {/* Golpe Crítico */}
+                        <div className="flex items-center justify-center relative z-10">
+                          <span className="text-sm font-montserrat font-semibold tabular-nums text-white/80 group-hover:text-white transition-colors">
+                            {player.criticalHit != null ? player.criticalHit.toLocaleString() : '-'}
+                          </span>
+                        </div>
+
+                        {/* Daño Crítico */}
+                        <div className="flex items-center justify-center relative z-10">
+                          <span className="text-sm font-montserrat font-semibold tabular-nums text-white/80 group-hover:text-white transition-colors">
+                            {player.criticalDamage != null ? player.criticalDamage.toLocaleString() : '-'}
+                          </span>
+                        </div>
+
+                        {/* Server */}
+                        <div className="flex items-center justify-center relative z-10">
+                          <span
+                            className={`text-[10px] font-montserrat font-semibold px-2 py-0.5 rounded border inline-block ${
+                              !player.server
+                                ? 'text-white/40 bg-white/[0.02] border-white/5'
+                                : 'text-white bg-white/[0.05] border-white/10 group-hover:border-white/20'
+                            }`}
+                          >
+                            {player.server || 'S??'}
+                          </span>
+                        </div>
                       </div>
 
-                      {/* Server */}
-                      <div className="col-span-1 text-right relative z-10">
-                        <span
-                          className={`text-[10px] font-cinzel px-2 py-0.5 rounded border inline-block ${
-                            !player.server
-                              ? 'text-white/40 bg-white/[0.02] border-white/5'
-                              : 'text-white bg-white/[0.05] border-white/10 group-hover:border-white/20'
-                          }`}
-                        >
-                          {player.server || 'S??'}
-                        </span>
+                      {/* ─── MOBILE LAYOUT ─── */}
+                      <div className="sm:hidden px-4 py-3 relative z-10">
+                        {/* Top row: Rank + Name + Server */}
+                        <div className="flex items-center gap-3 mb-3">
+                          {/* Rank */}
+                          <div className="flex items-center justify-center flex-shrink-0">
+                            {isTop3 && medal ? (
+                              <div className="w-9 h-8 flex items-center justify-center">
+                                {medal.image ? (
+                                  <MedalImage
+                                    src={medal.image}
+                                    emoji={medal.emoji}
+                                    alt={`Top ${dynamicRank}`}
+                                    className="w-full h-full object-contain"
+                                  />
+                                ) : (
+                                  <span className="text-2xl">{medal.emoji}</span>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-xs font-montserrat font-bold text-white/50 w-9 text-center">
+                                #{dynamicRank}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Avatar + Name */}
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <div
+                              className={`w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-montserrat font-black flex-shrink-0 ${
+                                isTop3 && medal
+                                  ? `${medal.bg} ${medal.color} border ${medal.border}`
+                                  : 'bg-white/5 text-white border border-white/10'
+                              }`}
+                            >
+                              {player.name[0]}
+                            </div>
+                            <span
+                              className={`text-sm font-montserrat font-bold truncate ${
+                                isTop3 && medal ? medal.color : 'text-white/90'
+                              }`}
+                            >
+                              {player.name}
+                            </span>
+                          </div>
+
+                          {/* Server */}
+                          <span
+                            className={`text-[10px] font-montserrat font-semibold px-2 py-0.5 rounded border flex-shrink-0 ${
+                              !player.server
+                                ? 'text-white/40 bg-white/[0.02] border-white/5'
+                                : 'text-white bg-white/[0.05] border-white/10'
+                            }`}
+                          >
+                            {player.server || 'S??'}
+                          </span>
+                        </div>
+
+                        {/* Stats grid */}
+                        <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 pl-12">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-montserrat text-white/50 uppercase tracking-wider">Nivel</span>
+                            <span className="text-xs font-montserrat font-bold text-white tabular-nums">{player.level}</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-montserrat text-white/50 uppercase tracking-wider">Poder</span>
+                            <span className={`text-xs font-montserrat font-bold tabular-nums ${
+                              isTop3 && medal ? medal.color : 'text-white'
+                            }`}>
+                              {(player.power / 1000000).toFixed(1)}M
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-montserrat text-white/50 uppercase tracking-wider">1° Ataq.</span>
+                            <span className="text-xs font-montserrat font-semibold text-white/80 tabular-nums">
+                              {player.firstAttack != null ? player.firstAttack.toLocaleString() : '-'}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-montserrat text-white/50 uppercase tracking-wider">G. Crít.</span>
+                            <span className="text-xs font-montserrat font-semibold text-white/80 tabular-nums">
+                              {player.criticalHit != null ? player.criticalHit.toLocaleString() : '-'}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between col-span-2">
+                            <span className="text-[10px] font-montserrat text-white/50 uppercase tracking-wider">Daño Crít.</span>
+                            <span className="text-xs font-montserrat font-semibold text-white/80 tabular-nums">
+                              {player.criticalDamage != null ? player.criticalDamage.toLocaleString() : '-'}
+                            </span>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   )
@@ -802,14 +1108,15 @@ export default function RankingsPage() {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                  {filtered.map((player) => {
-                    const medal = MEDAL[player.rank]
-                    const isTop3 = player.rank <= 3
-                    const rankIn4to10 = player.rank >= 4 && player.rank <= 10
+                  {filtered.map((player, index) => {
+                    const dynamicRank = index + 1
+                    const medal = MEDAL[dynamicRank]
+                    const isTop3 = dynamicRank <= 3
+                    const rankIn4to10 = dynamicRank >= 4 && dynamicRank <= 10
 
                     return (
                       <div
-                        key={player.rank}
+                        key={`${player.name}-${index}`}
                         className={`
                           relative group overflow-hidden rounded-2xl
                           ${
@@ -846,7 +1153,7 @@ export default function RankingsPage() {
                                     <MedalImage
                                       src={medal.image}
                                       emoji={medal.emoji}
-                                      alt={`Top ${player.rank}`}
+                                      alt={`Top ${dynamicRank}`}
                                       className="w-full h-full object-contain"
                                     />
                                   ) : (
@@ -863,15 +1170,15 @@ export default function RankingsPage() {
                                 </div>
                               )}
                               <div>
-                                <p className="text-[10px] font-cinzel text-white/50 uppercase tracking-widest">Rank</p>
-                                <p className={`font-cinzel font-black text-lg ${isTop3 && medal ? medal.color : 'text-white'}`}>
-                                  #{player.rank}
+                                <p className="text-[10px] font-montserrat font-semibold text-white/50 uppercase tracking-widest">Rank</p>
+                                <p className={`font-montserrat font-black text-lg ${isTop3 && medal ? medal.color : 'text-white'}`}>
+                                  #{dynamicRank}
                                 </p>
                               </div>
                             </div>
 
                             {/* Server Badge */}
-                            <div className={`text-[10px] font-cinzel font-bold px-2.5 py-1.5 rounded border flex-shrink-0 ${
+                            <div className={`text-[10px] font-montserrat font-bold px-2.5 py-1.5 rounded border flex-shrink-0 ${
                               !player.server
                                 ? 'text-white/40 bg-white/5 border-white/10'
                                 : 'text-white/80 bg-white/10 border-white/15'
@@ -881,7 +1188,7 @@ export default function RankingsPage() {
                           </div>
 
                           {/* Ninja Name */}
-                          <h3 className={`font-cinzel font-black text-xl leading-tight break-words mb-5 ${
+                          <h3 className={`font-montserrat font-black text-xl leading-tight break-words mb-5 ${
                             isTop3 && medal ? medal.color : 'text-white'
                           }`}>
                             {player.name}
@@ -895,8 +1202,8 @@ export default function RankingsPage() {
                             {/* Power */}
                             <div className="space-y-2">
                               <div className="flex items-center justify-between">
-                                <p className="text-xs font-cinzel text-white/60 uppercase tracking-widest">Poder</p>
-                                <p className="font-cinzel font-black text-xl text-white">
+                                <p className="text-xs font-montserrat font-semibold text-white/60 uppercase tracking-widest">Poder</p>
+                                <p className="font-montserrat font-black text-xl text-white">
                                   {(player.power / 1000000).toFixed(1)}M
                                 </p>
                               </div>
@@ -911,8 +1218,8 @@ export default function RankingsPage() {
                             {/* Level */}
                             <div className="space-y-2">
                               <div className="flex items-center justify-between">
-                                <p className="text-xs font-cinzel text-white/60 uppercase tracking-widest">Nivel</p>
-                                <p className="font-cinzel font-black text-xl text-white">
+                                <p className="text-xs font-montserrat font-semibold text-white/60 uppercase tracking-widest">Nivel</p>
+                                <p className="font-montserrat font-black text-xl text-white">
                                   {player.level}
                                 </p>
                               </div>
@@ -921,6 +1228,28 @@ export default function RankingsPage() {
                                   className="h-full bg-gradient-to-r from-white/30 via-white/50 to-white/30 animate-pulse"
                                   style={{ width: `${(player.level / 115) * 100}%` }}
                                 />
+                              </div>
+                            </div>
+
+                            {/* Combat Stats */}
+                            <div className="pt-3 border-t border-white/10 space-y-2.5">
+                              <div className="flex items-center justify-between">
+                                <p className="text-xs font-montserrat font-semibold text-white/60 uppercase tracking-wider">Primer Ataque</p>
+                                <p className="font-montserrat font-bold text-sm text-white/90 tabular-nums">
+                                  {player.firstAttack != null ? player.firstAttack.toLocaleString() : '-'}
+                                </p>
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <p className="text-xs font-montserrat font-semibold text-white/60 uppercase tracking-wider">Golpe Crítico</p>
+                                <p className="font-montserrat font-bold text-sm text-white/90 tabular-nums">
+                                  {player.criticalHit != null ? player.criticalHit.toLocaleString() : '-'}
+                                </p>
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <p className="text-xs font-montserrat font-semibold text-white/60 uppercase tracking-wider">Daño Crítico</p>
+                                <p className="font-montserrat font-bold text-sm text-white/90 tabular-nums">
+                                  {player.criticalDamage != null ? player.criticalDamage.toLocaleString() : '-'}
+                                </p>
                               </div>
                             </div>
                           </div>
