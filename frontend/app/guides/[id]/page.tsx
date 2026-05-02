@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
-import { ChevronLeft, Loader2, AlertCircle, Image as ImageIcon, Play, Edit2, Clock, Trash2, Eye } from 'lucide-react'
+import { ChevronLeft, Loader2, AlertCircle, Image as ImageIcon, Play, Edit2, Clock, Trash2, Eye, BookOpen } from 'lucide-react'
 import { useAuth } from '@/lib/hooks/useAuth'
 import { Guide, CATEGORY_LABELS, DIFFICULTY_LABELS } from '@/lib/types'
 import { MarkdownRenderer } from '@/components/guides/MarkdownRenderer'
@@ -12,6 +12,7 @@ import GuideVoting from '@/components/guides/GuideVoting'
 import GuideComments from '@/components/guides/GuideComments'
 import GuideReactions from '@/components/guides/GuideReactions'
 import GuideBadges from '@/components/guides/GuideBadges'
+import RelatedGuides from '@/components/guides/RelatedGuides'
 import Navbar from '@/components/Navbar'
 import Button from '@/components/ui/Button'
 import api from '@/lib/api'
@@ -64,6 +65,11 @@ export default function GuideDetailPage() {
 
     fetchGuide()
   }, [id])
+
+  const readingTime = (html: string) => {
+    const words = html.replace(/<[^>]*>/g, ' ').trim().split(/\s+/).filter(Boolean).length
+    return Math.max(1, Math.round(words / 200))
+  }
 
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
@@ -147,6 +153,11 @@ export default function GuideDetailPage() {
               <span className="text-sm flex items-center gap-1">
                 <Eye className="w-4 h-4" />
                 {guide.viewCount || 0} vistas
+              </span>
+              <span className="text-white/40">•</span>
+              <span className="text-sm flex items-center gap-1">
+                <BookOpen className="w-4 h-4" />
+                {readingTime(guide.content)} min de lectura
               </span>
             </div>
             {(guide.badges && guide.badges.length > 0 || hasRole(['ADMIN', 'MODERATOR'])) && (
@@ -241,7 +252,10 @@ export default function GuideDetailPage() {
             </div>
           )}
 
-          <div className="pt-8 border-t border-border/50">
+          {/* Related guides */}
+          <RelatedGuides currentGuideId={guide.id} category={guide.category} difficulty={guide.difficulty} />
+
+          <div className="pt-8 border-t border-border/50 mt-8">
             <div className="flex items-center justify-between">
               <div className="text-white/60 text-sm">
                 <p>Última actualización: {new Date(guide.updatedAt).toLocaleDateString('es-ES')} a las {new Date(guide.updatedAt).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</p>
@@ -249,14 +263,16 @@ export default function GuideDetailPage() {
               <div className="flex gap-3">
                 {(hasRole(['ADMIN', 'MODERATOR']) || user?.id === guide.authorId) && (
                   <>
-                    <Button
-                      onClick={() => setShowHistory(!showHistory)}
-                      variant="ghost"
-                      className="gap-2"
-                    >
-                      <Clock className="w-4 h-4" />
-                      Historial
-                    </Button>
+                    {hasRole(['ADMIN']) && (
+                      <Button
+                        onClick={() => setShowHistory(!showHistory)}
+                        variant="ghost"
+                        className="gap-2"
+                      >
+                        <Clock className="w-4 h-4" />
+                        Historial
+                      </Button>
+                    )}
                     <Link href={`/guides/${id}/edit`}>
                       <Button className="gap-2">
                         <Edit2 className="w-4 h-4" />

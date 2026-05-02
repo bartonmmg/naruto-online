@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import Link from 'next/link'
 import { Bell, Check, CheckCheck, MessageSquare, Star, Eye, Trophy } from 'lucide-react'
 import api from '@/lib/api'
@@ -38,21 +38,28 @@ export default function NotificationBell() {
   const [unread, setUnread] = useState(0)
   const ref = useRef<HTMLDivElement>(null)
 
-  const fetchNotifications = () => {
+  const fetchNotifications = useCallback(() => {
     api.get('/notifications')
       .then(r => {
-        setNotifications(r.data.notifications)
-        setUnread(r.data.unreadCount)
+        setNotifications(r.data.notifications ?? [])
+        setUnread(r.data.unreadCount ?? 0)
       })
       .catch(() => {})
-  }
+  }, [])
 
+  // Initial fetch + poll every 30s
   useEffect(() => {
     fetchNotifications()
-    // Poll every 60s
-    const interval = setInterval(fetchNotifications, 60000)
+    const interval = setInterval(fetchNotifications, 30000)
     return () => clearInterval(interval)
-  }, [])
+  }, [fetchNotifications])
+
+  // Refresh immediately when opening the dropdown
+  const handleOpen = () => {
+    const willOpen = !open
+    setOpen(willOpen)
+    if (willOpen) fetchNotifications()
+  }
 
   // Close on outside click
   useEffect(() => {
@@ -62,10 +69,6 @@ export default function NotificationBell() {
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [])
-
-  const handleOpen = () => {
-    setOpen(o => !o)
-  }
 
   const markAllRead = async () => {
     await api.patch('/notifications/all/read').catch(() => {})
@@ -98,14 +101,22 @@ export default function NotificationBell() {
         <div className="absolute right-0 top-12 w-80 bg-bg-elevated border border-border/60 rounded-xl shadow-2xl shadow-black/40 z-50 overflow-hidden">
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-border/40">
-            <span className="font-montserrat font-bold text-sm text-text-primary">Notificaciones</span>
+            <span className="font-montserrat font-bold text-sm text-text-primary flex items-center gap-2">
+              <Bell className="w-4 h-4" />
+              Notificaciones
+              {unread > 0 && (
+                <span className="px-1.5 py-0.5 rounded-full bg-power-red text-white text-[10px] font-black leading-none">
+                  {unread}
+                </span>
+              )}
+            </span>
             {unread > 0 && (
               <button
                 onClick={markAllRead}
                 className="flex items-center gap-1 text-xs text-white/50 hover:text-white/80 transition-colors font-montserrat"
               >
                 <CheckCheck className="w-3.5 h-3.5" />
-                Marcar todo leído
+                Todo leído
               </button>
             )}
           </div>
@@ -116,15 +127,22 @@ export default function NotificationBell() {
               <div className="py-10 text-center">
                 <Bell className="w-8 h-8 text-white/20 mx-auto mb-2" />
                 <p className="text-xs text-white/40 font-montserrat">Sin notificaciones</p>
+                <p className="text-xs text-white/25 font-montserrat mt-1">Te avisaremos cuando algo pase</p>
               </div>
             ) : (
               notifications.map(notif => (
                 <div
                   key={notif.id}
-                  className={`flex items-start gap-3 px-4 py-3 border-b border-border/20 hover:bg-bg-card/50 transition-colors ${
-                    !notif.read ? 'bg-chakra-blue/5' : ''
+                  className={`flex items-start gap-3 px-4 py-3 border-b border-border/20 last:border-0 transition-colors ${
+                    !notif.read ? 'bg-chakra-blue/5 hover:bg-chakra-blue/10' : 'hover:bg-bg-card/50'
                   }`}
                 >
+                  {/* Unread dot */}
+                  {!notif.read && (
+                    <div className="flex-shrink-0 w-1.5 h-1.5 rounded-full bg-chakra-blue mt-2" />
+                  )}
+                  {notif.read && <div className="flex-shrink-0 w-1.5" />}
+
                   <div className="flex-shrink-0 mt-0.5 w-7 h-7 rounded-full bg-bg-card border border-border/50 flex items-center justify-center">
                     {TYPE_ICON[notif.type] || <Bell className="w-3.5 h-3.5 text-white/40" />}
                   </div>
@@ -132,13 +150,13 @@ export default function NotificationBell() {
                   <div className="flex-1 min-w-0">
                     <p className="text-xs text-text-primary font-montserrat leading-relaxed">{notif.message}</p>
                     {notif.guideId && (
-                      <Link
+                      <a
                         href={`/guides/${notif.guideId}`}
                         onClick={() => { markOneRead(notif.id); setOpen(false) }}
                         className="text-xs text-chakra-blue hover:text-chakra-blue/80 transition-colors truncate block mt-0.5"
                       >
                         {notif.guideTitle}
-                      </Link>
+                      </a>
                     )}
                     <span className="text-[10px] text-white/30 mt-1 block">{timeAgo(notif.createdAt)}</span>
                   </div>

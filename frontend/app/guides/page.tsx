@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, BookOpen, Scroll, Plus, Eye, MessageSquare, Search, Trophy } from 'lucide-react'
+import { ChevronLeft, BookOpen, Scroll, Plus, Eye, MessageSquare, Search, Trophy, Clock } from 'lucide-react'
 import { useAuth } from '@/lib/hooks/useAuth'
 import { Guide, CATEGORY_LABELS, DIFFICULTY_LABELS } from '@/lib/types'
 import Navbar from '@/components/Navbar'
@@ -12,6 +12,11 @@ import Input from '@/components/ui/Input'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import GuideBadges from '@/components/guides/GuideBadges'
 import api from '@/lib/api'
+
+function readingTime(html: string) {
+  const words = html.replace(/<[^>]*>/g, ' ').trim().split(/\s+/).filter(Boolean).length
+  return Math.max(1, Math.round(words / 200))
+}
 
 export default function GuidesPage() {
   const router = useRouter()
@@ -273,6 +278,10 @@ export default function GuidesPage() {
                         <span className="inline-flex items-center gap-1">
                           <Eye className="w-3 h-3" />
                           {guide.viewCount || 0} vistas
+                        </span>
+                        <span className="inline-flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          {readingTime(guide.content)}min
                         </span>
                         {(guide._count?.comments || 0) > 0 && (
                           <span className="inline-flex items-center gap-1">
