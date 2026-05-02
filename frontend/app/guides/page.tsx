@@ -237,8 +237,8 @@ export default function GuidesPage() {
                     ) : null}
 
                     <div className="p-6">
-                    {/* Header */}
-                    <div className="flex items-start justify-between mb-4">
+                    {/* Header row: icon + difficulty */}
+                    <div className="flex items-center justify-between mb-3">
                       <div className={`rounded-lg bg-bg-elevated flex items-center justify-center group-hover:scale-110 transition-transform border border-border ${guide.coverImage ? 'w-10 h-10' : 'w-12 h-12'}`}>
                         <img
                           src="/images/tools/shuriken.png"
@@ -246,7 +246,14 @@ export default function GuidesPage() {
                           className="w-6 h-6 object-contain"
                         />
                       </div>
-                      <div className="flex gap-2 items-center flex-wrap justify-end">
+                      <span className={`text-xs font-cinzel px-3 py-1 rounded-full border ${getDifficultyColor(guide.difficulty)}`}>
+                        {DIFFICULTY_LABELS[guide.difficulty] || guide.difficulty}
+                      </span>
+                    </div>
+
+                    {/* Badges row — separate line so they never overlap */}
+                    {(guide.badges && guide.badges.length > 0 || guide.status === 'DRAFT') && (
+                      <div className="flex flex-wrap gap-1.5 mb-3">
                         {guide.status === 'DRAFT' && (
                           <span className="text-xs font-montserrat font-semibold px-2 py-1 rounded-full bg-sage-gold/20 text-sage-gold border border-sage-gold/30">
                             Borrador
@@ -255,11 +262,8 @@ export default function GuidesPage() {
                         {guide.badges && guide.badges.length > 0 && (
                           <GuideBadges badges={guide.badges} size="sm" />
                         )}
-                        <span className={`text-xs font-cinzel px-3 py-1 rounded-full border ${getDifficultyColor(guide.difficulty)}`}>
-                          {DIFFICULTY_LABELS[guide.difficulty] || guide.difficulty}
-                        </span>
                       </div>
-                    </div>
+                    )}
 
                     {/* Content */}
                     <h3 className="text-lg font-montserrat font-bold mb-2 text-text-primary group-hover:text-chakra-blue transition-colors">

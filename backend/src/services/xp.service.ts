@@ -189,6 +189,7 @@ export const xpService = {
 
     const newlyEarned: string[] = []
     for (const achievement of achievements) {
+      // Skip already earned — earnedIds is the source of truth, no duplicate notifications
       if (earnedIds.has(achievement.id)) continue
       if (!conditions[achievement.key]) continue
 
@@ -196,7 +197,6 @@ export const xpService = {
         data: { userId, achievementId: achievement.id },
       })
 
-      // Award XP for achievement
       if (achievement.xpReward > 0) {
         await prisma.user.update({
           where: { id: userId },
@@ -207,7 +207,7 @@ export const xpService = {
         })
       }
 
-      // Send notification
+      // ONE notification per achievement — only fires when newly earned
       await prisma.notification.create({
         data: {
           userId,
