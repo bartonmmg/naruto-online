@@ -2,7 +2,7 @@ import { prisma } from '../lib/prisma.js'
 
 // Default XP config — seeded on first run
 export const DEFAULT_XP_CONFIG = [
-  { action: 'GUIDE_PUBLISHED', label: 'Publicar una guía', xpAmount: 50 },
+  { action: 'GUIDE_PUBLISHED', label: 'Publicar una guía',  xpAmount: 50 },
   { action: 'COMMENT_POSTED',  label: 'Comentar una guía', xpAmount: 5 },
   { action: 'VOTE_RECEIVED',   label: 'Recibir voto útil', xpAmount: 10 },
   { action: 'BADGE_RECEIVED',  label: 'Recibir un badge',  xpAmount: 25 },
@@ -27,21 +27,21 @@ export const ACHIEVEMENT_DEFS = [
   {
     key: 'FIRST_GUIDE',
     title: 'Primera Misión',
-    description: 'Publicá tu primera guía aprobada por un admin',
+    description: 'Publicá tu primera guía en la comunidad',
     imageFile: 'logro-primera-guia.png',
     xpReward: 30,
   },
   {
     key: 'FIVE_GUIDES',
     title: 'Sensei',
-    description: 'Publicá 5 guías aprobadas',
+    description: 'Publicá 5 guías en la comunidad',
     imageFile: 'logro-5-guias.png',
     xpReward: 75,
   },
   {
     key: 'TEN_GUIDES',
     title: 'Crónicas Ninja',
-    description: 'Publicá 10 guías aprobadas',
+    description: 'Publicá 10 guías en la comunidad',
     imageFile: 'logro-10-guias.png',
     xpReward: 150,
   },
@@ -136,7 +136,10 @@ export const xpService = {
     await prisma.xpLog.create({ data: { userId, action, amount: config.xpAmount } })
   },
 
-  // Check and award achievements to a user — anti-abuse: only PUBLISHED guides count
+  // Check and award achievements to a user
+  // Anti-abuse: guide counts use all guides (no DRAFT state anymore, all publish directly)
+  // VOTES/VIEWS use all guides. BADGE_OFFICIAL requires the OFFICIAL badge assigned by admin.
+  // LEGEND requires top 3 in leaderboard — cannot be self-gamed.
   async checkAchievements(userId: string) {
     const achievements = await prisma.achievement.findMany()
     const earned = await prisma.userAchievement.findMany({
@@ -145,27 +148,28 @@ export const xpService = {
     })
     const earnedIds = new Set(earned.map(e => e.achievementId))
 
-    // Pre-fetch data once
-    const publishedGuides = await prisma.guide.findMany({
-      where: { authorId: userId, status: 'PUBLISHED' },
+    // All guides by this user (no DRAFT filter — publish is direct)
+    const allGuides = await prisma.guide.findMany({
+      where: { authorId: userId },
       select: { id: true, viewCount: true, badges: true },
     })
 
-    const totalViews = publishedGuides.reduce((sum, g) => sum + (g.viewCount || 0), 0)
+    const totalViews = allGuides.reduce((sum, g) => sum + (g.viewCount || 0), 0)
 
     const upvotes = await prisma.guideRating.count({
-      where: { value: 1, guide: { authorId: userId, status: 'PUBLISHED' } },
+      where: { value: 1, guide: { authorId: userId } },
     })
 
-    const hasOfficialBadge = publishedGuides.some(g => {
+    // BADGE_OFFICIAL: only admin/mod can assign this — cannot be self-gamed
+    const hasOfficialBadge = allGuides.some(g => {
       try { return (JSON.parse(g.badges || '[]') as string[]).includes('OFFICIAL') }
       catch { return false }
     })
 
-    // Check leaderboard top 3
+    // LEGEND: top 3 of leaderboard by total views — cannot be self-gamed
     const allAuthors = await prisma.user.findMany({
-      where: { guides: { some: { status: 'PUBLISHED' } } },
-      select: { id: true, guides: { where: { status: 'PUBLISHED' }, select: { viewCount: true } } },
+      where: { guides: { some: {} } },
+      select: { id: true, guides: { select: { viewCount: true } } },
     })
     const scoredAuthors = allAuthors
       .map(a => ({ id: a.id, totalViews: a.guides.reduce((s, g) => s + (g.viewCount || 0), 0) }))
@@ -173,14 +177,14 @@ export const xpService = {
     const isTop3 = scoredAuthors.slice(0, 3).some(a => a.id === userId)
 
     const conditions: Record<string, boolean> = {
-      FIRST_GUIDE:   publishedGuides.length >= 1,
-      FIVE_GUIDES:   publishedGuides.length >= 5,
-      TEN_GUIDES:    publishedGuides.length >= 10,
-      VIEWS_100:     totalViews >= 100,
-      VIEWS_1000:    totalViews >= 1000,
-      VOTES_100:     upvotes >= 100,
+      FIRST_GUIDE:    allGuides.length >= 1,
+      FIVE_GUIDES:    allGuides.length >= 5,
+      TEN_GUIDES:     allGuides.length >= 10,
+      VIEWS_100:      totalViews >= 100,
+      VIEWS_1000:     totalViews >= 1000,
+      VOTES_100:      upvotes >= 100,
       BADGE_OFFICIAL: hasOfficialBadge,
-      LEGEND:        isTop3,
+      LEGEND:         isTop3,
     }
 
     const newlyEarned: string[] = []

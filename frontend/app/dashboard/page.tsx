@@ -3,42 +3,93 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { LogOut, Zap, Shield, Trophy, Flame, Compass, Users, Settings } from 'lucide-react'
-import Button from '@/components/ui/Button'
+import {
+  LogOut, Zap, Shield, Trophy, Flame, Eye, MessageSquare,
+  ThumbsUp, Heart, BookOpen, Settings, TrendingUp, Clock,
+  ChevronDown, ChevronUp, Star,
+} from 'lucide-react'
+import { CATEGORY_LABELS, DIFFICULTY_LABELS } from '@/lib/types'
+import GuideBadges from '@/components/guides/GuideBadges'
+import api from '@/lib/api'
 
-interface User {
+interface Achievement {
+  id: string
+  earnedAt: string
+  achievement: { key: string; title: string; description: string; imageFile: string; xpReward: number }
+}
+
+interface Guide {
+  id: string
+  title: string
+  category: string
+  difficulty: string
+  viewCount: number
+  badges: string[]
+  coverImage?: string | null
+  createdAt: string
+  _count: { ratings: number; comments: number; reactions: number }
+}
+
+interface Profile {
   id: string
   username: string
   email: string
-  level: number
   xp: number
+  level: number
   role: string
+  createdAt: string
+  guides: Guide[]
+  stats: {
+    totalViews: number
+    totalComments: number
+    totalReactions: number
+    upvotes: number
+    guideCount: number
+  }
+  achievements: Achievement[]
 }
 
-function getRank(level: number) {
-  if (level >= 80) return { name: 'Kage',     cls: 'rank-kage',     icon: '🔥' }
-  if (level >= 40) return { name: 'Jonin',    cls: 'rank-jonin',    icon: '⚡' }
-  if (level >= 15) return { name: 'Chunin',   cls: 'rank-chunin',   icon: '💧' }
-  return               { name: 'Genin',    cls: 'rank-genin',    icon: '🌿' }
+function getRankLabel(level: number) {
+  if (level >= 10) return { name: 'Kage',   color: 'text-sage-gold',    icon: '🔥' }
+  if (level >= 7)  return { name: 'Jōnin',  color: 'text-accent-orange', icon: '⚡' }
+  if (level >= 4)  return { name: 'Chūnin', color: 'text-chakra-blue',   icon: '💧' }
+  return               { name: 'Genin',  color: 'text-nature-green',  icon: '🌿' }
 }
 
-const COMING_SOON = [
-  { icon: Zap,     label: 'Misiones Diarias', desc: 'Completa retos y gana XP',        color: 'text-accent-orange' },
-  { icon: Compass, label: 'Herramientas',     desc: 'Guías y calculadoras del juego',  color: 'text-chakra-blue' },
-  { icon: Users,   label: 'Comunidad',        desc: 'Foros y ranking global',          color: 'text-power-red' },
-  { icon: Trophy,  label: 'Logros',           desc: 'Insignias y recompensas',         color: 'text-sage-gold' },
-]
+function getDiffColor(d: string) {
+  if (d === 'BASICO') return 'text-nature-green border-nature-green/30 bg-nature-green/10'
+  if (d === 'INTERMEDIO') return 'text-sage-gold border-sage-gold/30 bg-sage-gold/10'
+  return 'text-power-red border-power-red/30 bg-power-red/10'
+}
+
+function timeAgo(dateStr: string) {
+  const diff = Date.now() - new Date(dateStr).getTime()
+  const days = Math.floor(diff / 86400000)
+  if (days === 0) return 'hoy'
+  if (days === 1) return 'ayer'
+  if (days < 30) return `hace ${days}d`
+  return `hace ${Math.floor(days / 30)}m`
+}
 
 export default function DashboardPage() {
   const router = useRouter()
-  const [user, setUser] = useState<User | null>(null)
+  const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
+  const [showAllAchievements, setShowAllAchievements] = useState(false)
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('user')
-    if (!storedUser) { router.push('/auth/login'); return }
-    setUser(JSON.parse(storedUser))
-    setLoading(false)
+    const token = localStorage.getItem('token')
+    if (!token) { router.push('/auth/login'); return }
+
+    api.get('/leaderboard/me')
+      .then(r => setProfile(r.data))
+      .catch(() => {
+        // Fallback to localStorage if API fails
+        const stored = localStorage.getItem('user')
+        if (stored) setProfile({ ...JSON.parse(stored), guides: [], stats: { totalViews: 0, totalComments: 0, totalReactions: 0, upvotes: 0, guideCount: 0 }, achievements: [] })
+        else router.push('/auth/login')
+      })
+      .finally(() => setLoading(false))
   }, [router])
 
   const handleLogout = () => {
@@ -50,7 +101,7 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-bg-primary flex items-center justify-center">
-        <div className="flex items-center gap-3 text-text-muted">
+        <div className="flex items-center gap-3 text-white/50">
           <span className="w-5 h-5 border-2 border-accent-orange/30 border-t-accent-orange rounded-full animate-spin" />
           <span className="font-cinzel text-sm tracking-widest">CARGANDO...</span>
         </div>
@@ -58,35 +109,42 @@ export default function DashboardPage() {
     )
   }
 
-  if (!user) return null
+  if (!profile) return null
 
-  const xpForNextLevel = Math.pow(user.level, 2) * 100
-  const xpProgress = Math.min((user.xp / xpForNextLevel) * 100, 100)
-  const rank = getRank(user.level) 
+  const rank = getRankLabel(profile.level)
+  // XP progress to next level (pulled from LevelConfig logic in backend; approximate here)
+  const xpForNext = Math.pow(profile.level, 2) * 100
+  const xpProgress = Math.min((profile.xp / xpForNext) * 100, 100)
+
+  const shownAchievements = showAllAchievements
+    ? profile.achievements
+    : profile.achievements.slice(0, 6)
 
   return (
-    <main className="min-h-screen bg-bg-primary grid-bg">
+    <main className="min-h-screen bg-bg-primary">
+      <div className="fixed inset-0 pointer-events-none z-0" style={{
+        background: 'radial-gradient(ellipse at 50% 0%, rgba(255,107,0,0.04) 0%, transparent 60%)',
+      }} />
 
       {/* Top bar */}
-      <header className="border-b border-border bg-bg-primary/80 backdrop-blur-xl sticky top-0 z-40">
-        <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2.5 group">
-            <span className="text-power-red/70 text-lg font-cinzel group-hover:text-power-red transition-colors leading-none">忍</span>
-            <span className="font-cinzel font-black text-sm tracking-[0.2em] text-text-muted group-hover:text-power-red transition-colors">
+      <header className="border-b border-border bg-bg-primary/90 backdrop-blur-xl sticky top-0 z-40">
+        <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-2 group">
+            <span className="text-power-red/70 text-lg font-cinzel group-hover:text-power-red transition-colors">忍</span>
+            <span className="font-cinzel font-black text-sm tracking-[0.2em] text-white/70 group-hover:text-power-red transition-colors">
               HD<span className="text-power-red">RV</span>
             </span>
           </Link>
-
-          <div className="flex items-center gap-4">
-            <div className="hidden sm:flex items-center gap-2">
-              <span className="text-xs text-text-dim font-cinzel">{user.username}</span>
-              <span className={`text-xs font-cinzel px-2 py-0.5 rounded-full ${rank.cls}`}>
-                {rank.name}
-              </span>
-            </div>
+          <div className="flex items-center gap-3">
+            {profile.role === 'ADMIN' && (
+              <Link href="/dashboard/admin/xp" className="flex items-center gap-1.5 text-xs text-accent-orange/70 hover:text-accent-orange transition-colors font-cinzel tracking-wider">
+                <Settings className="w-3.5 h-3.5" />
+                Back Office
+              </Link>
+            )}
             <button
               onClick={handleLogout}
-              className="flex items-center gap-1.5 text-xs text-text-dim hover:text-power-red transition-colors font-cinzel"
+              className="flex items-center gap-1.5 text-xs text-white/40 hover:text-power-red transition-colors font-cinzel"
             >
               <LogOut className="w-3.5 h-3.5" />
               Salir
@@ -95,128 +153,187 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      <div className="max-w-6xl mx-auto px-6 py-10">
+      <div className="max-w-5xl mx-auto px-6 py-10 relative z-10">
 
-        {/* Welcome + rank */}
-        <div className="mb-10 animate-fade-up">
-          <p className="text-xs font-cinzel text-text-dim tracking-widest mb-1">PANEL DE NINJA</p>
-          <h1 className="text-3xl font-cinzel font-black text-text-primary">
-            Hola, <span className="text-accent-orange">{user.username}</span>
-          </h1>
-        </div>
-
-        {/* Stats grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-
-          {/* XP Card - spans 2 cols on lg */}
-          <div className="lg:col-span-2 game-card game-card-orange p-6 rounded-xl animate-fade-up" style={{ animationDelay: '0.05s' }}>
-            <div className="flex items-start justify-between mb-6">
-              <div>
-                <p className="text-xs font-cinzel text-text-dim tracking-widest mb-1">EXPERIENCIA</p>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-4xl font-cinzel font-black text-accent-orange">{user.xp.toLocaleString()}</span>
-                  <span className="text-text-dim text-sm">/ {xpForNextLevel.toLocaleString()} XP</span>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <Flame className="w-4 h-4 text-accent-orange" />
-                <span className={`text-sm font-cinzel px-3 py-1 rounded-full ${rank.cls}`}>
-                  {rank.icon} {rank.name}
+        {/* ── Hero: Avatar + nombre + rango ── */}
+        <div className="flex items-center gap-6 mb-10">
+          <div className="w-20 h-20 rounded-2xl bg-bg-elevated border-2 border-border flex items-center justify-center text-3xl font-black text-accent-orange font-cinzel flex-shrink-0">
+            {profile.username[0].toUpperCase()}
+          </div>
+          <div>
+            <div className="flex items-center gap-3 flex-wrap mb-1">
+              <h1 className="text-3xl font-cinzel font-black text-text-primary">{profile.username}</h1>
+              {profile.role !== 'USER' && (
+                <span className={`text-xs px-2 py-1 rounded border font-montserrat font-semibold ${
+                  profile.role === 'ADMIN' ? 'text-power-red bg-power-red/10 border-power-red/30' : 'text-accent-orange bg-accent-orange/10 border-accent-orange/30'
+                }`}>
+                  {profile.role === 'ADMIN' ? 'Admin' : 'Moderador'}
                 </span>
-              </div>
+              )}
             </div>
+            <div className="flex items-center gap-3 text-sm text-white/50 flex-wrap">
+              <span className={`font-cinzel font-bold ${rank.color}`}>{rank.icon} {rank.name}</span>
+              <span>Nivel {profile.level}</span>
+              <span>{profile.xp.toLocaleString()} XP</span>
+            </div>
+          </div>
+        </div>
 
-            {/* XP bar */}
+        {/* ── XP bar + nivel ── */}
+        <div className="bg-bg-card border border-border/50 rounded-xl p-5 mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Flame className="w-4 h-4 text-accent-orange" />
+              <span className="text-sm font-montserrat font-semibold text-text-primary">Experiencia</span>
+            </div>
+            <span className="text-sm font-cinzel font-bold text-accent-orange">{profile.xp.toLocaleString()} / {xpForNext.toLocaleString()} XP</span>
+          </div>
+          <div className="w-full bg-bg-elevated rounded-full h-2 overflow-hidden mb-2">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-accent-orange to-orange-400 transition-all duration-700"
+              style={{ width: `${xpProgress}%` }}
+            />
+          </div>
+          <div className="flex justify-between text-xs text-white/40 font-montserrat">
+            <span>Nivel {profile.level} — {rank.name}</span>
+            <span>{xpForNext - profile.xp} XP para nivel {profile.level + 1}</span>
+          </div>
+        </div>
+
+        {/* ── Stats ── */}
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-8">
+          {[
+            { icon: <BookOpen className="w-4 h-4" />, value: profile.stats.guideCount, label: 'Guías', color: 'text-chakra-blue' },
+            { icon: <Eye className="w-4 h-4" />, value: profile.stats.totalViews.toLocaleString(), label: 'Vistas', color: 'text-white' },
+            { icon: <ThumbsUp className="w-4 h-4" />, value: profile.stats.upvotes, label: 'Votos útil', color: 'text-nature-green' },
+            { icon: <MessageSquare className="w-4 h-4" />, value: profile.stats.totalComments, label: 'Comentarios', color: 'text-accent-orange' },
+            { icon: <Heart className="w-4 h-4" />, value: profile.stats.totalReactions, label: 'Reacciones', color: 'text-power-red' },
+          ].map(s => (
+            <div key={s.label} className="bg-bg-card border border-border/50 rounded-xl p-4 text-center">
+              <div className={`flex justify-center mb-1 ${s.color}`}>{s.icon}</div>
+              <div className="font-cinzel font-black text-xl text-text-primary">{s.value}</div>
+              <div className="text-xs text-white/40 font-montserrat">{s.label}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* ── Mis Guías ── */}
+        {profile.guides.length > 0 && (
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-chakra-blue" />
+                <h2 className="font-cinzel font-bold text-lg text-text-primary">Mis Guías</h2>
+              </div>
+              <Link href={`/users/${profile.username}`} className="text-xs text-white/40 hover:text-chakra-blue transition-colors font-montserrat">
+                Ver perfil público →
+              </Link>
+            </div>
             <div className="space-y-2">
-              <div className="w-full bg-bg-elevated rounded-full h-2 overflow-hidden">
+              {profile.guides.slice(0, 5).map(guide => (
+                <Link
+                  key={guide.id}
+                  href={`/guides/${guide.id}`}
+                  className="flex items-center gap-4 p-3.5 rounded-xl border border-border/50 bg-bg-card/50 hover:bg-bg-card hover:border-chakra-blue/40 transition-all group"
+                >
+                  {guide.coverImage && (
+                    <img src={guide.coverImage} alt="" className="w-12 h-12 rounded-lg object-cover flex-shrink-0 border border-border" />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                      <p className="font-montserrat font-bold text-sm text-text-primary group-hover:text-chakra-blue transition-colors truncate">
+                        {guide.title}
+                      </p>
+                      {guide.badges?.length > 0 && <GuideBadges badges={guide.badges} size="sm" />}
+                    </div>
+                    <div className="flex items-center gap-3 text-xs text-white/40 flex-wrap">
+                      <span className={`px-1.5 py-0.5 rounded border text-[10px] font-cinzel ${getDiffColor(guide.difficulty)}`}>
+                        {DIFFICULTY_LABELS[guide.difficulty]}
+                      </span>
+                      <span>{CATEGORY_LABELS[guide.category] || guide.category}</span>
+                      <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{timeAgo(guide.createdAt)}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 text-xs text-white/40 flex-shrink-0">
+                    <span className="flex items-center gap-1"><Eye className="w-3 h-3" />{guide.viewCount}</span>
+                    <span className="flex items-center gap-1 hidden sm:flex"><ThumbsUp className="w-3 h-3" />{guide._count.ratings}</span>
+                    <span className="flex items-center gap-1 hidden md:flex"><MessageSquare className="w-3 h-3" />{guide._count.comments}</span>
+                  </div>
+                </Link>
+              ))}
+              {profile.guides.length > 5 && (
+                <Link href={`/users/${profile.username}`} className="block text-center text-xs text-white/40 hover:text-chakra-blue transition-colors font-montserrat py-2">
+                  Ver las {profile.guides.length - 5} guías restantes →
+                </Link>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ── Logros ── */}
+        {profile.achievements.length > 0 && (
+          <div className="mb-8">
+            <div className="flex items-center gap-2 mb-4">
+              <Trophy className="w-5 h-5 text-sage-gold" />
+              <h2 className="font-cinzel font-bold text-lg text-text-primary">Logros Desbloqueados</h2>
+              <span className="text-sm font-montserrat text-white/40 ml-1">({profile.achievements.length})</span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+              {shownAchievements.map(ua => (
                 <div
-                  className="xp-bar-fill h-full rounded-full transition-all duration-700"
-                  style={{ width: `${xpProgress}%` }}
-                />
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-text-dim">{Math.round(xpProgress)}% hacia el siguiente nivel</span>
-                <span className="text-xs text-text-dim">{xpForNextLevel - user.xp} XP restantes</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Level card */}
-          <div className="game-card game-card-orange p-6 rounded-xl flex flex-col items-center justify-center animate-fade-up" style={{ animationDelay: '0.1s' }}>
-            <p className="text-xs font-cinzel text-text-dim tracking-widest mb-3">NIVEL</p>
-            <div className="relative">
-              <div className="w-24 h-24 rounded-full border-2 border-accent-orange/30 flex items-center justify-center bg-accent-orange/5">
-                <span className="text-4xl font-cinzel font-black text-accent-orange">{user.level}</span>
-              </div>
-              <div className="absolute -top-1 -right-1 w-6 h-6 bg-accent-orange rounded-full flex items-center justify-center">
-                <Shield className="w-3 h-3 text-black" />
-              </div>
-            </div>
-            <p className="text-xs text-text-muted mt-3 font-cinzel">{rank.name}</p>
-          </div>
-        </div>
-
-        {/* Daily mission teaser */}
-        <div className="game-card p-5 rounded-xl border-dashed border border-accent-orange/20 bg-accent-orange/3 flex items-center justify-between mb-8 animate-fade-up" style={{ animationDelay: '0.15s' }}>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-accent-orange/10 rounded-xl flex items-center justify-center">
-              <Zap className="w-5 h-5 text-accent-orange" />
-            </div>
-            <div>
-              <p className="text-sm font-cinzel font-bold text-text-primary">Misión diaria disponible</p>
-              <p className="text-xs text-text-dim mt-0.5">Inicia sesión cada día para ganar +10 XP</p>
-            </div>
-          </div>
-          <Button variant="ninja" size="sm" disabled>
-            Próximamente
-          </Button>
-        </div>
-
-        {/* Coming soon modules */}
-        <div>
-          <p className="text-xs font-cinzel text-text-dim tracking-widest mb-4">PRÓXIMAS FUNCIONES</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {COMING_SOON.map(({ icon: Icon, label, desc, color }, i) => (
-              <div
-                key={label}
-                className="game-card p-5 rounded-xl group cursor-not-allowed opacity-60 animate-fade-up"
-                style={{ animationDelay: `${0.2 + i * 0.05}s` }}
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <Icon className={`w-5 h-5 ${color}`} />
-                  <span className="text-xs text-text-dim font-cinzel">Pronto</span>
+                  key={ua.id}
+                  className="group relative flex flex-col items-center gap-2 p-4 bg-bg-card border border-border/50 rounded-xl hover:border-sage-gold/40 transition-all cursor-default"
+                  title={ua.achievement.description}
+                >
+                  <img
+                    src={`/images/guides/logros/${ua.achievement.imageFile}`}
+                    alt={ua.achievement.title}
+                    className="w-14 h-14 object-contain group-hover:scale-110 transition-transform"
+                  />
+                  <p className="font-montserrat font-bold text-xs text-text-primary text-center leading-tight">{ua.achievement.title}</p>
+                  <p className="text-[10px] text-white/30">{timeAgo(ua.earnedAt)}</p>
+                  {ua.achievement.xpReward > 0 && (
+                    <span className="absolute top-2 right-2 text-[9px] font-bold text-sage-gold">+{ua.achievement.xpReward}XP</span>
+                  )}
+                  {/* Tooltip */}
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-40 bg-bg-elevated border border-border/60 rounded-lg p-2 text-xs text-white/60 font-montserrat opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 shadow-xl">
+                    {ua.achievement.description}
+                  </div>
                 </div>
-                <p className="font-cinzel font-bold text-sm text-text-primary mb-1">{label}</p>
-                <p className="text-xs text-text-dim leading-relaxed">{desc}</p>
-              </div>
-            ))}
+              ))}
+            </div>
+            {profile.achievements.length > 6 && (
+              <button
+                onClick={() => setShowAllAchievements(s => !s)}
+                className="mt-3 flex items-center gap-1.5 text-xs text-white/40 hover:text-white/70 transition-colors font-montserrat"
+              >
+                {showAllAchievements
+                  ? <><ChevronUp className="w-3.5 h-3.5" />Mostrar menos</>
+                  : <><ChevronDown className="w-3.5 h-3.5" />Ver {profile.achievements.length - 6} más</>}
+              </button>
+            )}
           </div>
-        </div>
+        )}
 
-        {/* Quick links */}
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
-          <Link href="/rankings" className="text-xs font-cinzel text-text-dim hover:text-power-red transition-colors tracking-widest">
-            → Rankings
-          </Link>
-          <Link href="/tools" className="text-xs font-cinzel text-text-dim hover:text-power-red transition-colors tracking-widest">
-            → Herramientas
-          </Link>
-          <Link href="/tools/coupons" className="text-xs font-cinzel text-text-dim hover:text-power-red transition-colors tracking-widest">
-            → Calculadora de Cupones
-          </Link>
-          {user.role === 'ADMIN' && (
-            <Link href="/dashboard/admin/xp" className="text-xs font-cinzel text-accent-orange hover:text-accent-orange/70 transition-colors tracking-widest flex items-center gap-1">
-              <Settings className="w-3 h-3" />
-              → Back Office XP
+        {/* Empty state si no tiene guías ni logros */}
+        {profile.guides.length === 0 && profile.achievements.length === 0 && (
+          <div className="text-center py-16 border border-dashed border-border/50 rounded-2xl">
+            <Star className="w-12 h-12 text-white/20 mx-auto mb-4" />
+            <p className="font-cinzel font-bold text-text-primary mb-2">Tu camino ninja comienza aquí</p>
+            <p className="text-sm text-white/40 font-montserrat mb-6">Publicá tu primera guía para ganar XP y logros</p>
+            <Link href="/guides" className="inline-flex items-center gap-2 px-6 py-2.5 bg-chakra-blue/20 border border-chakra-blue/40 text-chakra-blue rounded-lg text-sm font-montserrat font-semibold hover:bg-chakra-blue/30 transition-colors">
+              <BookOpen className="w-4 h-4" />
+              Ir a Guías
             </Link>
-          )}
-        </div>
+          </div>
+        )}
 
-        {/* Footer note */}
-        <div className="mt-6 text-center">
-          <p className="text-xs text-text-dim font-cinzel tracking-wider">
-            HDRV v1.0 — Naruto Online Community
-          </p>
+        {/* Links rápidos */}
+        <div className="mt-8 pt-6 border-t border-border/30 flex flex-wrap items-center justify-center gap-6 text-xs font-cinzel text-white/30 tracking-widest">
+          <Link href="/guides" className="hover:text-power-red transition-colors">→ Guías</Link>
+          <Link href="/rankings" className="hover:text-power-red transition-colors">→ Rankings</Link>
+          <Link href="/tools" className="hover:text-power-red transition-colors">→ Herramientas</Link>
+          <Link href="/guides/leaderboard" className="hover:text-power-red transition-colors">→ Leaderboard</Link>
         </div>
       </div>
     </main>

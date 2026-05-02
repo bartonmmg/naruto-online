@@ -33,4 +33,24 @@ export const leaderboardController = {
       res.status(500).json({ error: error.message || 'Error al obtener perfil' })
     }
   },
+
+  // Own profile — requires auth, returns full profile + fresh XP from DB
+  async getMyProfile(req: AuthRequest, res: Response) {
+    try {
+      if (!req.userId) return res.status(401).json({ error: 'No autenticado' })
+
+      const { prisma } = await import('../lib/prisma.js')
+      const user = await prisma.user.findUnique({
+        where: { id: req.userId },
+        select: { id: true, username: true, email: true, xp: true, level: true, role: true, createdAt: true },
+      })
+      if (!user) return res.status(404).json({ error: 'Usuario no encontrado' })
+
+      const data = await guidesService.getUserProfile(user.username)
+      const achievements = await xpService.getUserAchievements(user.id)
+      res.json({ ...data, ...user, achievements })
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || 'Error al obtener perfil' })
+    }
+  },
 }
