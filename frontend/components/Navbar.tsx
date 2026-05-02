@@ -3,16 +3,17 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Menu, X, LogOut } from 'lucide-react'
+import { Menu, X, LogOut, Trophy } from 'lucide-react'
 import Button from './ui/Button'
 import { useAuth } from '@/lib/hooks/useAuth'
+import NotificationBell from './NotificationBell'
 
 const navLinks = [
   { href: '/#features',  label: 'Características' },
   { href: '/#community', label: 'Comunidad' },
-  { href: '/rankings',  label: 'Rankings' },
-  { href: '/tools',     label: 'Herramientas' },
-  { href: '/guides',    label: 'Guías' },
+  { href: '/rankings',   label: 'Rankings' },
+  { href: '/tools',      label: 'Herramientas' },
+  { href: '/guides',     label: 'Guías' },
 ]
 
 export default function Navbar() {
@@ -76,15 +77,23 @@ export default function Navbar() {
         </div>
 
         {/* Desktop auth */}
-        <div className="hidden md:flex items-center gap-4">
+        <div className="hidden md:flex items-center gap-3">
           {isLoggedIn && user ? (
             <>
-              <Link href="/dashboard" className="text-sm font-montserrat font-semibold text-white/70 hover:text-power-red transition-colors">
+              <Link
+                href="/guides/leaderboard"
+                className="p-2 rounded-lg hover:bg-white/10 transition-colors text-white/70 hover:text-white"
+                title="Leaderboard"
+              >
+                <Trophy className="w-5 h-5" />
+              </Link>
+              <NotificationBell />
+              <Link href="/dashboard" className="text-sm font-montserrat font-semibold text-white/70 hover:text-power-red transition-colors px-2">
                 {user.username}
               </Link>
               <button
                 onClick={handleLogout}
-                className="group px-6 py-2.5 text-sm font-montserrat font-semibold text-white/70 hover:text-power-red transition-all duration-200 border border-white/15 rounded-lg hover:border-white/30 hover:bg-white/5 flex items-center gap-2"
+                className="group px-5 py-2 text-sm font-montserrat font-semibold text-white/70 hover:text-power-red transition-all duration-200 border border-white/15 rounded-lg hover:border-white/30 hover:bg-white/5 flex items-center gap-2"
               >
                 <LogOut className="w-4 h-4" />
                 Salir

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
-import { ChevronLeft, BookOpen, Scroll, Plus, Eye, MessageSquare, Search } from 'lucide-react'
+import { ChevronLeft, BookOpen, Scroll, Plus, Eye, MessageSquare, Search, Trophy } from 'lucide-react'
 import { useAuth } from '@/lib/hooks/useAuth'
 import { Guide, CATEGORY_LABELS, DIFFICULTY_LABELS } from '@/lib/types'
 import Navbar from '@/components/Navbar'
@@ -123,14 +123,23 @@ export default function GuidesPage() {
                 y tips exclusivos para dominar cada aspecto del juego.
               </p>
             </div>
-            {hasRole(['ADMIN', 'MODERATOR']) && (
-              <Link href="/guides/create" className="flex-shrink-0 ml-4">
-                <Button className="gap-2">
-                  <Plus className="w-5 h-5" />
-                  Nueva Guía
-                </Button>
+            <div className="flex items-center gap-3 flex-shrink-0 ml-4">
+              <Link
+                href="/guides/leaderboard"
+                className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-sage-gold/40 bg-sage-gold/10 text-sage-gold hover:bg-sage-gold/20 transition-all font-montserrat font-semibold text-sm"
+              >
+                <Trophy className="w-4 h-4" />
+                Leaderboard
               </Link>
-            )}
+              {hasRole(['ADMIN', 'MODERATOR']) && (
+                <Link href="/guides/create">
+                  <Button className="gap-2">
+                    <Plus className="w-5 h-5" />
+                    Nueva Guía
+                  </Button>
+                </Link>
+              )}
+            </div>
           </div>
 
           {/* Category Filter */}
@@ -250,7 +259,9 @@ export default function GuidesPage() {
                     {/* Footer */}
                     <div className="space-y-3 pt-4 border-t border-border/50">
                       <div className="flex items-center gap-3 text-xs text-white/50">
-                        <span>{guide.author.username}</span>
+                        <Link href={`/users/${guide.author.username}`} onClick={e => e.stopPropagation()} className="hover:text-chakra-blue transition-colors">
+                          @{guide.author.username}
+                        </Link>
                         <span className="inline-flex items-center gap-1">
                           <Scroll className="w-3 h-3" />
                           {CATEGORY_LABELS[guide.category] || guide.category}

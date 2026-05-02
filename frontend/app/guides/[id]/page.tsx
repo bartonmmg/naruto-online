@@ -136,7 +136,7 @@ export default function GuideDetailPage() {
               {guide.title}
             </h1>
             <div className="flex flex-wrap items-center gap-4 text-white/70 mb-4">
-              <span className="text-sm">Por <span className="text-white font-semibold">{guide.author.username}</span></span>
+              <span className="text-sm">Por <Link href={`/users/${guide.author.username}`} className="text-white font-semibold hover:text-chakra-blue transition-colors">{guide.author.username}</Link></span>
               <span className="text-white/40">•</span>
               <span className="text-sm">{CATEGORY_LABELS[guide.category] || guide.category}</span>
               <span className="text-white/40">•</span>

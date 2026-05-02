@@ -4,6 +4,8 @@ import dotenv from 'dotenv'
 import { authRouter } from './routes/auth.routes.js'
 import guidesRouter from './routes/guides.routes.js'
 import rankingRouter from './routes/ranking.routes.js'
+import leaderboardRoutes from './routes/leaderboard.routes.js'
+import notificationsRoutes from './routes/notifications.routes.js'
 import { apiKeyMiddleware } from './middleware/apiKey.js'
 
 // Load environment variables (try .env.local first, then .env)
@@ -36,6 +38,8 @@ app.use('/auth', authRouter)
 app.use(apiKeyMiddleware)
 app.use('/guides', guidesRouter)
 app.use('/api/rankings', rankingRouter)
+app.use('/leaderboard', leaderboardRoutes)
+app.use('/notifications', notificationsRoutes)
 
 const server = app.listen(PORT, () => {
   console.log(`🚀 Backend running on http://localhost:${PORT}`)

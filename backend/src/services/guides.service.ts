@@ -230,6 +230,23 @@ export const guidesService = {
       data: { viewCount: totalViews },
     })
 
+    // Milestone notifications (100, 500, 1000 views)
+    const milestones = [100, 500, 1000]
+    if (milestones.includes(totalViews)) {
+      const g = await prisma.guide.findUnique({ where: { id: guideId }, select: { authorId: true, title: true } })
+      if (g) {
+        await prisma.notification.create({
+          data: {
+            userId: g.authorId,
+            type: 'MILESTONE',
+            message: `Tu guía "${g.title}" alcanzó ${totalViews} vistas`,
+            guideId,
+            guideTitle: g.title,
+          },
+        })
+      }
+    }
+
     return { viewCount: totalViews }
   },
 
@@ -270,10 +287,27 @@ export const guidesService = {
       throw new Error('Guía no encontrada')
     }
 
-    return await prisma.guideComment.create({
+    const comment = await prisma.guideComment.create({
       data: { guideId, authorId, content },
       include: { author: { select: { username: true } } },
     })
+
+    // Notify guide author (if not commenting on own guide)
+    const guideAuthor = await prisma.guide.findUnique({ where: { id: guideId }, select: { authorId: true, title: true } })
+    if (guideAuthor && guideAuthor.authorId !== authorId) {
+      const commenter = await prisma.user.findUnique({ where: { id: authorId }, select: { username: true } })
+      await prisma.notification.create({
+        data: {
+          userId: guideAuthor.authorId,
+          type: 'COMMENT',
+          message: `${commenter?.username} comentó tu guía`,
+          guideId,
+          guideTitle: guideAuthor.title,
+        },
+      })
+    }
+
+    return comment
   },
 
   async deleteComment(commentId: string, requesterId: string, requesterRole: string) {
@@ -312,13 +346,28 @@ export const guidesService = {
       throw new Error('Guía no encontrada')
     }
 
-    return await prisma.guide.update({
+    const updated = await prisma.guide.update({
       where: { id: guideId },
       data: { badges: JSON.stringify(badges) },
       include: {
         author: { select: { username: true } },
       },
     })
+
+    const author = await prisma.guide.findUnique({ where: { id: guideId }, select: { authorId: true, title: true } })
+    if (author && badges.length > 0) {
+      await prisma.notification.create({
+        data: {
+          userId: author.authorId,
+          type: 'BADGE',
+          message: `Tu guía "${author.title}" recibió un badge`,
+          guideId,
+          guideTitle: author.title,
+        },
+      })
+    }
+
+    return updated
   },
 
   async toggleReaction(guideId: string, userId: string, emoji: string) {
@@ -370,5 +419,165 @@ export const guidesService = {
     }
 
     return result
+  },
+
+  async getLeaderboard() {
+    // Top guides by views, ratings, comments, trending (last 7 days)
+    const allGuides = await prisma.guide.findMany({
+      where: { status: 'PUBLISHED' },
+      include: {
+        author: { select: { username: true, id: true } },
+        _count: { select: { ratings: true, comments: true, reactions: true, views: true } },
+      },
+    })
+
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+
+    // Recent views count per guide
+    const recentViews = await prisma.guideView.groupBy({
+      by: ['guideId'],
+      where: { viewedAt: { gte: sevenDaysAgo } },
+      _count: { guideId: true },
+    })
+    const recentViewMap: Record<string, number> = {}
+    recentViews.forEach(r => { recentViewMap[r.guideId] = r._count.guideId })
+
+    // Upvotes per guide
+    const upvotes = await prisma.guideRating.groupBy({
+      by: ['guideId'],
+      where: { value: 1 },
+      _count: { guideId: true },
+    })
+    const upvoteMap: Record<string, number> = {}
+    upvotes.forEach(r => { upvoteMap[r.guideId] = r._count.guideId })
+
+    const formatted = allGuides.map(g => ({
+      id: g.id,
+      title: g.title,
+      category: g.category,
+      difficulty: g.difficulty,
+      badges: g.badges ? JSON.parse(g.badges) : [],
+      author: g.author,
+      viewCount: g.viewCount || 0,
+      recentViews: recentViewMap[g.id] || 0,
+      upvotes: upvoteMap[g.id] || 0,
+      commentCount: g._count.comments,
+      reactionCount: g._count.reactions,
+      score: (g.viewCount || 0) * 0.3 + (g._count.comments) * 0.4 + (upvoteMap[g.id] || 0) * 0.3,
+      createdAt: g.createdAt,
+    }))
+
+    return {
+      topViews: [...formatted].sort((a, b) => b.viewCount - a.viewCount).slice(0, 10),
+      topRated: [...formatted].sort((a, b) => b.upvotes - a.upvotes).slice(0, 10),
+      topCommented: [...formatted].sort((a, b) => b.commentCount - a.commentCount).slice(0, 10),
+      trending: [...formatted].sort((a, b) => b.recentViews - a.recentViews).slice(0, 10),
+      topScore: [...formatted].sort((a, b) => b.score - a.score).slice(0, 10),
+    }
+  },
+
+  async getAuthorLeaderboard() {
+    const authors = await prisma.user.findMany({
+      where: { guides: { some: { status: 'PUBLISHED' } } },
+      select: {
+        id: true,
+        username: true,
+        level: true,
+        xp: true,
+        guides: {
+          where: { status: 'PUBLISHED' },
+          select: {
+            id: true,
+            title: true,
+            viewCount: true,
+            badges: true,
+            _count: { select: { ratings: true, comments: true, reactions: true } },
+          },
+        },
+      },
+    })
+
+    // Upvotes per author
+    const upvotes = await prisma.guideRating.findMany({
+      where: { value: 1, guide: { status: 'PUBLISHED' } },
+      select: { guide: { select: { authorId: true } } },
+    })
+    const upvoteByAuthor: Record<string, number> = {}
+    upvotes.forEach(u => {
+      const aid = u.guide.authorId
+      upvoteByAuthor[aid] = (upvoteByAuthor[aid] || 0) + 1
+    })
+
+    const formatted = authors.map(u => {
+      const totalViews = u.guides.reduce((sum, g) => sum + (g.viewCount || 0), 0)
+      const totalComments = u.guides.reduce((sum, g) => sum + g._count.comments, 0)
+      const totalReactions = u.guides.reduce((sum, g) => sum + g._count.reactions, 0)
+      const upvotesCount = upvoteByAuthor[u.id] || 0
+      const badgeCount = u.guides.reduce((sum, g) => {
+        try { return sum + (JSON.parse(g.badges || '[]') as string[]).length } catch { return sum }
+      }, 0)
+      return {
+        id: u.id,
+        username: u.username,
+        level: u.level,
+        xp: u.xp,
+        guideCount: u.guides.length,
+        totalViews,
+        totalComments,
+        totalReactions,
+        upvotes: upvotesCount,
+        badgeCount,
+        score: totalViews * 0.3 + totalComments * 0.3 + upvotesCount * 0.4,
+      }
+    })
+
+    return formatted.sort((a, b) => b.score - a.score)
+  },
+
+  async getUserProfile(username: string) {
+    const user = await prisma.user.findUnique({
+      where: { username },
+      select: {
+        id: true,
+        username: true,
+        level: true,
+        xp: true,
+        role: true,
+        createdAt: true,
+        guides: {
+          where: { status: 'PUBLISHED' },
+          select: {
+            id: true,
+            title: true,
+            category: true,
+            difficulty: true,
+            viewCount: true,
+            badges: true,
+            createdAt: true,
+            _count: { select: { ratings: true, comments: true, reactions: true } },
+          },
+          orderBy: { viewCount: 'desc' },
+        },
+      },
+    })
+
+    if (!user) return null
+
+    const upvotes = await prisma.guideRating.count({
+      where: { value: 1, guide: { authorId: user.id, status: 'PUBLISHED' } },
+    })
+
+    const totalViews = user.guides.reduce((sum, g) => sum + (g.viewCount || 0), 0)
+    const totalComments = user.guides.reduce((sum, g) => sum + g._count.comments, 0)
+    const totalReactions = user.guides.reduce((sum, g) => sum + g._count.reactions, 0)
+
+    return {
+      ...user,
+      guides: user.guides.map(g => ({
+        ...g,
+        badges: g.badges ? JSON.parse(g.badges) : [],
+      })),
+      stats: { totalViews, totalComments, totalReactions, upvotes, guideCount: user.guides.length },
+    }
   },
 }

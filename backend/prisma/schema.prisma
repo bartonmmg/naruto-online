@@ -27,6 +27,7 @@ model User {
   guideComments GuideComment[]
   guideViews    GuideView[]
   guideReactions GuideReaction[]
+  notifications  Notification[]
 }
 
 model Guide {
@@ -133,4 +134,19 @@ model GuideReaction {
   @@unique([guideId, userId, emoji])
   @@index([guideId])
   @@index([userId])
+}
+
+model Notification {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type       String   // COMMENT, REACTION, BADGE, MILESTONE
+  message    String
+  guideId    String?
+  guideTitle String?
+  read       Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([userId, read])
 }
