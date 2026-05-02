@@ -21,8 +21,23 @@ export const updateGuideSchema = z.object({
   status: z.enum(['DRAFT', 'PUBLISHED']).optional(),
 })
 
+export const rateGuideSchema = z.object({
+  value: z.union([z.literal(1), z.literal(-1)]),
+})
+
+export const createCommentSchema = z.object({
+  content: z.string().min(1, 'El comentario no puede estar vacío').max(1000, 'El comentario no puede exceder 1000 caracteres'),
+})
+
+export const manageBadgesSchema = z.object({
+  badges: z.array(z.enum(['OFFICIAL', 'TRENDING', 'VERIFIED', 'COMPLETE'])),
+})
+
 type CreateGuideInput = z.infer<typeof createGuideSchema>
 type UpdateGuideInput = z.infer<typeof updateGuideSchema>
+type RateGuideInput = z.infer<typeof rateGuideSchema>
+type CreateCommentInput = z.infer<typeof createCommentSchema>
+type ManageBadgesInput = z.infer<typeof manageBadgesSchema>
 
 export const guidesService = {
   async getAllGuides(filters?: { category?: string; difficulty?: string }) {
@@ -177,6 +192,138 @@ export const guidesService = {
 
     return await prisma.guide.delete({
       where: { id },
+    })
+  },
+
+  async recordView(guideId: string, userId?: string) {
+    // Check if this user/anonymous already viewed this guide today
+    // For logged in users, only count once per guide per user
+    // For anonymous (userId=null), count once per session but we'll count all
+
+    const guide = await prisma.guide.findUnique({ where: { id: guideId } })
+    if (!guide) {
+      throw new Error('Guía no encontrada')
+    }
+
+    if (userId) {
+      // For logged-in users, upsert (update if exists, create if not)
+      // This ensures one view per user per guide
+      await prisma.guideView.upsert({
+        where: { guideId_userId: { guideId, userId } },
+        create: { guideId, userId },
+        update: { viewedAt: new Date() },
+      })
+    } else {
+      // For anonymous users, just create a new view record
+      // This will count each session as a view
+      await prisma.guideView.create({
+        data: { guideId },
+      })
+    }
+
+    // Calculate total unique views (unique user IDs, plus count of null userId)
+    const views = await prisma.guideView.findMany({
+      where: { guideId },
+      select: { userId: true },
+    })
+
+    const uniqueUserViews = new Set(views.filter(v => v.userId).map(v => v.userId)).size
+    const totalViews = uniqueUserViews + views.filter(v => !v.userId).length
+
+    // Update the viewCount in the guide
+    await prisma.guide.update({
+      where: { id: guideId },
+      data: { viewCount: totalViews },
+    })
+
+    return { viewCount: totalViews }
+  },
+
+  async rateGuide(guideId: string, userId: string, value: number) {
+    const guide = await prisma.guide.findUnique({ where: { id: guideId } })
+    if (!guide) {
+      throw new Error('Guía no encontrada')
+    }
+
+    return await prisma.guideRating.upsert({
+      where: { guideId_userId: { guideId, userId } },
+      create: { guideId, userId, value },
+      update: { value },
+    })
+  },
+
+  async removeRating(guideId: string, userId: string) {
+    return await prisma.guideRating.deleteMany({
+      where: { guideId, userId },
+    })
+  },
+
+  async getGuideRatings(guideId: string, userId?: string) {
+    const ratings = await prisma.guideRating.findMany({
+      where: { guideId },
+    })
+
+    const upvotes = ratings.filter(r => r.value === 1).length
+    const downvotes = ratings.filter(r => r.value === -1).length
+    const userVote = userId ? ratings.find(r => r.userId === userId)?.value ?? null : null
+
+    return { upvotes, downvotes, userVote }
+  },
+
+  async addComment(guideId: string, authorId: string, content: string) {
+    const guide = await prisma.guide.findUnique({ where: { id: guideId } })
+    if (!guide) {
+      throw new Error('Guía no encontrada')
+    }
+
+    return await prisma.guideComment.create({
+      data: { guideId, authorId, content },
+      include: { author: { select: { username: true } } },
+    })
+  },
+
+  async deleteComment(commentId: string, requesterId: string, requesterRole: string) {
+    const comment = await prisma.guideComment.findUnique({
+      where: { id: commentId },
+    })
+
+    if (!comment) {
+      throw new Error('Comentario no encontrado')
+    }
+
+    if (comment.authorId !== requesterId && !['ADMIN', 'MODERATOR'].includes(requesterRole)) {
+      throw new Error('Sin permiso para eliminar este comentario')
+    }
+
+    return await prisma.guideComment.delete({
+      where: { id: commentId },
+    })
+  },
+
+  async getComments(guideId: string) {
+    return await prisma.guideComment.findMany({
+      where: { guideId },
+      include: { author: { select: { username: true, id: true } } },
+      orderBy: { createdAt: 'desc' },
+    })
+  },
+
+  async updateBadges(guideId: string, badges: string[], requesterId: string, requesterRole: string) {
+    if (!['ADMIN', 'MODERATOR'].includes(requesterRole)) {
+      throw new Error('Sin permiso para asignar badges')
+    }
+
+    const guide = await prisma.guide.findUnique({ where: { id: guideId } })
+    if (!guide) {
+      throw new Error('Guía no encontrada')
+    }
+
+    return await prisma.guide.update({
+      where: { id: guideId },
+      data: { badges: JSON.stringify(badges) },
+      include: {
+        author: { select: { username: true } },
+      },
     })
   },
 }

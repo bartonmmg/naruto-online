@@ -289,6 +289,45 @@ class RankingService {
     return getRankingSchema.parse(filters);
   }
 
+  getConsolidatedRegional(region: string, date: string, limit: number = 100): {
+    region: string;
+    date: string;
+    updatedAt: string;
+    totalPlayers: number;
+    players: Array<Player & { cluster: number }>;
+  } {
+    const rankings = getDbData().rankings || [];
+    const allPlayers: Array<Player & { cluster: number }> = [];
+
+    // Recolectar todos los jugadores de todos los clusters de una región
+    rankings.forEach((ranking: any) => {
+      if (ranking.region === region && ranking.date === date) {
+        ranking.players.forEach((player: Player) => {
+          allPlayers.push({
+            ...player,
+            cluster: ranking.cluster,
+          });
+        });
+      }
+    });
+
+    // Ordenar por poder descendente y reasignar ranks
+    allPlayers.sort((a, b) => b.power - a.power);
+
+    const topPlayers = allPlayers.slice(0, limit).map((player, index) => ({
+      ...player,
+      rank: index + 1,
+    }));
+
+    return {
+      region,
+      date,
+      updatedAt: new Date().toISOString().split('T')[0],
+      totalPlayers: topPlayers.length,
+      players: topPlayers,
+    };
+  }
+
   getConsolidatedGlobal(date: string, limit: number = 100): {
     date: string;
     updatedAt: string;

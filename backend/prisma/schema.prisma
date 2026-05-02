@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -23,6 +23,9 @@ model User {
 
   xpLogs        XpLog[]
   guides        Guide[]
+  guideRatings  GuideRating[]
+  guideComments GuideComment[]
+  guideViews    GuideView[]
 }
 
 model Guide {
@@ -36,10 +39,15 @@ model Guide {
   status      String    @default("DRAFT")
   authorId    String
   author      User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  viewCount   Int       @default(0)
+  badges      String    @default("[]")
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
   editHistory GuideEditHistory[]
+  ratings     GuideRating[]
+  comments    GuideComment[]
+  views       GuideView[]
 
   @@index([authorId])
   @@index([status])
@@ -64,5 +72,47 @@ model XpLog {
   amount    Int
   createdAt DateTime  @default(now())
 
+  @@index([userId])
+}
+
+model GuideRating {
+  id        String   @id @default(cuid())
+  guideId   String
+  guide     Guide    @relation(fields: [guideId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  value     Int      // 1 = útil, -1 = no útil
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([guideId, userId])
+  @@index([guideId])
+  @@index([userId])
+}
+
+model GuideComment {
+  id        String   @id @default(cuid())
+  guideId   String
+  guide     Guide    @relation(fields: [guideId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([guideId])
+  @@index([authorId])
+}
+
+model GuideView {
+  id        String   @id @default(cuid())
+  guideId   String
+  guide     Guide    @relation(fields: [guideId], references: [id], onDelete: Cascade)
+  userId    String?  // nullable — anonymous views allowed
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  viewedAt  DateTime @default(now())
+
+  @@unique([guideId, userId])
+  @@index([guideId])
   @@index([userId])
 }

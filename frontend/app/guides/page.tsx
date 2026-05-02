@@ -1,13 +1,15 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
-import { ChevronLeft, BookOpen, Scroll, Plus } from 'lucide-react'
+import { ChevronLeft, BookOpen, Scroll, Plus, Eye, MessageSquare, Search } from 'lucide-react'
 import { useAuth } from '@/lib/hooks/useAuth'
 import { Guide, CATEGORY_LABELS, DIFFICULTY_LABELS } from '@/lib/types'
 import Navbar from '@/components/Navbar'
 import Button from '@/components/ui/Button'
+import Input from '@/components/ui/Input'
 import LoadingSpinner from '@/components/LoadingSpinner'
+import GuideBadges from '@/components/guides/GuideBadges'
 import api from '@/lib/api'
 
 export default function GuidesPage() {
@@ -15,6 +17,9 @@ export default function GuidesPage() {
   const [guides, setGuides] = useState<Guide[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedCategory, setSelectedCategory] = useState('Todos')
+  const [selectedDifficulty, setSelectedDifficulty] = useState('Todos')
+  const [searchTerm, setSearchTerm] = useState('')
+  const [sortBy, setSortBy] = useState('recientes')
 
   useEffect(() => {
     const fetchGuides = async () => {
@@ -32,13 +37,41 @@ export default function GuidesPage() {
   }, [])
 
   const categories = ['Todos', ...Object.values(CATEGORY_LABELS)]
+  const difficulties = ['Todos', ...Object.values(DIFFICULTY_LABELS)]
 
-  // Filter by category and visibility (hide DRAFT from non-admin users)
-  const filteredGuides = Array.isArray(guides)
-    ? guides
-        .filter(g => selectedCategory === 'Todos' || g.category === Object.keys(CATEGORY_LABELS).find(k => CATEGORY_LABELS[k] === selectedCategory))
-        .filter(g => g.status === 'PUBLISHED' || hasRole(['ADMIN', 'MODERATOR']))
-    : []
+  // Filter by category, difficulty, search, and visibility (hide DRAFT from non-admin users)
+  const filteredGuides = useMemo(() => {
+    if (!Array.isArray(guides)) return []
+
+    let result = guides
+      .filter(g => selectedCategory === 'Todos' || g.category === Object.keys(CATEGORY_LABELS).find(k => CATEGORY_LABELS[k] === selectedCategory))
+      .filter(g => selectedDifficulty === 'Todos' || g.difficulty === Object.keys(DIFFICULTY_LABELS).find(k => DIFFICULTY_LABELS[k] === selectedDifficulty))
+      .filter(g => g.status === 'PUBLISHED' || hasRole(['ADMIN', 'MODERATOR']))
+      .filter(g => {
+        if (!searchTerm) return true
+        const search = searchTerm.toLowerCase()
+        return (
+          g.title.toLowerCase().includes(search) ||
+          g.author.username.toLowerCase().includes(search)
+        )
+      })
+
+    // Sort
+    result.sort((a, b) => {
+      if (sortBy === 'vistas') {
+        return (b.viewCount || 0) - (a.viewCount || 0)
+      } else if (sortBy === 'valoracion') {
+        const aRating = (a._count?.ratings || 0) + (a._count?.comments || 0)
+        const bRating = (b._count?.ratings || 0) + (b._count?.comments || 0)
+        return bRating - aRating
+      } else {
+        // recientes
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      }
+    })
+
+    return result
+  }, [guides, selectedCategory, selectedDifficulty, searchTerm, sortBy, hasRole])
 
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
@@ -101,7 +134,7 @@ export default function GuidesPage() {
           </div>
 
           {/* Category Filter */}
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-3 mb-6">
             {categories.map(cat => (
               <button
                 key={cat}
@@ -115,6 +148,48 @@ export default function GuidesPage() {
                 {cat}
               </button>
             ))}
+          </div>
+
+          {/* Search, Difficulty, and Sort */}
+          <div className="space-y-4">
+            <div className="relative">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                placeholder="Buscar por título o autor..."
+                className="w-full pl-10 pr-4 py-2.5 bg-bg-card border border-border rounded-lg text-white placeholder:text-white/40 focus:outline-none focus:border-chakra-blue"
+              />
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex-1">
+                <select
+                  value={selectedDifficulty}
+                  onChange={e => setSelectedDifficulty(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-bg-card border border-border rounded-lg text-white focus:outline-none focus:border-chakra-blue"
+                >
+                  {difficulties.map(diff => (
+                    <option key={diff} value={diff}>
+                      Dificultad: {diff}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex-1">
+                <select
+                  value={sortBy}
+                  onChange={e => setSortBy(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-bg-card border border-border rounded-lg text-white focus:outline-none focus:border-chakra-blue"
+                >
+                  <option value="recientes">Más recientes</option>
+                  <option value="vistas">Más vistas</option>
+                  <option value="valoracion">Mejor valoradas</option>
+                </select>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -148,6 +223,9 @@ export default function GuidesPage() {
                             Borrador
                           </span>
                         )}
+                        {guide.badges && guide.badges.length > 0 && (
+                          <GuideBadges badges={guide.badges} size="sm" />
+                        )}
                         <span className={`text-xs font-cinzel px-3 py-1 rounded-full border ${getDifficultyColor(guide.difficulty)}`}>
                           {DIFFICULTY_LABELS[guide.difficulty] || guide.difficulty}
                         </span>
@@ -170,13 +248,25 @@ export default function GuidesPage() {
                     </p>
 
                     {/* Footer */}
-                    <div className="flex items-center justify-between pt-4 border-t border-border/50">
-                      <div className="flex items-center gap-4 text-xs text-white/50">
+                    <div className="space-y-3 pt-4 border-t border-border/50">
+                      <div className="flex items-center gap-3 text-xs text-white/50">
                         <span>{guide.author.username}</span>
                         <span className="inline-flex items-center gap-1">
                           <Scroll className="w-3 h-3" />
                           {CATEGORY_LABELS[guide.category] || guide.category}
                         </span>
+                      </div>
+                      <div className="flex items-center gap-4 text-xs text-white/40">
+                        <span className="inline-flex items-center gap-1">
+                          <Eye className="w-3 h-3" />
+                          {guide.viewCount || 0} vistas
+                        </span>
+                        {(guide._count?.comments || 0) > 0 && (
+                          <span className="inline-flex items-center gap-1">
+                            <MessageSquare className="w-3 h-3" />
+                            {guide._count?.comments} comentarios
+                          </span>
+                        )}
                       </div>
                     </div>
                   </Link>

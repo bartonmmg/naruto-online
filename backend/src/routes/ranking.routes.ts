@@ -7,6 +7,7 @@ import {
   getTop100,
   getRankingByServer,
   getGlobalRanking,
+  getConsolidatedRegional,
   getConsolidatedGlobal,
   compareRankings,
   getAvailableDates,
@@ -25,6 +26,7 @@ router.get('/top10', getTop10);
 router.get('/top100', getTop100);
 router.get('/by-server', getRankingByServer);
 router.get('/global', getGlobalRanking);
+router.get('/consolidated-regional', getConsolidatedRegional);
 router.get('/consolidated-global', getConsolidatedGlobal);
 
 // Comparison endpoint

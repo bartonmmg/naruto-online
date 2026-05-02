@@ -3,9 +3,10 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ChevronLeft, Loader2, AlertCircle } from 'lucide-react'
+import { ChevronLeft, Loader2, AlertCircle, Sparkles } from 'lucide-react'
 import { useAuth } from '@/lib/hooks/useAuth'
 import { CATEGORY_LABELS, DIFFICULTY_LABELS } from '@/lib/types'
+import { GUIDE_TEMPLATES } from '@/lib/guideTemplates'
 import { MarkdownEditor } from '@/components/guides/MarkdownEditor'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
@@ -21,10 +22,6 @@ export default function CreateGuidePage() {
   const [difficulty, setDifficulty] = useState('BASICO')
   const [content, setContent] = useState('')
   const [status, setStatus] = useState('DRAFT')
-  const [imageUrls, setImageUrls] = useState<string[]>([])
-  const [imageInput, setImageInput] = useState('')
-  const [videoUrls, setVideoUrls] = useState<string[]>([])
-  const [videoInput, setVideoInput] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
@@ -36,27 +33,6 @@ export default function CreateGuidePage() {
     }
   }, [isLoading, hasRole, router])
 
-  const addImageUrl = () => {
-    if (imageInput.trim() && !imageUrls.includes(imageInput.trim())) {
-      setImageUrls([...imageUrls, imageInput.trim()])
-      setImageInput('')
-    }
-  }
-
-  const removeImageUrl = (url: string) => {
-    setImageUrls(imageUrls.filter(u => u !== url))
-  }
-
-  const addVideoUrl = () => {
-    if (videoInput.trim() && !videoUrls.includes(videoInput.trim())) {
-      setVideoUrls([...videoUrls, videoInput.trim()])
-      setVideoInput('')
-    }
-  }
-
-  const removeVideoUrl = (url: string) => {
-    setVideoUrls(videoUrls.filter(u => u !== url))
-  }
 
   const handleSubmit = async () => {
     setError('')
@@ -101,8 +77,6 @@ export default function CreateGuidePage() {
         difficulty,
         content,
         status,
-        imageUrls,
-        videoUrls,
       })
 
       router.push('/guides')
@@ -255,92 +229,38 @@ export default function CreateGuidePage() {
                 </div>
               </div>
 
-              <div className="border-t border-border pt-6">
-                <label className="block text-sm font-montserrat font-semibold text-text-primary mb-3">
-                  Imágenes <span className="text-white/50 font-normal">(opcional)</span>
-                </label>
-                <p className="text-xs text-white/50 mb-3">Agrega URLs de imágenes para complementar tu guía</p>
-                <div className="flex gap-2 mb-3">
-                  <Input
-                    value={imageInput}
-                    onChange={e => setImageInput(e.target.value)}
-                    placeholder="https://ejemplo.com/imagen.jpg"
-                    className="flex-1"
-                  />
-                  <Button onClick={addImageUrl} variant="outline" size="sm" className="flex-shrink-0">
-                    Agregar
-                  </Button>
-                </div>
-                {imageUrls.length > 0 && (
-                  <div className="grid grid-cols-2 gap-2">
-                    {imageUrls.map(url => (
-                      <div
-                        key={url}
-                        className="relative group rounded-lg overflow-hidden border border-border/50 hover:border-accent-orange/50 transition-colors bg-bg-card"
+              <div className="border-t border-border pt-6 space-y-6">
+                <div>
+                  <label className="block text-sm font-montserrat font-semibold text-text-primary mb-3 flex items-center gap-2">
+                    <Sparkles className="w-4 h-4" />
+                    Plantillas
+                  </label>
+                  <div className="grid grid-cols-1 gap-2">
+                    {GUIDE_TEMPLATES.map(template => (
+                      <button
+                        key={template.id}
+                        onClick={() => {
+                          setTitle(template.name)
+                          setCategory(template.category)
+                          setDifficulty(template.difficulty)
+                          setContent(template.content)
+                        }}
+                        className="px-3 py-2.5 text-xs text-left font-montserrat rounded-lg bg-bg-elevated border border-border hover:border-chakra-blue/50 text-white/70 hover:text-white transition-all"
                       >
-                        <img
-                          src={url}
-                          alt="preview"
-                          className="w-full h-24 object-cover opacity-60 group-hover:opacity-80 transition-opacity"
-                          onError={e => {
-                            (e.target as HTMLImageElement).src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect fill="%23333" width="100" height="100"/%3E%3Ctext x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%23999" font-size="12"%3EImagen no disponible%3C/text%3E%3C/svg%3E'
-                          }}
-                        />
-                        <button
-                          onClick={() => removeImageUrl(url)}
-                          className="absolute top-1 right-1 p-1 bg-power-red/80 hover:bg-power-red rounded opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          ✕
-                        </button>
-                        <p className="absolute bottom-0 left-0 right-0 bg-bg-primary/90 text-white/60 text-xs p-1 truncate">
-                          {url.split('/').pop()}
-                        </p>
-                      </div>
+                        {template.name}
+                      </button>
                     ))}
                   </div>
-                )}
-                {imageUrls.length === 0 && (
-                  <p className="text-xs text-white/40 italic">No hay imágenes agregadas</p>
-                )}
-              </div>
+                </div>
 
-              <div className="border-t border-border pt-6">
-                <label className="block text-sm font-montserrat font-semibold text-text-primary mb-3">
-                  Videos YouTube <span className="text-white/50 font-normal">(opcional)</span>
-                </label>
-                <p className="text-xs text-white/50 mb-3">Inserta videos para enriquecer tu contenido</p>
-                <div className="flex gap-2 mb-3">
-                  <Input
-                    value={videoInput}
-                    onChange={e => setVideoInput(e.target.value)}
-                    placeholder="https://www.youtube.com/watch?v=..."
-                    className="flex-1"
-                  />
-                  <Button onClick={addVideoUrl} variant="outline" size="sm" className="flex-shrink-0">
-                    Agregar
-                  </Button>
+                <div>
+                  <label className="block text-sm font-montserrat font-semibold text-text-primary mb-3">
+                    💡 Tip de Edición
+                  </label>
+                  <p className="text-xs text-white/70 leading-relaxed">
+                    Usa los botones <strong>Imagen</strong> (🖼️) y <strong>Video YouTube</strong> (▶️) en la toolbar del editor para insertar contenido multimedia directamente en tu guía.
+                  </p>
                 </div>
-                {videoUrls.length > 0 && (
-                  <div className="space-y-2">
-                    {videoUrls.map(url => (
-                      <div
-                        key={url}
-                        className="flex items-center justify-between bg-bg-card p-2 rounded border border-border/50 hover:border-accent-orange/50 transition-colors group"
-                      >
-                        <span className="text-white/60 truncate flex-1 text-xs">{url}</span>
-                        <button
-                          onClick={() => removeVideoUrl(url)}
-                          className="text-power-red hover:text-power-red/80 ml-2 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {videoUrls.length === 0 && (
-                  <p className="text-xs text-white/40 italic">No hay videos agregados</p>
-                )}
               </div>
             </div>
 

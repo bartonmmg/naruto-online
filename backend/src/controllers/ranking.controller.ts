@@ -136,6 +136,31 @@ export const getGlobalRanking = (req: Request, res: Response): void => {
   }
 };
 
+export const getConsolidatedRegional = (req: Request, res: Response): void => {
+  try {
+    const { region, date, limit = 100 } = req.query;
+
+    if (!region || !date) {
+      res
+        .status(400)
+        .json({
+          error: 'region and date query parameters required for consolidated regional ranking',
+        });
+      return;
+    }
+
+    const regionalRanking = rankingService.getConsolidatedRegional(
+      String(region),
+      String(date),
+      Number(limit)
+    );
+    res.json(regionalRanking);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    res.status(400).json({ error: message });
+  }
+};
+
 export const getConsolidatedGlobal = (req: Request, res: Response): void => {
   try {
     const { date, limit = 100 } = req.query;

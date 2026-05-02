@@ -37,7 +37,7 @@ interface Region {
 }
 
 interface Cluster {
-  id: number
+  id: number | null
   name: string
 }
 
@@ -99,7 +99,7 @@ export default function RankingsPage() {
   const [showServerDropdown, setShowServerDropdown] = useState(false)
 
   const [region, setRegion] = useState('GLOBAL')
-  const [cluster, setCluster] = useState(1)
+  const [cluster, setCluster] = useState<number | null>(null)
   const [date, setDate] = useState('2026-04')
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
@@ -144,9 +144,8 @@ export default function RankingsPage() {
       try {
         const data = await fetchRankingAPI(`/api/rankings/clusters/${region}`)
         setClusters(data)
-        if (data.length > 0 && data[0].id !== cluster) {
-          setCluster(data[0].id)
-        }
+        // Establecer cluster en null (mostrar todos) por defecto
+        setCluster(null)
         setError('')
       } catch (err) {
         setError(`Error fetching clusters: ${err}`)
@@ -157,14 +156,22 @@ export default function RankingsPage() {
 
   // Cargar fechas disponibles cuando cambie región/cluster
   useEffect(() => {
-    if (!region || !cluster) {
+    if (!region || region === 'GLOBAL') {
+      setDates([])
+      return
+    }
+
+    // Si cluster es null, usar el primer cluster disponible para obtener fechas
+    const clusterForDates = cluster ?? (clusters.length > 0 ? clusters[0].id : null)
+
+    if (!clusterForDates) {
       setDates([])
       return
     }
 
     const loadDates = async () => {
       try {
-        const data = await fetchRankingAPI(`/api/rankings/dates/${region}/${cluster}`)
+        const data = await fetchRankingAPI(`/api/rankings/dates/${region}/${clusterForDates}`)
         setDates(data)
         if (data.length > 0 && data[0] !== date) {
           setDate(data[0])
@@ -174,7 +181,7 @@ export default function RankingsPage() {
       }
     }
     loadDates()
-  }, [region, cluster, date])
+  }, [region, cluster, clusters, date])
 
   // Cargar ranking cuando cambie región/cluster/fecha
   useEffect(() => {
@@ -188,9 +195,16 @@ export default function RankingsPage() {
           // Global - consolidar todas las regiones
           endpoint = `/api/rankings/consolidated-global?date=${date}`
         } else {
-          // Regional - filtro específico
-          if (!region || !cluster || !date) return
-          endpoint = `/api/rankings/top100?region=${region}&cluster=${cluster}&date=${date}`
+          // Regional
+          if (!region || !date) return
+
+          // Si cluster es null, mostrar todos los clusters de la región
+          if (cluster === null) {
+            endpoint = `/api/rankings/consolidated-regional?region=${region}&date=${date}`
+          } else {
+            // Cluster específico
+            endpoint = `/api/rankings/top100?region=${region}&cluster=${cluster}&date=${date}`
+          }
         }
 
         const data = await fetchRankingAPI(endpoint)
@@ -219,7 +233,7 @@ export default function RankingsPage() {
 
     if (region === 'GLOBAL' && date) {
       loadRanking()
-    } else if (region !== 'GLOBAL' && region && cluster && date) {
+    } else if (region !== 'GLOBAL' && region && date) {
       loadRanking()
     }
   }, [region, cluster, date])
@@ -251,13 +265,14 @@ export default function RankingsPage() {
   const handleRegionChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
     const newRegion = e.target.value
     setRegion(newRegion)
-    setCluster(1) // Reset cluster cuando cambia región
+    setCluster(null) // Reset cluster a null (mostrar todos) cuando cambia región
     setClusters([]) // Limpiar clusters previos
     setDates([]) // Limpiar dates previos
   }, [])
 
   const handleClusterChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
-    setCluster(parseInt(e.target.value))
+    const value = e.target.value
+    setCluster(value === 'null' ? null : parseInt(value))
   }, [])
 
   const handleDateChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -537,7 +552,7 @@ export default function RankingsPage() {
         {/* ── Title Block ──────────────────────────────── */}
         <div className="text-center mb-10">
           <p className="text-sm font-cinzel font-black text-power-red/70 tracking-[0.3em] uppercase mb-2">
-            {region === 'GLOBAL' ? 'TOP GLOBAL' : `TOP REGIONAL - ${region}`} · {date}
+            {region === 'GLOBAL' ? 'TOP GLOBAL' : `TOP REGIONAL - ${region}${cluster === null ? ' (TODOS)' : ` (CLUSTER ${cluster})`}`} · {date}
           </p>
           <h1 className="text-4xl md:text-5xl font-cinzel font-black text-white leading-tight mb-3">
             Ranking de{' '}
@@ -561,6 +576,8 @@ export default function RankingsPage() {
           <p className="text-sm text-white/80 max-w-md mx-auto leading-relaxed">
             {region === 'GLOBAL'
               ? 'Los 100 ninjas más poderosos de España y Latinoamérica'
+              : cluster === null
+              ? `Los ninjas más poderosos de ${region} (Todos los clusters)`
               : `Los ninjas más poderosos de ${region} (Cluster ${cluster})`
             }
           </p>
@@ -614,12 +631,15 @@ export default function RankingsPage() {
                     {/* Cluster - Only show when not Global */}
                     {region !== 'GLOBAL' && (
                       <select
-                        value={cluster}
+                        value={cluster === null ? 'null' : String(cluster)}
                         onChange={handleClusterChange}
                         className="bg-white/5 border border-white/8 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-power-red/50 appearance-none cursor-pointer"
                       >
+                        <option value="null" className="bg-[#0e0e1a]">
+                          Todos los clusters
+                        </option>
                         {clusters.map((c) => (
-                          <option key={c.id} value={c.id} className="bg-[#0e0e1a]">
+                          <option key={c.id} value={String(c.id)} className="bg-[#0e0e1a]">
                             {c.name}
                           </option>
                         ))}

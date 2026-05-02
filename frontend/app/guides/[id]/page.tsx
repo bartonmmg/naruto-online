@@ -3,10 +3,14 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
-import { ChevronLeft, Loader2, AlertCircle, Image as ImageIcon, Play, Edit2, Clock, Trash2 } from 'lucide-react'
+import { ChevronLeft, Loader2, AlertCircle, Image as ImageIcon, Play, Edit2, Clock, Trash2, Eye } from 'lucide-react'
 import { useAuth } from '@/lib/hooks/useAuth'
 import { Guide, CATEGORY_LABELS, DIFFICULTY_LABELS } from '@/lib/types'
 import { MarkdownRenderer } from '@/components/guides/MarkdownRenderer'
+import TableOfContents from '@/components/guides/TableOfContents'
+import GuideVoting from '@/components/guides/GuideVoting'
+import GuideComments from '@/components/guides/GuideComments'
+import GuideBadges from '@/components/guides/GuideBadges'
 import Navbar from '@/components/Navbar'
 import Button from '@/components/ui/Button'
 import api from '@/lib/api'
@@ -29,6 +33,7 @@ export default function GuideDetailPage() {
   const [editHistory, setEditHistory] = useState<EditHistory[]>([])
   const [showHistory, setShowHistory] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [editingBadges, setEditingBadges] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -37,6 +42,11 @@ export default function GuideDetailPage() {
       try {
         const response = await api.get(`/guides/${id}`)
         setGuide(response.data)
+
+        // Record view (don't await, just fire and forget)
+        api.post(`/guides/${id}/views`, {}).catch(() => {
+          // Ignore view recording errors
+        })
 
         // Fetch edit history
         try {
@@ -126,7 +136,7 @@ export default function GuideDetailPage() {
             <h1 className="text-4xl md:text-5xl font-cinzel font-black text-text-primary mb-4">
               {guide.title}
             </h1>
-            <div className="flex flex-wrap items-center gap-4 text-white/70">
+            <div className="flex flex-wrap items-center gap-4 text-white/70 mb-4">
               <span className="text-sm">Por <span className="text-white font-semibold">{guide.author.username}</span></span>
               <span className="text-white/40">•</span>
               <span className="text-sm">{CATEGORY_LABELS[guide.category] || guide.category}</span>
@@ -134,15 +144,38 @@ export default function GuideDetailPage() {
               <span className={`text-xs font-cinzel px-3 py-1 rounded-full border ${getDifficultyColor(guide.difficulty)}`}>
                 {DIFFICULTY_LABELS[guide.difficulty] || guide.difficulty}
               </span>
+              <span className="text-white/40">•</span>
+              <span className="text-sm flex items-center gap-1">
+                <Eye className="w-4 h-4" />
+                {guide.viewCount || 0} vistas
+              </span>
             </div>
+            {(guide.badges && guide.badges.length > 0 || hasRole(['ADMIN', 'MODERATOR'])) && (
+              <div className="mt-3">
+                <GuideBadges
+                  badges={guide.badges || []}
+                  guideId={guide.id}
+                  editable={hasRole(['ADMIN', 'MODERATOR'])}
+                  onBadgesChange={(newBadges) => setGuide({ ...guide, badges: newBadges })}
+                />
+              </div>
+            )}
           </div>
         </div>
       </section>
 
       <section className="relative py-12 px-6">
         <div className="max-w-4xl mx-auto relative z-10">
+          {/* Table of Contents */}
+          <TableOfContents content={guide.content} />
+
           <div className="mb-12">
             <MarkdownRenderer content={guide.content} />
+          </div>
+
+          {/* Guide Voting */}
+          <div className="mb-12">
+            <GuideVoting guideId={guide.id} />
           </div>
 
           {guide.imageUrls && guide.imageUrls.length > 0 && (
@@ -280,6 +313,11 @@ export default function GuideDetailPage() {
               <p className="text-white/60 text-sm">Sin historial de ediciones</p>
             </div>
           )}
+
+          {/* Comments Section */}
+          <div className="mt-12">
+            <GuideComments guideId={guide.id} />
+          </div>
         </div>
       </section>
     </main>
