@@ -8,6 +8,7 @@ import { useAuth } from '@/lib/hooks/useAuth'
 import { CATEGORY_LABELS, DIFFICULTY_LABELS } from '@/lib/types'
 import { GUIDE_TEMPLATES } from '@/lib/guideTemplates'
 import { MarkdownEditor } from '@/components/guides/MarkdownEditor'
+import { MarkdownPreview } from '@/components/guides/MarkdownPreview'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import Navbar from '@/components/Navbar'
@@ -145,9 +146,9 @@ export default function CreateGuidePage() {
             </div>
           )}
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
             {/* Metadata — Izquierda */}
-            <div className="space-y-6">
+            <div className="space-y-6 lg:col-span-1">
               <div>
                 <label className="block text-sm font-montserrat font-semibold text-text-primary mb-2">
                   Título <span className="text-power-red">*</span>
@@ -264,18 +265,31 @@ export default function CreateGuidePage() {
               </div>
             </div>
 
-            {/* Editor — Derecha */}
-            <div className="lg:col-span-2 flex flex-col h-screen">
-              <label className="block text-sm font-montserrat font-semibold text-text-primary mb-2">
-                Contenido <span className="text-power-red">*</span>
-              </label>
-              <div className="flex-1 min-h-0 overflow-hidden">
-                <MarkdownEditor value={content} onChange={setContent} />
+            {/* Editor + Preview — Derecha (Side-by-side on desktop) */}
+            <div className="lg:col-span-3 flex flex-col lg:flex-row lg:gap-6">
+              {/* Editor */}
+              <div className="flex flex-col flex-1 h-96 lg:h-[600px]">
+                <label className="block text-sm font-montserrat font-semibold text-text-primary mb-2">
+                  Contenido <span className="text-power-red">*</span>
+                </label>
+                <div className="flex-1 min-h-0 overflow-hidden">
+                  <MarkdownEditor value={content} onChange={setContent} />
+                </div>
+                <div className="flex justify-between items-center mt-2">
+                  <p className="text-xs text-white/40">Usa Markdown para dar formato al contenido</p>
+                  {fieldErrors.content && <p className="text-xs text-power-red">{fieldErrors.content}</p>}
+                  {!fieldErrors.content && <p className="text-xs text-white/40">{content.length} caracteres</p>}
+                </div>
               </div>
-              <div className="flex justify-between items-center mt-2">
-                <p className="text-xs text-white/40">Usa Markdown para dar formato al contenido</p>
-                {fieldErrors.content && <p className="text-xs text-power-red">{fieldErrors.content}</p>}
-                {!fieldErrors.content && <p className="text-xs text-white/40">{content.length} caracteres</p>}
+
+              {/* Preview Split (Desktop only, side-by-side) */}
+              <div className="hidden lg:flex flex-col flex-1 h-[600px]">
+                <label className="block text-sm font-montserrat font-semibold text-text-primary mb-2">
+                  Vista Previa
+                </label>
+                <div className="flex-1 min-h-0 overflow-hidden">
+                  <MarkdownPreview content={content} />
+                </div>
               </div>
             </div>
           </div>
