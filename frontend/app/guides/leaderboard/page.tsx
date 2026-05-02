@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { ChevronLeft, Trophy, Eye, MessageSquare, ThumbsUp, TrendingUp, Star, Crown, Flame, Users } from 'lucide-react'
 import { CATEGORY_LABELS, DIFFICULTY_LABELS } from '@/lib/types'
 import GuideBadges from '@/components/guides/GuideBadges'
@@ -71,11 +72,12 @@ const getRankStyle = (i: number) => {
 }
 
 function GuideRow({ guide, rank }: { guide: LeaderboardGuide; rank: number }) {
+  const router = useRouter()
   const { badge, glow } = getRankStyle(rank)
   return (
-    <Link
-      href={`/guides/${guide.id}`}
-      className={`flex items-center gap-4 p-4 rounded-xl border bg-bg-card/50 hover:bg-bg-card transition-all duration-200 hover:border-chakra-blue/40 shadow-sm hover:shadow-md ${glow}`}
+    <div
+      onClick={() => router.push(`/guides/${guide.id}`)}
+      className={`flex items-center gap-4 p-4 rounded-xl border bg-bg-card/50 hover:bg-bg-card transition-all duration-200 hover:border-chakra-blue/40 shadow-sm hover:shadow-md cursor-pointer ${glow}`}
     >
       <div className={`flex-shrink-0 rounded-full flex items-center justify-center ${badge}`}>
         {rank < 3 ? ['🥇','🥈','🥉'][rank] : rank + 1}
@@ -87,9 +89,13 @@ function GuideRow({ guide, rank }: { guide: LeaderboardGuide; rank: number }) {
           {guide.badges?.length > 0 && <GuideBadges badges={guide.badges} size="sm" />}
         </div>
         <div className="flex items-center gap-3 text-xs text-white/50 flex-wrap">
-          <Link href={`/users/${guide.author.username}`} onClick={e => e.stopPropagation()} className="hover:text-chakra-blue transition-colors">
+          <a
+            href={`/users/${guide.author.username}`}
+            onClick={e => e.stopPropagation()}
+            className="hover:text-chakra-blue transition-colors"
+          >
             @{guide.author.username}
-          </Link>
+          </a>
           <span className={getDifficultyColor(guide.difficulty)}>{DIFFICULTY_LABELS[guide.difficulty]}</span>
           <span>{CATEGORY_LABELS[guide.category] || guide.category}</span>
         </div>
@@ -103,7 +109,7 @@ function GuideRow({ guide, rank }: { guide: LeaderboardGuide; rank: number }) {
           <span className="flex items-center gap-1 text-accent-orange hidden lg:flex"><TrendingUp className="w-3 h-3" />+{guide.recentViews}</span>
         )}
       </div>
-    </Link>
+    </div>
   )
 }
 

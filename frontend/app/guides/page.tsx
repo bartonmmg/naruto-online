@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { ChevronLeft, BookOpen, Scroll, Plus, Eye, MessageSquare, Search, Trophy } from 'lucide-react'
 import { useAuth } from '@/lib/hooks/useAuth'
 import { Guide, CATEGORY_LABELS, DIFFICULTY_LABELS } from '@/lib/types'
@@ -13,6 +14,7 @@ import GuideBadges from '@/components/guides/GuideBadges'
 import api from '@/lib/api'
 
 export default function GuidesPage() {
+  const router = useRouter()
   const { hasRole } = useAuth()
   const [guides, setGuides] = useState<Guide[]>([])
   const [loading, setLoading] = useState(true)
@@ -212,9 +214,9 @@ export default function GuidesPage() {
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredGuides.map(guide => (
-                  <Link
+                  <div
                     key={guide.id}
-                    href={`/guides/${guide.id}`}
+                    onClick={() => router.push(`/guides/${guide.id}`)}
                     className="group game-card p-6 rounded-xl transition-all duration-300 hover:border-chakra-blue/50 hover:shadow-lg hover:shadow-chakra-blue/20 cursor-pointer"
                   >
                     {/* Header */}
@@ -280,7 +282,7 @@ export default function GuidesPage() {
                         )}
                       </div>
                     </div>
-                  </Link>
+                  </div>
                 ))}
               </div>
 
