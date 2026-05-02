@@ -17,6 +17,14 @@ interface Section {
   faqs: FAQ[]
 }
 
+// Rangos — actualizar imágenes cuando estén disponibles en /images/rangos/
+const RANGOS = [
+  { rango: 'Genin',  color: 'text-nature-green',  desc: 'El comienzo del camino ninja',       img: null },
+  { rango: 'Chūnin', color: 'text-chakra-blue',   desc: 'Ninja con experiencia probada',       img: null },
+  { rango: 'Jōnin',  color: 'text-accent-orange', desc: 'Maestro con guías de alto impacto',  img: null },
+  { rango: 'Kage',   color: 'text-sage-gold',     desc: 'Leyenda de la comunidad',             img: null },
+]
+
 const SECTIONS: Section[] = [
   {
     id: 'guias',
@@ -41,11 +49,11 @@ const SECTIONS: Section[] = [
       },
       {
         q: '¿Cómo funciona el conteo de vistas?',
-        a: 'Cada persona cuenta como una vista única. Si sos un usuario logueado, tu vista se registra una sola vez por guía (no importa cuántas veces la recargues). Si entrás como anónimo, se usa tu dirección IP para deduplicar — una visita por IP. Esto evita inflar las estadísticas artificialmente.',
+        a: 'Cada persona cuenta como una vista única. El sistema detecta si ya visitaste una guía anteriormente y evita sumar vistas duplicadas, tanto para usuarios logueados como anónimos.',
       },
       {
         q: '¿Puedo votar cualquier guía?',
-        a: 'Sí, cualquier usuario logueado puede votar "Útil" o "No útil" en cualquier guía. El voto es único por usuario por guía — si votás de nuevo, se cancela el voto anterior. Los votos no se pueden hacer sin iniciar sesión.',
+        a: 'Sí, cualquier usuario logueado puede votar "Útil" o "No útil" en cualquier guía. El voto es único por usuario por guía — si votás de nuevo, se cancela el voto anterior. No se puede votar sin iniciar sesión.',
       },
       {
         q: '¿Quién puede eliminar comentarios?',
@@ -64,11 +72,18 @@ const SECTIONS: Section[] = [
           <span>
             Son sellos de calidad asignados por administradores o moderadores a guías destacadas. Aparecen visibles
             en el listado de guías y en el detalle de cada una. Hay 4 tipos:
-            <ul className="mt-2 space-y-1 list-none">
-              <li className="flex items-center gap-2"><img src="/images/guides/badges/badge-oficial.png" className="w-5 h-5 object-contain" /><strong>Oficial</strong> — Guía aprobada y respaldada por la comunidad</li>
-              <li className="flex items-center gap-2"><img src="/images/guides/badges/badge-verificada.png" className="w-5 h-5 object-contain" /><strong>Verificada</strong> — Información revisada y confirmada como correcta</li>
-              <li className="flex items-center gap-2"><img src="/images/guides/badges/badge-tendencia.png" className="w-5 h-5 object-contain" /><strong>Tendencia</strong> — Guía con alta actividad reciente</li>
-              <li className="flex items-center gap-2"><img src="/images/guides/badges/badge-completa.png" className="w-5 h-5 object-contain" /><strong>Completa</strong> — Guía exhaustiva que cubre el tema en profundidad</li>
+            <ul className="mt-3 space-y-2 list-none">
+              {[
+                { img: 'badge-oficial.png',    label: 'Oficial',    desc: 'Guía aprobada y respaldada por la comunidad' },
+                { img: 'badge-verificada.png', label: 'Verificada', desc: 'Información revisada y confirmada como correcta' },
+                { img: 'badge-tendencia.png',  label: 'Tendencia',  desc: 'Guía con alta actividad reciente' },
+                { img: 'badge-completa.png',   label: 'Completa',   desc: 'Guía exhaustiva que cubre el tema en profundidad' },
+              ].map(b => (
+                <li key={b.label} className="flex items-center gap-3 p-2 rounded-lg bg-bg-elevated/50">
+                  <img src={`/images/guides/badges/${b.img}`} className="w-8 h-8 object-contain flex-shrink-0" />
+                  <span><strong className="text-text-primary">{b.label}</strong> — {b.desc}</span>
+                </li>
+              ))}
             </ul>
           </span>
         ),
@@ -79,7 +94,7 @@ const SECTIONS: Section[] = [
       },
       {
         q: '¿Los badges se pueden perder?',
-        a: 'Sí. Un administrador puede retirar un badge si la guía queda desactualizada o deja de cumplir los estándares. El badge Tendencia especialmente puede ser rotado con mayor frecuencia.',
+        a: 'Sí. Un administrador puede retirar un badge si la guía queda desactualizada o deja de cumplir los estándares.',
       },
     ],
   },
@@ -90,28 +105,27 @@ const SECTIONS: Section[] = [
     faqs: [
       {
         q: '¿Qué son los logros?',
-        a: 'Los logros son recompensas permanentes que ganás al alcanzar hitos como autor. Aparecen en tu perfil público y en tu dashboard. Cada logro otorga XP al desbloquearse.',
+        a: 'Los logros son recompensas que ganás al alcanzar hitos como autor de guías. Aparecen en tu perfil público y en tu dashboard personal. Cada logro otorga XP al desbloquearse.',
       },
       {
         q: '¿Cuáles son los logros disponibles y cómo se obtienen?',
         a: (
           <div className="space-y-2">
             {[
-              { img: 'logro-primera-guia.png', title: 'Primera Misión', cond: 'Publicá tu primera guía', xp: 30 },
-              { img: 'logro-5-guias.png',      title: 'Sensei',          cond: 'Publicá 5 guías',        xp: 75 },
-              { img: 'logro-10-guias.png',     title: 'Crónicas Ninja',  cond: 'Publicá 10 guías',       xp: 150 },
-              { img: 'logro-100-vistas.png',   title: '100 Vistas',      cond: 'Una sola guía tuya alcanza 100 vistas', xp: 50 },
-              { img: 'logro-1000-vistas.png',  title: '1000 Vistas',     cond: 'Una sola guía tuya alcanza 1000 vistas', xp: 150 },
-              { img: 'logro-votos.png',        title: 'Maestro del Conocimiento', cond: 'Una sola guía tuya recibe 100 votos útil', xp: 100 },
-              { img: 'logro-badge-oficial.png', title: 'Sello del Hokage', cond: 'Una de tus guías recibe el badge Oficial (asignado por admin)', xp: 60 },
-              { img: 'logro-leyenda.png',      title: 'Leyenda',          cond: 'Estar en el top 3 del leaderboard de autores (dinámico)', xp: '50 mientras se mantiene' },
+              { img: 'logro-primera-guia.png',  title: 'Primera Misión',          cond: 'Publicá tu primera guía' },
+              { img: 'logro-5-guias.png',        title: 'Sensei',                  cond: 'Publicá 5 guías' },
+              { img: 'logro-10-guias.png',       title: 'Crónicas Ninja',          cond: 'Publicá 10 guías' },
+              { img: 'logro-100-vistas.png',     title: '100 Vistas',              cond: 'Una de tus guías alcanza las 100 vistas' },
+              { img: 'logro-1000-vistas.png',    title: '1000 Vistas',             cond: 'Una de tus guías alcanza las 1000 vistas' },
+              { img: 'logro-votos.png',          title: 'Maestro del Conocimiento', cond: 'Una de tus guías recibe 100 votos útil' },
+              { img: 'logro-badge-oficial.png',  title: 'Sello del Hokage',        cond: 'Una de tus guías recibe el badge Oficial' },
+              { img: 'logro-leyenda.png',        title: 'Leyenda',                 cond: 'Estar en el top 3 del leaderboard de autores' },
             ].map(l => (
-              <div key={l.title} className="flex items-start gap-3 p-2 rounded-lg bg-bg-elevated/50">
+              <div key={l.title} className="flex items-center gap-3 p-2.5 rounded-lg bg-bg-elevated/50">
                 <img src={`/images/guides/logros/${l.img}`} className="w-10 h-10 object-contain flex-shrink-0" />
                 <div>
                   <p className="font-montserrat font-bold text-sm text-text-primary">{l.title}</p>
                   <p className="text-xs text-white/60">{l.cond}</p>
-                  <p className="text-xs text-sage-gold mt-0.5">+{l.xp} XP</p>
                 </div>
               </div>
             ))}
@@ -120,15 +134,7 @@ const SECTIONS: Section[] = [
       },
       {
         q: '¿Qué tiene de especial el logro Leyenda?',
-        a: 'Es el único logro dinámico — se gana y se puede perder. Mientras estés en el top 3 del leaderboard de autores (por vistas totales), tenés el logro activo y recibís XP de bonus. Si otro autor te desplaza del top 3, perdés el logro y el XP de bonus se descuenta. Esto genera competencia real entre los mejores autores.',
-      },
-      {
-        q: '¿Por qué los logros de vistas y votos son por guía individual y no en total?',
-        a: 'Es intencional. Si fueran acumulados, publicar 10 guías mediocres con 10 vistas cada una valdría igual que una guía excelente con 100. Al medirlo por guía individual, se premia la calidad: tenés que crear algo que la comunidad realmente valore y comparta.',
-      },
-      {
-        q: '¿Los logros se pueden perder?',
-        a: 'Solo el logro Leyenda es reversible. El resto son permanentes — una vez ganados, no se pierden aunque borres las guías (el registro del logro ya quedó guardado).',
+        a: 'Es el único logro dinámico — se gana y se puede perder. Mientras estés en el top 3 del leaderboard de autores, tenés el logro activo y recibís XP de bonus. Si otro autor te desplaza del top 3, perdés el logro y el XP de bonus se descuenta. Esto genera competencia real entre los mejores autores.',
       },
     ],
   },
@@ -139,43 +145,42 @@ const SECTIONS: Section[] = [
     faqs: [
       {
         q: '¿Cómo se gana XP?',
-        a: (
-          <div>
-            <p className="mb-2">Las acciones que otorgan XP son:</p>
-            <ul className="space-y-1 text-sm">
-              <li className="flex justify-between"><span>Publicar una guía</span><span className="text-accent-orange font-bold">+50 XP</span></li>
-              <li className="flex justify-between"><span>Comentar una guía</span><span className="text-accent-orange font-bold">+5 XP</span></li>
-              <li className="flex justify-between"><span>Recibir un voto útil</span><span className="text-accent-orange font-bold">+10 XP</span></li>
-              <li className="flex justify-between"><span>Recibir un badge en tu guía</span><span className="text-accent-orange font-bold">+25 XP</span></li>
-              <li className="flex justify-between"><span>Desbloquear un logro</span><span className="text-accent-orange font-bold">+variable</span></li>
-            </ul>
-            <p className="mt-2 text-white/50 text-xs">Los valores exactos los configura el administrador y pueden cambiar.</p>
-          </div>
-        ),
+        a: 'Ganás XP realizando acciones en la comunidad: publicar guías, comentar, recibir votos útil en tus guías, recibir badges, y desbloquear logros. Los valores exactos son configurados por el administrador.',
       },
       {
-        q: '¿Cuáles son los rangos y sus niveles?',
+        q: '¿Cuáles son los rangos?',
         a: (
-          <div className="space-y-1">
-            {[
-              { rango: 'Genin',  color: 'text-nature-green',   niveles: '1 – 3',  xp: '0 – 499 XP' },
-              { rango: 'Chūnin', color: 'text-chakra-blue',    niveles: '4 – 6',  xp: '500 – 1.999 XP' },
-              { rango: 'Jōnin',  color: 'text-accent-orange',  niveles: '7 – 9',  xp: '2.000 – 6.499 XP' },
-              { rango: 'Kage',   color: 'text-sage-gold',      niveles: '10',     xp: '6.500+ XP' },
-            ].map(r => (
-              <div key={r.rango} className="flex items-center justify-between p-2 rounded bg-bg-elevated/50">
-                <span className={`font-cinzel font-bold ${r.color}`}>{r.rango}</span>
-                <span className="text-xs text-white/50">Niveles {r.niveles}</span>
-                <span className="text-xs text-white/40">{r.xp}</span>
-              </div>
-            ))}
-            <p className="text-xs text-white/40 mt-1">Los umbrales exactos los puede ajustar el administrador desde el Back Office.</p>
+          <div className="space-y-3">
+            <p className="text-white/50 text-xs mb-3">
+              Tu rango refleja tu nivel de contribución a la comunidad. Avanzás acumulando XP.
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              {RANGOS.map(r => (
+                <div key={r.rango} className="flex items-center gap-3 p-3 rounded-xl bg-bg-elevated/50 border border-border/40">
+                  {r.img
+                    ? <img src={r.img} className="w-12 h-12 object-contain" />
+                    : (
+                      <div className="w-12 h-12 rounded-full bg-bg-card border border-border/50 flex items-center justify-center flex-shrink-0">
+                        <span className={`font-cinzel font-black text-lg ${r.color}`}>忍</span>
+                      </div>
+                    )
+                  }
+                  <div>
+                    <p className={`font-cinzel font-bold text-sm ${r.color}`}>{r.rango}</p>
+                    <p className="text-xs text-white/40 leading-tight">{r.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-white/30 mt-2">
+              Los umbrales de XP por nivel son configurables por el administrador.
+            </p>
           </div>
         ),
       },
       {
         q: '¿El XP y el nivel se pueden perder?',
-        a: 'En general no. El único caso donde se pierde XP es al perder el logro Leyenda (salir del top 3 del leaderboard). El resto del XP es permanente.',
+        a: 'En general el XP es permanente. El único caso donde puede haber un ajuste de XP es al perder el logro Leyenda — si salís del top 3 del leaderboard, el bonus de XP asociado a ese logro se descuenta.',
       },
     ],
   },
@@ -185,42 +190,16 @@ const SECTIONS: Section[] = [
     icon: '🥇',
     faqs: [
       {
-        q: '¿Cómo funciona el leaderboard de guías?',
-        a: 'Tiene 5 vistas: Top General (puntaje combinado), Más Vistas, Trending (vistas en los últimos 7 días), Mejor Valoradas (votos útil) y Más Comentadas. El Top General combina vistas × 0.3 + comentarios × 0.4 + votos × 0.3.',
+        q: '¿Qué es el leaderboard de guías?',
+        a: 'Es el ranking de las mejores guías de la comunidad. Podés verlo por distintos criterios: Top General, Más Vistas, Trending (últimos 7 días), Mejor Valoradas y Más Comentadas.',
       },
       {
-        q: '¿Cómo se calcula el leaderboard de autores?',
-        a: 'Por puntaje combinado: vistas totales × 0.3 + comentarios totales × 0.3 + votos útil × 0.4. Se puede filtar por guías o por autores en la misma página.',
+        q: '¿Qué es el leaderboard de autores?',
+        a: 'Ranquea a los usuarios que más aportan a la comunidad en base a la actividad total de sus guías: vistas, comentarios y votos útil recibidos. Es la base para el logro Leyenda.',
       },
       {
         q: '¿Con qué frecuencia se actualiza?',
-        a: 'En tiempo real — cada vez que alguien ve una guía, vota o comenta, los datos se actualizan inmediatamente en la base de datos.',
-      },
-    ],
-  },
-  {
-    id: 'notificaciones',
-    title: 'Notificaciones',
-    icon: '🔔',
-    faqs: [
-      {
-        q: '¿Cuándo recibo notificaciones?',
-        a: (
-          <ul className="space-y-1 text-sm">
-            <li>📝 Cuando alguien comenta una de tus guías</li>
-            <li>🏅 Cuando un admin asigna un badge a una de tus guías</li>
-            <li>🏆 Cuando desbloqueás un nuevo logro</li>
-            <li>⚡ Cuando perdés el logro Leyenda (salís del top 3)</li>
-          </ul>
-        ),
-      },
-      {
-        q: '¿Las notificaciones de comentario llegan por cada comentario?',
-        a: 'No — para evitar spam, si ya tenés una notificación de comentario no leída para una guía, no se crea una nueva hasta que la leas. Una vez que la marcás como leída, el próximo comentario vuelve a notificarte.',
-      },
-      {
-        q: '¿Cómo marco las notificaciones como leídas?',
-        a: 'Haciendo click en el ✓ a la derecha de cada notificación, o usando el botón "Todo leído" en el header del panel. Las notificaciones marcadas como leídas no vuelven a aparecer resaltadas.',
+        a: 'En tiempo real. Cada vista, voto o comentario nuevo se refleja inmediatamente.',
       },
     ],
   },
@@ -313,7 +292,7 @@ export default function FAQPage() {
 
       {/* Quick nav */}
       <section className="sticky top-20 z-20 bg-bg-primary/90 backdrop-blur-sm border-b border-border/30 px-6 py-3">
-        <div className="max-w-3xl mx-auto flex gap-3 overflow-x-auto scrollbar-hide">
+        <div className="max-w-3xl mx-auto flex gap-3 overflow-x-auto">
           {SECTIONS.map(s => (
             <a
               key={s.id}
@@ -334,10 +313,9 @@ export default function FAQPage() {
             <SectionBlock key={section.id} section={section} />
           ))}
 
-          {/* Footer note */}
           <div className="mt-6 p-5 rounded-xl border border-border/30 bg-bg-card/30 text-center">
             <p className="text-sm font-montserrat text-white/40">
-              Esta página se actualiza automáticamente cuando se agregan nuevas funcionalidades.
+              Esta página se actualiza cuando se agregan nuevas funcionalidades.
               <br />
               ¿Tenés una pregunta que no está acá? Contactá a un administrador.
             </p>
