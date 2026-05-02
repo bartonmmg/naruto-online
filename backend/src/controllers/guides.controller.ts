@@ -62,16 +62,20 @@ export const guidesController = {
       const authHeader = req.headers.authorization
       if (authHeader && authHeader.startsWith('Bearer ')) {
         try {
-          const token = authHeader.substring(7) // Remove 'Bearer '
+          const token = authHeader.substring(7)
           const decoded = jwt.verify(token, process.env.JWT_SECRET || 'dev-secret') as any
           userId = decoded.userId
         } catch {
-          // Token invalid or expired, continue as anonymous
+          // Invalid/expired token — treat as anonymous
         }
       }
 
-      // Record the view (userId optional for anonymous users)
-      const result = await guidesService.recordView(id, userId)
+      // Extract real IP — respects X-Forwarded-For for proxies/production
+      const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim()
+        || req.socket?.remoteAddress
+        || 'unknown'
+
+      const result = await guidesService.recordView(id, userId, ip)
 
       res.json(result)
     } catch (error: any) {

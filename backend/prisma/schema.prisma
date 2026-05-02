@@ -110,11 +110,13 @@ model GuideView {
   id        String   @id @default(cuid())
   guideId   String
   guide     Guide    @relation(fields: [guideId], references: [id], onDelete: Cascade)
-  userId    String?  // nullable — anonymous views allowed
+  userId    String?  // null for anonymous
   user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  ipAddress String?  // used to deduplicate anonymous views
   viewedAt  DateTime @default(now())
 
-  @@unique([guideId, userId])
+  @@unique([guideId, userId])  // one view per authenticated user
+  @@unique([guideId, ipAddress])  // one view per IP (covers anonymous)
   @@index([guideId])
   @@index([userId])
 }

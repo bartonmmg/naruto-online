@@ -195,42 +195,36 @@ export const guidesService = {
     })
   },
 
-  async recordView(guideId: string, userId?: string) {
-    // Check if this user/anonymous already viewed this guide today
-    // For logged in users, only count once per guide per user
-    // For anonymous (userId=null), count once per session but we'll count all
-
+  async recordView(guideId: string, userId?: string, ipAddress?: string) {
     const guide = await prisma.guide.findUnique({ where: { id: guideId } })
     if (!guide) {
       throw new Error('Guía no encontrada')
     }
 
     if (userId) {
-      // For logged-in users, upsert (update if exists, create if not)
-      // This ensures one view per user per guide
+      // Authenticated: deduplicate by userId
       await prisma.guideView.upsert({
         where: { guideId_userId: { guideId, userId } },
-        create: { guideId, userId },
+        create: { guideId, userId, ipAddress },
         update: { viewedAt: new Date() },
       })
-    } else {
-      // For anonymous users, just create a new view record
-      // This will count each session as a view
-      await prisma.guideView.create({
-        data: { guideId },
-      })
+    } else if (ipAddress) {
+      // Anonymous: deduplicate by IP address
+      try {
+        await prisma.guideView.upsert({
+          where: { guideId_ipAddress: { guideId, ipAddress } },
+          create: { guideId, ipAddress },
+          update: { viewedAt: new Date() },
+        })
+      } catch {
+        // If IP constraint fails for any reason, skip silently
+      }
     }
+    // If no userId and no IP (shouldn't happen in practice), skip
 
-    // Calculate total unique views (unique user IDs, plus count of null userId)
-    const views = await prisma.guideView.findMany({
-      where: { guideId },
-      select: { userId: true },
-    })
+    // Count all unique view records
+    const totalViews = await prisma.guideView.count({ where: { guideId } })
 
-    const uniqueUserViews = new Set(views.filter(v => v.userId).map(v => v.userId)).size
-    const totalViews = uniqueUserViews + views.filter(v => !v.userId).length
-
-    // Update the viewCount in the guide
     await prisma.guide.update({
       where: { id: guideId },
       data: { viewCount: totalViews },
