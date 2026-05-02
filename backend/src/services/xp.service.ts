@@ -48,21 +48,21 @@ export const ACHIEVEMENT_DEFS = [
   {
     key: 'VIEWS_100',
     title: '100 Vistas',
-    description: 'Tus guías superaron las 100 vistas en total',
+    description: 'Una de tus guías alcanzó las 100 vistas',
     imageFile: 'logro-100-vistas.png',
     xpReward: 50,
   },
   {
     key: 'VIEWS_1000',
     title: '1000 Vistas',
-    description: 'Tus guías superaron las 1000 vistas en total',
+    description: 'Una de tus guías alcanzó las 1000 vistas',
     imageFile: 'logro-1000-vistas.png',
     xpReward: 150,
   },
   {
     key: 'VOTES_100',
     title: 'Maestro del Conocimiento',
-    description: 'Recibí 100 votos útil en tus guías',
+    description: 'Una de tus guías recibió 100 votos útil',
     imageFile: 'logro-votos.png',
     xpReward: 100,
   },
@@ -76,9 +76,9 @@ export const ACHIEVEMENT_DEFS = [
   {
     key: 'LEGEND',
     title: 'Leyenda',
-    description: 'Alcanzá el top 3 del leaderboard de autores',
+    description: 'Estás en el top 3 del leaderboard de autores',
     imageFile: 'logro-leyenda.png',
-    xpReward: 200,
+    xpReward: 0, // XP is awarded dynamically while in top 3, revoked when leaving
   },
 ]
 
@@ -148,25 +148,30 @@ export const xpService = {
     })
     const earnedIds = new Set(earned.map(e => e.achievementId))
 
-    // All guides by this user (no DRAFT filter — publish is direct)
+    // All guides by this user
     const allGuides = await prisma.guide.findMany({
       where: { authorId: userId },
       select: { id: true, viewCount: true, badges: true },
     })
 
-    const totalViews = allGuides.reduce((sum, g) => sum + (g.viewCount || 0), 0)
+    // VIEWS: per single guide (not total) — must have one guide with X views
+    const maxViewsOnOneGuide = allGuides.reduce((max, g) => Math.max(max, g.viewCount || 0), 0)
 
-    const upvotes = await prisma.guideRating.count({
+    // VOTES: per single guide — must have one guide with 100 upvotes
+    const upvotesByGuide = await prisma.guideRating.groupBy({
+      by: ['guideId'],
       where: { value: 1, guide: { authorId: userId } },
+      _count: { guideId: true },
     })
+    const maxVotesOnOneGuide = upvotesByGuide.reduce((max, r) => Math.max(max, r._count.guideId), 0)
 
-    // BADGE_OFFICIAL: only admin/mod can assign this — cannot be self-gamed
+    // BADGE_OFFICIAL: only admin/mod can assign — cannot be self-gamed
     const hasOfficialBadge = allGuides.some(g => {
       try { return (JSON.parse(g.badges || '[]') as string[]).includes('OFFICIAL') }
       catch { return false }
     })
 
-    // LEGEND: top 3 of leaderboard by total views — cannot be self-gamed
+    // LEGEND: top 3 of leaderboard by total views — dynamic badge (gained and lost)
     const allAuthors = await prisma.user.findMany({
       where: { guides: { some: {} } },
       select: { id: true, guides: { select: { viewCount: true } } },
@@ -180,11 +185,51 @@ export const xpService = {
       FIRST_GUIDE:    allGuides.length >= 1,
       FIVE_GUIDES:    allGuides.length >= 5,
       TEN_GUIDES:     allGuides.length >= 10,
-      VIEWS_100:      totalViews >= 100,
-      VIEWS_1000:     totalViews >= 1000,
-      VOTES_100:      upvotes >= 100,
+      VIEWS_100:      maxViewsOnOneGuide >= 100,
+      VIEWS_1000:     maxViewsOnOneGuide >= 1000,
+      VOTES_100:      maxVotesOnOneGuide >= 100,
       BADGE_OFFICIAL: hasOfficialBadge,
       LEGEND:         isTop3,
+    }
+
+    // --- LEGEND dynamic logic ---
+    // If user IS top 3: grant achievement + XP bonus per check
+    // If user is NOT top 3: revoke achievement + remove bonus XP
+    const legendAchievement = achievements.find(a => a.key === 'LEGEND')
+    if (legendAchievement) {
+      const hasLegend = earnedIds.has(legendAchievement.id)
+      const LEGEND_XP_BONUS = 50 // XP bonus awarded per check while in top 3
+
+      if (isTop3 && !hasLegend) {
+        // Newly entered top 3 — grant achievement
+        try {
+          await prisma.userAchievement.create({ data: { userId, achievementId: legendAchievement.id } })
+          await prisma.user.update({ where: { id: userId }, data: { xp: { increment: LEGEND_XP_BONUS } } })
+          await prisma.xpLog.create({ data: { userId, action: 'ACHIEVEMENT_LEGEND_GAINED', amount: LEGEND_XP_BONUS } })
+          const existingNotif = await prisma.notification.findFirst({
+            where: { userId, type: 'ACHIEVEMENT', message: '¡Sos Leyenda! Estás en el top 3 de autores', read: false },
+          })
+          if (!existingNotif) {
+            await prisma.notification.create({
+              data: { userId, type: 'ACHIEVEMENT', message: '¡Sos Leyenda! Estás en el top 3 de autores' },
+            })
+          }
+        } catch { /* already exists */ }
+      } else if (!isTop3 && hasLegend) {
+        // Left top 3 — revoke achievement and remove XP
+        await prisma.userAchievement.deleteMany({ where: { userId, achievementId: legendAchievement.id } })
+        const user = await prisma.user.findUnique({ where: { id: userId }, select: { xp: true } })
+        if (user) {
+          const newXp = Math.max(0, user.xp - LEGEND_XP_BONUS)
+          await prisma.user.update({ where: { id: userId }, data: { xp: newXp } })
+          await prisma.xpLog.create({ data: { userId, action: 'ACHIEVEMENT_LEGEND_LOST', amount: -LEGEND_XP_BONUS } })
+        }
+        await prisma.notification.create({
+          data: { userId, type: 'ACHIEVEMENT', message: 'Ya no estás en el top 3 — perdiste el logro Leyenda' },
+        })
+      }
+      // Remove LEGEND from the regular loop below
+      earnedIds.add(legendAchievement.id)
     }
 
     const newlyEarned: string[] = []
