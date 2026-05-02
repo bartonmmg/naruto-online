@@ -189,13 +189,18 @@ export const xpService = {
 
     const newlyEarned: string[] = []
     for (const achievement of achievements) {
-      // Skip already earned — earnedIds is the source of truth, no duplicate notifications
       if (earnedIds.has(achievement.id)) continue
       if (!conditions[achievement.key]) continue
 
-      await prisma.userAchievement.create({
-        data: { userId, achievementId: achievement.id },
-      })
+      // Use upsert to handle race conditions — if already exists, skip silently
+      try {
+        await prisma.userAchievement.create({
+          data: { userId, achievementId: achievement.id },
+        })
+      } catch {
+        // @@unique constraint failed — already earned in a parallel call, skip everything
+        continue
+      }
 
       if (achievement.xpReward > 0) {
         await prisma.user.update({
@@ -207,14 +212,24 @@ export const xpService = {
         })
       }
 
-      // ONE notification per achievement — only fires when newly earned
-      await prisma.notification.create({
-        data: {
+      // Only notify if no existing unread ACHIEVEMENT notification with same message
+      const existingNotif = await prisma.notification.findFirst({
+        where: {
           userId,
           type: 'ACHIEVEMENT',
           message: `¡Nuevo logro desbloqueado: ${achievement.title}!`,
+          read: false,
         },
       })
+      if (!existingNotif) {
+        await prisma.notification.create({
+          data: {
+            userId,
+            type: 'ACHIEVEMENT',
+            message: `¡Nuevo logro desbloqueado: ${achievement.title}!`,
+          },
+        })
+      }
 
       newlyEarned.push(achievement.key)
     }
