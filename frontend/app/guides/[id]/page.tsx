@@ -130,9 +130,9 @@ export default function GuideDetailPage() {
     <main className="min-h-screen bg-bg-primary overflow-x-hidden">
       <Navbar />
 
-      <section className="relative py-10 px-6 border-b border-border/50">
+      <section className="relative pt-20 pb-10 px-6 border-b border-border/50">
         <div className="max-w-4xl mx-auto relative z-10">
-          <Link href="/guides" className="inline-flex items-center gap-2 text-sm text-white/60 hover:text-white/90 transition-colors mb-6">
+          <Link href="/guides" className="inline-flex items-center gap-2 text-sm text-white/60 hover:text-white/90 transition-colors mb-8">
             <ChevronLeft className="w-4 h-4" />
             Volver a Guías
           </Link>
