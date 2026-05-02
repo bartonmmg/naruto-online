@@ -287,4 +287,45 @@ export const guidesController = {
       res.status(500).json({ error: error.message || 'Error al actualizar badges' })
     }
   },
+
+  async toggleReaction(req: AuthRequest, res: Response) {
+    try {
+      const { id } = req.params
+      const { emoji } = req.body
+
+      if (!emoji) {
+        return res.status(400).json({ error: 'Se requiere un emoji' })
+      }
+
+      const reactions = await guidesService.toggleReaction(id, req.userId!, emoji)
+
+      res.json(reactions)
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || 'Error al procesar reacción' })
+    }
+  },
+
+  async removeReaction(req: AuthRequest, res: Response) {
+    try {
+      const { id, emoji } = req.params
+
+      const reactions = await guidesService.removeReaction(id, req.userId!, emoji)
+
+      res.json(reactions)
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || 'Error al eliminar reacción' })
+    }
+  },
+
+  async getReactions(req: AuthRequest, res: Response) {
+    try {
+      const { id } = req.params
+
+      const reactions = await guidesService.getReactions(id, req.userId)
+
+      res.json(reactions)
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || 'Error al obtener reacciones' })
+    }
+  },
 }

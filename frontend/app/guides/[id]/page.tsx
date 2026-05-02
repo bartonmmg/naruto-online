@@ -10,6 +10,7 @@ import { MarkdownRenderer } from '@/components/guides/MarkdownRenderer'
 import TableOfContents from '@/components/guides/TableOfContents'
 import GuideVoting from '@/components/guides/GuideVoting'
 import GuideComments from '@/components/guides/GuideComments'
+import GuideReactions from '@/components/guides/GuideReactions'
 import GuideBadges from '@/components/guides/GuideBadges'
 import Navbar from '@/components/Navbar'
 import Button from '@/components/ui/Button'
@@ -173,8 +174,15 @@ export default function GuideDetailPage() {
             <MarkdownRenderer content={guide.content} />
           </div>
 
+          {/* Guide Reactions */}
+          <div className="mb-12">
+            <h3 className="text-lg font-cinzel font-bold text-text-primary mb-4">Reacciones</h3>
+            <GuideReactions guideId={guide.id} />
+          </div>
+
           {/* Guide Voting */}
           <div className="mb-12">
+            <h3 className="text-lg font-cinzel font-bold text-text-primary mb-4">¿Útil?</h3>
             <GuideVoting guideId={guide.id} />
           </div>
 

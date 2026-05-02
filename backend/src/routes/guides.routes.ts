@@ -22,6 +22,9 @@ router.get('/:id/ratings', guidesController.getRatings)
 // GET /guides/:id/comments — público
 router.get('/:id/comments', guidesController.getComments)
 
+// GET /guides/:id/reactions — público
+router.get('/:id/reactions', guidesController.getReactions)
+
 // POST /guides/:id/views — optional auth, userId sent only if authenticated
 router.post('/:id/views', guidesController.recordView)
 
@@ -87,6 +90,20 @@ router.delete(
   '/:id/comments/:commentId',
   authMiddleware,
   guidesController.deleteComment
+)
+
+// POST /guides/:id/reactions — protegido
+router.post(
+  '/:id/reactions',
+  authMiddleware,
+  guidesController.toggleReaction
+)
+
+// DELETE /guides/:id/reactions/:emoji — protegido
+router.delete(
+  '/:id/reactions/:emoji',
+  authMiddleware,
+  guidesController.removeReaction
 )
 
 export default router

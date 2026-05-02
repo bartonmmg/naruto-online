@@ -326,4 +326,55 @@ export const guidesService = {
       },
     })
   },
+
+  async toggleReaction(guideId: string, userId: string, emoji: string) {
+    const guide = await prisma.guide.findUnique({ where: { id: guideId } })
+    if (!guide) {
+      throw new Error('Guía no encontrada')
+    }
+
+    const existing = await prisma.guideReaction.findUnique({
+      where: { guideId_userId_emoji: { guideId, userId, emoji } },
+    })
+
+    if (existing) {
+      await prisma.guideReaction.delete({
+        where: { id: existing.id },
+      })
+    } else {
+      await prisma.guideReaction.create({
+        data: { guideId, userId, emoji },
+      })
+    }
+
+    return await this.getReactions(guideId, userId)
+  },
+
+  async removeReaction(guideId: string, userId: string, emoji: string) {
+    await prisma.guideReaction.deleteMany({
+      where: { guideId, userId, emoji },
+    })
+
+    return await this.getReactions(guideId, userId)
+  },
+
+  async getReactions(guideId: string, userId?: string) {
+    const reactions = await prisma.guideReaction.findMany({
+      where: { guideId },
+    })
+
+    const EMOJIS = ['❤️', '🔥', '👏', '😂', '🤔']
+    const result: Record<string, any> = {}
+
+    for (const emoji of EMOJIS) {
+      const emojiReactions = reactions.filter(r => r.emoji === emoji)
+      result[emoji] = {
+        emoji,
+        count: emojiReactions.length,
+        userReacted: userId ? emojiReactions.some(r => r.userId === userId) : false,
+      }
+    }
+
+    return result
+  },
 }
