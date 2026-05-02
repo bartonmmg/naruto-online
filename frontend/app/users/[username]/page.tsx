@@ -6,8 +6,15 @@ import { useParams } from 'next/navigation'
 import { ChevronLeft, Eye, MessageSquare, ThumbsUp, Heart, BookOpen, Star, Calendar, TrendingUp, Loader2 } from 'lucide-react'
 import { CATEGORY_LABELS, DIFFICULTY_LABELS } from '@/lib/types'
 import GuideBadges from '@/components/guides/GuideBadges'
+import UserAchievements from '@/components/guides/UserAchievements'
 import Navbar from '@/components/Navbar'
 import api from '@/lib/api'
+
+interface UserAchievementItem {
+  id: string
+  earnedAt: string
+  achievement: { key: string; title: string; description: string; imageFile: string; xpReward: number }
+}
 
 interface UserProfile {
   id: string
@@ -33,6 +40,7 @@ interface UserProfile {
     upvotes: number
     guideCount: number
   }
+  achievements?: UserAchievementItem[]
 }
 
 const getRankLabel = (level: number) => {
@@ -215,6 +223,10 @@ export default function UserProfilePage() {
                 </Link>
               ))}
             </div>
+          )}
+
+          {profile.achievements && profile.achievements.length > 0 && (
+            <UserAchievements achievements={profile.achievements} />
           )}
         </div>
       </section>

@@ -17,6 +17,7 @@ export interface Guide {
   content: string
   imageUrls: string[]
   videoUrls: string[]
+  coverImage?: string | null
   status: 'DRAFT' | 'PUBLISHED'
   authorId: string
   author: {

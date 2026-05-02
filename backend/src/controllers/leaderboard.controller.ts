@@ -1,6 +1,7 @@
 import { Response } from 'express'
 import { AuthRequest } from '../middleware/auth.middleware.js'
 import { guidesService } from '../services/guides.service.js'
+import { xpService } from '../services/xp.service.js'
 
 export const leaderboardController = {
   async getGuideLeaderboard(req: AuthRequest, res: Response) {
@@ -26,7 +27,8 @@ export const leaderboardController = {
       const { username } = req.params
       const data = await guidesService.getUserProfile(username)
       if (!data) return res.status(404).json({ error: 'Usuario no encontrado' })
-      res.json(data)
+      const achievements = await xpService.getUserAchievements(data.id)
+      res.json({ ...data, achievements })
     } catch (error: any) {
       res.status(500).json({ error: error.message || 'Error al obtener perfil' })
     }

@@ -23,6 +23,7 @@ export default function EditGuidePage() {
   const [category, setCategory] = useState('BUILDS')
   const [difficulty, setDifficulty] = useState('BASICO')
   const [content, setContent] = useState('')
+  const [coverImage, setCoverImage] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
@@ -43,6 +44,7 @@ export default function EditGuidePage() {
         setCategory(g.category)
         setDifficulty(g.difficulty)
         setContent(g.content)
+        setCoverImage(g.coverImage || '')
         setPageLoading(false)
       } catch {
         router.replace('/guides')
@@ -63,7 +65,7 @@ export default function EditGuidePage() {
 
     setIsSubmitting(true)
     try {
-      await api.put(`/guides/${guideId}`, { title, category, difficulty, content })
+      await api.put(`/guides/${guideId}`, { title, category, difficulty, content, coverImage: coverImage || null })
       router.push(`/guides/${guideId}`)
     } catch (err: any) {
       if (err.response?.data?.details) {
@@ -147,6 +149,21 @@ export default function EditGuidePage() {
                   <option key={key} value={key}>{label}</option>
                 ))}
               </select>
+            </div>
+
+            {/* Cover image */}
+            <div className="flex items-center gap-2 flex-1 min-w-[180px]">
+              <label className="text-xs text-white/50 font-montserrat flex-shrink-0">Portada</label>
+              <input
+                type="url"
+                value={coverImage}
+                onChange={e => setCoverImage(e.target.value)}
+                placeholder="URL de portada (opcional)"
+                className="h-8 flex-1 px-3 text-xs bg-bg-card border border-border rounded-lg text-white placeholder:text-white/30 focus:outline-none focus:border-chakra-blue font-montserrat"
+              />
+              {coverImage && (
+                <img src={coverImage} alt="portada" className="w-8 h-8 rounded object-cover flex-shrink-0 border border-border" onError={e => (e.currentTarget.style.display = 'none')} />
+              )}
             </div>
 
             <div className="ml-auto flex items-center gap-3">

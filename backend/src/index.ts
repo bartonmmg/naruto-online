@@ -6,7 +6,9 @@ import guidesRouter from './routes/guides.routes.js'
 import rankingRouter from './routes/ranking.routes.js'
 import leaderboardRoutes from './routes/leaderboard.routes.js'
 import notificationsRoutes from './routes/notifications.routes.js'
+import adminRoutes from './routes/admin.routes.js'
 import { apiKeyMiddleware } from './middleware/apiKey.js'
+import { xpService } from './services/xp.service.js'
 
 // Load environment variables (try .env.local first, then .env)
 dotenv.config({ path: '.env.local' })
@@ -40,9 +42,12 @@ app.use('/guides', guidesRouter)
 app.use('/api/rankings', rankingRouter)
 app.use('/leaderboard', leaderboardRoutes)
 app.use('/notifications', notificationsRoutes)
+app.use('/admin', adminRoutes)
 
 const server = app.listen(PORT, () => {
   console.log(`🚀 Backend running on http://localhost:${PORT}`)
+  // Seed XP/level/achievement defaults on startup
+  xpService.seedDefaults().catch(console.error)
 })
 
 process.on('unhandledRejection', (reason) => {

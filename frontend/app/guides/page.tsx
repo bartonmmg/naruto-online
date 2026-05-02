@@ -222,15 +222,28 @@ export default function GuidesPage() {
                   <div
                     key={guide.id}
                     onClick={() => router.push(`/guides/${guide.id}`)}
-                    className="group game-card p-6 rounded-xl transition-all duration-300 hover:border-chakra-blue/50 hover:shadow-lg hover:shadow-chakra-blue/20 cursor-pointer"
+                    className="group game-card rounded-xl transition-all duration-300 hover:border-chakra-blue/50 hover:shadow-lg hover:shadow-chakra-blue/20 cursor-pointer overflow-hidden"
                   >
+                    {/* Cover image banner */}
+                    {guide.coverImage ? (
+                      <div className="w-full h-32 overflow-hidden">
+                        <img
+                          src={guide.coverImage}
+                          alt={guide.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          onError={e => (e.currentTarget.parentElement!.style.display = 'none')}
+                        />
+                      </div>
+                    ) : null}
+
+                    <div className="p-6">
                     {/* Header */}
                     <div className="flex items-start justify-between mb-4">
-                      <div className="w-12 h-12 rounded-lg bg-bg-elevated flex items-center justify-center group-hover:scale-110 transition-transform border border-border">
+                      <div className={`rounded-lg bg-bg-elevated flex items-center justify-center group-hover:scale-110 transition-transform border border-border ${guide.coverImage ? 'w-10 h-10' : 'w-12 h-12'}`}>
                         <img
                           src="/images/tools/shuriken.png"
                           alt={guide.title}
-                          className="w-7 h-7 object-contain"
+                          className="w-6 h-6 object-contain"
                         />
                       </div>
                       <div className="flex gap-2 items-center flex-wrap justify-end">
@@ -291,6 +304,7 @@ export default function GuidesPage() {
                         )}
                       </div>
                     </div>
+                    </div>{/* end p-6 */}
                   </div>
                 ))}
               </div>

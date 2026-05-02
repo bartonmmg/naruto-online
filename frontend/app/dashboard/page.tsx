@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { LogOut, Zap, Shield, Trophy, Flame, Compass, Users } from 'lucide-react'
+import { LogOut, Zap, Shield, Trophy, Flame, Compass, Users, Settings } from 'lucide-react'
 import Button from '@/components/ui/Button'
 
 interface User {
@@ -12,6 +12,7 @@ interface User {
   email: string
   level: number
   xp: number
+  role: string
 }
 
 function getRank(level: number) {
@@ -203,6 +204,12 @@ export default function DashboardPage() {
           <Link href="/tools/coupons" className="text-xs font-cinzel text-text-dim hover:text-power-red transition-colors tracking-widest">
             → Calculadora de Cupones
           </Link>
+          {user.role === 'ADMIN' && (
+            <Link href="/dashboard/admin/xp" className="text-xs font-cinzel text-accent-orange hover:text-accent-orange/70 transition-colors tracking-widest flex items-center gap-1">
+              <Settings className="w-3 h-3" />
+              → Back Office XP
+            </Link>
+          )}
         </div>
 
         {/* Footer note */}

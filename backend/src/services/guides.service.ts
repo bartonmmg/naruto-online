@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { prisma } from '../lib/prisma.js'
+import { xpService } from './xp.service.js'
 
 export const createGuideSchema = z.object({
   title: z.string().min(5, 'El título debe tener al menos 5 caracteres').max(100, 'El título no puede exceder 100 caracteres'),
@@ -8,6 +9,7 @@ export const createGuideSchema = z.object({
   content: z.string().min(20, 'El contenido debe tener al menos 20 caracteres'),
   imageUrls: z.array(z.string()).optional().default([]),
   videoUrls: z.array(z.string()).optional().default([]),
+  coverImage: z.string().url().optional().nullable(),
   status: z.enum(['DRAFT', 'PUBLISHED']).optional().default('DRAFT'),
 })
 
@@ -18,6 +20,7 @@ export const updateGuideSchema = z.object({
   content: z.string().min(20, 'El contenido debe tener al menos 20 caracteres').optional(),
   imageUrls: z.array(z.string()).optional(),
   videoUrls: z.array(z.string()).optional(),
+  coverImage: z.string().url().optional().nullable(),
   status: z.enum(['DRAFT', 'PUBLISHED']).optional(),
 })
 
@@ -96,7 +99,7 @@ export const guidesService = {
   },
 
   async createGuide(data: CreateGuideInput, authorId: string) {
-    return await prisma.guide.create({
+    const guide = await prisma.guide.create({
       data: {
         title: data.title,
         category: data.category,
@@ -104,15 +107,20 @@ export const guidesService = {
         content: data.content,
         imageUrls: JSON.stringify(data.imageUrls || []),
         videoUrls: JSON.stringify(data.videoUrls || []),
+        coverImage: data.coverImage ?? null,
         status: data.status || 'DRAFT',
         authorId,
       },
-      include: {
-        author: {
-          select: { username: true },
-        },
-      },
+      include: { author: { select: { username: true } } },
     })
+
+    // XP + achievements fire-and-forget (only when published)
+    if (guide.status === 'PUBLISHED') {
+      xpService.awardXp(authorId, 'GUIDE_PUBLISHED').catch(() => {})
+      xpService.checkAchievements(authorId).catch(() => {})
+    }
+
+    return guide
   },
 
   async updateGuide(id: string, data: UpdateGuideInput, requesterId: string, requesterRole: string) {
@@ -307,6 +315,10 @@ export const guidesService = {
       })
     }
 
+    // XP for commenter + check achievements
+    xpService.awardXp(authorId, 'COMMENT_POSTED').catch(() => {})
+    xpService.checkAchievements(authorId).catch(() => {})
+
     return comment
   },
 
@@ -365,6 +377,10 @@ export const guidesService = {
           guideTitle: author.title,
         },
       })
+
+      // XP for receiving a badge + check achievements (fire-and-forget)
+      xpService.awardXp(author.authorId, 'BADGE_RECEIVED').catch(() => {})
+      xpService.checkAchievements(author.authorId).catch(() => {})
     }
 
     return updated

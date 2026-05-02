@@ -130,7 +130,20 @@ export default function GuideDetailPage() {
     <main className="min-h-screen bg-bg-primary overflow-x-hidden">
       <Navbar />
 
-      <section className="relative pt-20 pb-10 px-6 border-b border-border/50">
+      {/* Cover image hero */}
+      {guide.coverImage && (
+        <div className="w-full h-52 md:h-72 overflow-hidden relative">
+          <img
+            src={guide.coverImage}
+            alt={guide.title}
+            className="w-full h-full object-cover"
+            onError={e => (e.currentTarget.parentElement!.style.display = 'none')}
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-bg-primary/20 to-bg-primary" />
+        </div>
+      )}
+
+      <section className={`relative ${guide.coverImage ? 'pt-6' : 'pt-20'} pb-10 px-6 border-b border-border/50`}>
         <div className="max-w-4xl mx-auto relative z-10">
           <Link href="/guides" className="inline-flex items-center gap-2 text-sm text-white/60 hover:text-white/90 transition-colors mb-8">
             <ChevronLeft className="w-4 h-4" />

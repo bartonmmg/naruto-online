@@ -28,6 +28,47 @@ model User {
   guideViews    GuideView[]
   guideReactions GuideReaction[]
   notifications  Notification[]
+  achievements   UserAchievement[]
+}
+
+// XP system config — managed by admin backoffice
+model XpConfig {
+  id       String @id @default(cuid())
+  action   String @unique  // GUIDE_PUBLISHED, COMMENT_POSTED, etc.
+  label    String          // display name
+  xpAmount Int
+  updatedAt DateTime @updatedAt
+}
+
+model LevelConfig {
+  id        String @id @default(cuid())
+  level     Int    @unique
+  xpRequired Int
+  label     String  // "Genin", "Chūnin", etc.
+  updatedAt  DateTime @updatedAt
+}
+
+// Achievements definitions (hardcoded via seed, managed in backoffice)
+model Achievement {
+  id          String @id @default(cuid())
+  key         String @unique  // FIRST_GUIDE, VIEWS_100, etc.
+  title       String
+  description String
+  imageFile   String          // filename in /images/guides/logros/
+  xpReward    Int    @default(0)
+  users       UserAchievement[]
+}
+
+model UserAchievement {
+  id            String      @id @default(cuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievementId String
+  achievement   Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+  earnedAt      DateTime    @default(now())
+
+  @@unique([userId, achievementId])
+  @@index([userId])
 }
 
 model Guide {
@@ -38,6 +79,7 @@ model Guide {
   content     String
   imageUrls   String    @default("[]")
   videoUrls   String    @default("[]")
+  coverImage  String?
   status      String    @default("DRAFT")
   authorId    String
   author      User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
