@@ -301,18 +301,24 @@ export const guidesService = {
     })
 
     // Notify guide author (if not commenting on own guide)
+    // Only create if no existing unread comment notification for this guide — avoids spam
     const guideAuthor = await prisma.guide.findUnique({ where: { id: guideId }, select: { authorId: true, title: true } })
     if (guideAuthor && guideAuthor.authorId !== authorId) {
-      const commenter = await prisma.user.findUnique({ where: { id: authorId }, select: { username: true } })
-      await prisma.notification.create({
-        data: {
-          userId: guideAuthor.authorId,
-          type: 'COMMENT',
-          message: `${commenter?.username} comentó tu guía`,
-          guideId,
-          guideTitle: guideAuthor.title,
-        },
+      const existingUnread = await prisma.notification.findFirst({
+        where: { userId: guideAuthor.authorId, type: 'COMMENT', guideId, read: false },
       })
+      if (!existingUnread) {
+        const commenter = await prisma.user.findUnique({ where: { id: authorId }, select: { username: true } })
+        await prisma.notification.create({
+          data: {
+            userId: guideAuthor.authorId,
+            type: 'COMMENT',
+            message: `${commenter?.username} comentó tu guía`,
+            guideId,
+            guideTitle: guideAuthor.title,
+          },
+        })
+      }
     }
 
     // XP for commenter + check achievements
@@ -368,15 +374,22 @@ export const guidesService = {
 
     const author = await prisma.guide.findUnique({ where: { id: guideId }, select: { authorId: true, title: true } })
     if (author && badges.length > 0) {
-      await prisma.notification.create({
-        data: {
-          userId: author.authorId,
-          type: 'BADGE',
-          message: `Tu guía "${author.title}" recibió un badge`,
-          guideId,
-          guideTitle: author.title,
-        },
+      // Only notify if there is no recent unread badge notification for this guide
+      // Prevents spam when admin saves badges multiple times
+      const existingUnread = await prisma.notification.findFirst({
+        where: { userId: author.authorId, type: 'BADGE', guideId, read: false },
       })
+      if (!existingUnread) {
+        await prisma.notification.create({
+          data: {
+            userId: author.authorId,
+            type: 'BADGE',
+            message: `Tu guía "${author.title}" recibió un badge`,
+            guideId,
+            guideTitle: author.title,
+          },
+        })
+      }
 
       // XP for receiving a badge + check achievements (fire-and-forget)
       xpService.awardXp(author.authorId, 'BADGE_RECEIVED').catch(() => {})
