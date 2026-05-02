@@ -14,6 +14,7 @@ const navLinks = [
   { href: '/rankings',   label: 'Rankings' },
   { href: '/tools',      label: 'Herramientas' },
   { href: '/guides',     label: 'Guías' },
+  { href: '/faq',        label: 'FAQ' },
 ]
 
 export default function Navbar() {
