@@ -1,4 +1,5 @@
 import { Response } from 'express'
+import jwt from 'jsonwebtoken'
 import { AuthRequest } from '../middleware/auth.middleware.js'
 import { guidesService, createGuideSchema, updateGuideSchema, rateGuideSchema, createCommentSchema, manageBadgesSchema } from '../services/guides.service.js'
 
@@ -61,7 +62,6 @@ export const guidesController = {
       const authHeader = req.headers.authorization
       if (authHeader && authHeader.startsWith('Bearer ')) {
         try {
-          const jwt = require('jsonwebtoken')
           const token = authHeader.substring(7) // Remove 'Bearer '
           const decoded = jwt.verify(token, process.env.JWT_SECRET || 'dev-secret') as any
           userId = decoded.userId

@@ -200,12 +200,15 @@ export const guidesService = {
     // For logged in users, only count once per guide per user
     // For anonymous (userId=null), count once per session but we'll count all
 
+    console.log(`[recordView] guideId=${guideId}, userId=${userId}`)
+
     const guide = await prisma.guide.findUnique({ where: { id: guideId } })
     if (!guide) {
       throw new Error('Guía no encontrada')
     }
 
     if (userId) {
+      console.log(`[recordView] Upserting view for authenticated user ${userId}`)
       // For logged-in users, upsert (update if exists, create if not)
       // This ensures one view per user per guide
       await prisma.guideView.upsert({
@@ -214,6 +217,7 @@ export const guidesService = {
         update: { viewedAt: new Date() },
       })
     } else {
+      console.log(`[recordView] Creating view for anonymous user`)
       // For anonymous users, just create a new view record
       // This will count each session as a view
       await prisma.guideView.create({
