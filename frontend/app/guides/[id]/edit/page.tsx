@@ -99,7 +99,7 @@ export default function EditGuidePage() {
       </div>
 
       {/* Top bar */}
-      <div className="flex-shrink-0 relative z-10 border-b border-border/50 bg-bg-primary/60 backdrop-blur-sm px-6 py-3 mt-20">
+      <div className="flex-shrink-0 relative z-30 border-b border-border/50 bg-bg-primary/60 backdrop-blur-sm px-6 py-3 mt-20">
         <div className="max-w-7xl mx-auto">
 
           {/* Row 1: back + title */}
@@ -189,7 +189,7 @@ export default function EditGuidePage() {
       </div>
 
       {/* Editor — fills remaining height */}
-      <div className="flex-1 relative z-10 min-h-0 flex flex-col px-6 py-3">
+      <div className="flex-1 relative z-0 min-h-0 flex flex-col px-6 py-3">
         <div className="max-w-7xl mx-auto w-full flex-1 min-h-0 flex flex-col">
           <MarkdownEditor value={content} onChange={setContent} />
         </div>

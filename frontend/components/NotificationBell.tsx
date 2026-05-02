@@ -16,10 +16,11 @@ interface Notification {
 }
 
 const TYPE_ICON: Record<string, React.ReactNode> = {
-  COMMENT:   <MessageSquare className="w-3.5 h-3.5 text-chakra-blue" />,
-  REACTION:  <Star className="w-3.5 h-3.5 text-accent-orange" />,
-  BADGE:     <Trophy className="w-3.5 h-3.5 text-sage-gold" />,
-  MILESTONE: <Eye className="w-3.5 h-3.5 text-nature-green" />,
+  COMMENT:     <MessageSquare className="w-3.5 h-3.5 text-chakra-blue" />,
+  REACTION:    <Star className="w-3.5 h-3.5 text-accent-orange" />,
+  BADGE:       <Trophy className="w-3.5 h-3.5 text-sage-gold" />,
+  MILESTONE:   <Eye className="w-3.5 h-3.5 text-nature-green" />,
+  ACHIEVEMENT: <Trophy className="w-3.5 h-3.5 text-accent-orange" />,
 }
 
 function timeAgo(dateStr: string) {
@@ -54,12 +55,7 @@ export default function NotificationBell() {
     return () => clearInterval(interval)
   }, [fetchNotifications])
 
-  // Refresh immediately when opening the dropdown
-  const handleOpen = () => {
-    const willOpen = !open
-    setOpen(willOpen)
-    if (willOpen) fetchNotifications()
-  }
+  const handleOpen = () => setOpen(o => !o)
 
   // Close on outside click
   useEffect(() => {
@@ -71,21 +67,16 @@ export default function NotificationBell() {
   }, [])
 
   const markAllRead = async () => {
-    // Optimistic update
     setNotifications(n => n.map(x => ({ ...x, read: true })))
     setUnread(0)
-    // Persist and then sync from server to confirm
-    await api.patch('/notifications/all/read').catch(() => {})
-    fetchNotifications()
+    api.patch('/notifications/all/read').catch(() => {})
   }
 
   const markOneRead = async (id: string) => {
     const wasUnread = notifications.find(n => n.id === id)?.read === false
-    // Optimistic update
     setNotifications(n => n.map(x => x.id === id ? { ...x, read: true } : x))
     if (wasUnread) setUnread(u => Math.max(0, u - 1))
-    // Persist
-    await api.patch(`/notifications/${id}/read`).catch(() => {})
+    api.patch(`/notifications/${id}/read`).catch(() => {})
   }
 
   return (
