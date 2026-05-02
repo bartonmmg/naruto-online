@@ -44,10 +44,14 @@ export default function GuideDetailPage() {
         const response = await api.get(`/guides/${id}`)
         setGuide(response.data)
 
-        // Record view (don't await, just fire and forget)
-        api.post(`/guides/${id}/views`, {}).catch(() => {
-          // Ignore view recording errors
-        })
+        // Record view: for anonymous users, use sessionStorage to count only once per browser session
+        // For authenticated users, the backend already deduplicates via upsert
+        const sessionKey = `viewed_guide_${id}`
+        const alreadyViewed = typeof window !== 'undefined' && sessionStorage.getItem(sessionKey)
+        if (!alreadyViewed) {
+          if (typeof window !== 'undefined') sessionStorage.setItem(sessionKey, '1')
+          api.post(`/guides/${id}/views`, {}).catch(() => {})
+        }
 
         // Fetch edit history
         try {

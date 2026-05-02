@@ -14,11 +14,24 @@ export function MarkdownEditor({ value, onChange }: MarkdownEditorProps) {
   const [showColorPicker, setShowColorPicker] = useState(false)
   const [activeFormat, setActiveFormat] = useState<Set<string>>(new Set())
 
+  // On mount: load initial value
   useEffect(() => {
-    if (editorRef.current && value && editorRef.current.innerHTML !== value) {
+    if (editorRef.current && value) {
       editorRef.current.innerHTML = value
     }
   }, [])
+
+  // When value is set externally (e.g. template applied), sync to contenteditable
+  const prevValueRef = useRef(value)
+  useEffect(() => {
+    if (!editorRef.current) return
+    const current = editorRef.current.innerHTML
+    // Only update if the value changed from outside (not from user typing)
+    if (value !== current && value !== prevValueRef.current) {
+      editorRef.current.innerHTML = value
+    }
+    prevValueRef.current = value
+  }, [value])
 
   const applyFormat = (command: string, value?: string) => {
     editorRef.current?.focus()
@@ -39,6 +52,7 @@ export function MarkdownEditor({ value, onChange }: MarkdownEditorProps) {
   const updateMarkdown = () => {
     if (editorRef.current) {
       const content = editorRef.current.innerHTML
+      prevValueRef.current = content
       onChange(content)
     }
   }
