@@ -37,13 +37,20 @@ export default function NotificationBell() {
   const [open, setOpen] = useState(false)
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [unread, setUnread] = useState(0)
+  // Track IDs the user has marked read locally — server is the source of truth on next full refresh
+  const localReadIds = useRef<Set<string>>(new Set())
   const ref = useRef<HTMLDivElement>(null)
 
   const fetchNotifications = useCallback(() => {
     api.get('/notifications')
       .then(r => {
-        setNotifications(r.data.notifications ?? [])
-        setUnread(r.data.unreadCount ?? 0)
+        const incoming: Notification[] = r.data.notifications ?? []
+        // Apply local read overrides — if user already marked it read this session, keep it read
+        const merged = incoming.map(n =>
+          localReadIds.current.has(n.id) ? { ...n, read: true } : n
+        )
+        setNotifications(merged)
+        setUnread(merged.filter(n => !n.read).length)
       })
       .catch(() => {})
   }, [])
@@ -67,12 +74,15 @@ export default function NotificationBell() {
   }, [])
 
   const markAllRead = async () => {
+    // Register all current IDs as locally read
+    notifications.forEach(n => localReadIds.current.add(n.id))
     setNotifications(n => n.map(x => ({ ...x, read: true })))
     setUnread(0)
     api.patch('/notifications/all/read').catch(() => {})
   }
 
   const markOneRead = async (id: string) => {
+    localReadIds.current.add(id)
     const wasUnread = notifications.find(n => n.id === id)?.read === false
     setNotifications(n => n.map(x => x.id === id ? { ...x, read: true } : x))
     if (wasUnread) setUnread(u => Math.max(0, u - 1))
