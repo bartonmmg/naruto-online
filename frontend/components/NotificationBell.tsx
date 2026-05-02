@@ -71,15 +71,21 @@ export default function NotificationBell() {
   }, [])
 
   const markAllRead = async () => {
-    await api.patch('/notifications/all/read').catch(() => {})
+    // Optimistic update
     setNotifications(n => n.map(x => ({ ...x, read: true })))
     setUnread(0)
+    // Persist and then sync from server to confirm
+    await api.patch('/notifications/all/read').catch(() => {})
+    fetchNotifications()
   }
 
   const markOneRead = async (id: string) => {
-    await api.patch(`/notifications/${id}/read`).catch(() => {})
+    const wasUnread = notifications.find(n => n.id === id)?.read === false
+    // Optimistic update
     setNotifications(n => n.map(x => x.id === id ? { ...x, read: true } : x))
-    setUnread(u => Math.max(0, u - 1))
+    if (wasUnread) setUnread(u => Math.max(0, u - 1))
+    // Persist
+    await api.patch(`/notifications/${id}/read`).catch(() => {})
   }
 
   return (

@@ -207,7 +207,19 @@ export const guidesController = {
     try {
       const { id } = req.params
 
-      const ratings = await guidesService.getGuideRatings(id, req.userId)
+      // Extract userId from token if present (public endpoint, no authMiddleware)
+      let userId: string | undefined = req.userId
+      if (!userId) {
+        const authHeader = req.headers.authorization
+        if (authHeader?.startsWith('Bearer ')) {
+          try {
+            const decoded = jwt.verify(authHeader.substring(7), process.env.JWT_SECRET || 'dev-secret') as any
+            userId = decoded.userId
+          } catch { /* anonymous */ }
+        }
+      }
+
+      const ratings = await guidesService.getGuideRatings(id, userId)
 
       res.json(ratings)
     } catch (error: any) {

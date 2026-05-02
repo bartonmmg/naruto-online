@@ -99,7 +99,7 @@ export default function EditGuidePage() {
       </div>
 
       {/* Top bar */}
-      <div className="flex-shrink-0 relative z-10 border-b border-border/50 bg-bg-primary/60 backdrop-blur-sm px-6 py-3">
+      <div className="flex-shrink-0 relative z-10 border-b border-border/50 bg-bg-primary/60 backdrop-blur-sm px-6 py-3 mt-20">
         <div className="max-w-7xl mx-auto">
 
           {/* Row 1: back + title */}

@@ -96,13 +96,13 @@ export default function CreateGuidePage() {
     }}>
       <div className="fixed inset-0 bg-bg-primary/80 pointer-events-none z-0" />
 
-      {/* ── Navbar ── */}
+      {/* ── Navbar (fixed, needs a spacer) ── */}
       <div className="flex-shrink-0 relative z-10">
         <Navbar />
       </div>
 
       {/* ── Top bar: back link + metadata fields ── */}
-      <div className="flex-shrink-0 relative z-10 border-b border-border/50 bg-bg-primary/60 backdrop-blur-sm px-6 py-3">
+      <div className="flex-shrink-0 relative z-10 border-b border-border/50 bg-bg-primary/60 backdrop-blur-sm px-6 py-3 mt-20">
         <div className="max-w-7xl mx-auto">
 
           {/* Row 1: back + title */}
@@ -179,7 +179,7 @@ export default function CreateGuidePage() {
                 Plantilla
               </button>
               {showTemplates && (
-                <div className="absolute bottom-full left-0 mb-1 w-52 bg-bg-elevated border border-border/60 rounded-xl shadow-2xl z-50 overflow-hidden">
+                <div className="absolute top-full left-0 mt-1 w-52 bg-bg-elevated border border-border/60 rounded-xl shadow-2xl z-50 overflow-hidden">
                   {GUIDE_TEMPLATES.map(template => (
                     <button
                       key={template.id}
