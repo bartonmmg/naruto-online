@@ -79,8 +79,11 @@ function GuideRow({ guide, rank }: { guide: LeaderboardGuide; rank: number }) {
       onClick={() => router.push(`/guides/${guide.id}`)}
       className={`flex items-center gap-4 p-4 rounded-xl border bg-bg-card/50 hover:bg-bg-card transition-all duration-200 hover:border-chakra-blue/40 shadow-sm hover:shadow-md cursor-pointer ${glow}`}
     >
-      <div className={`flex-shrink-0 rounded-full flex items-center justify-center ${badge}`}>
-        {rank < 3 ? ['🥇','🥈','🥉'][rank] : rank + 1}
+      <div className="flex-shrink-0 flex items-center justify-center w-8 h-8">
+        {rank < 3
+          ? <img src={`/images/power-ranking/top${rank + 1}.png`} alt={`#${rank + 1}`} className="w-8 h-8 object-contain" />
+          : <span className={`w-8 h-8 rounded-full flex items-center justify-center ${badge}`}>{rank + 1}</span>
+        }
       </div>
 
       <div className="flex-1 min-w-0">
@@ -120,8 +123,11 @@ function AuthorRow({ author, rank }: { author: AuthorStat; rank: number }) {
       href={`/users/${author.username}`}
       className={`flex items-center gap-4 p-4 rounded-xl border bg-bg-card/50 hover:bg-bg-card transition-all duration-200 hover:border-chakra-blue/40 shadow-sm hover:shadow-md ${glow}`}
     >
-      <div className={`flex-shrink-0 rounded-full flex items-center justify-center ${badge}`}>
-        {rank < 3 ? ['🥇','🥈','🥉'][rank] : rank + 1}
+      <div className="flex-shrink-0 flex items-center justify-center w-8 h-8">
+        {rank < 3
+          ? <img src={`/images/power-ranking/top${rank + 1}.png`} alt={`#${rank + 1}`} className="w-8 h-8 object-contain" />
+          : <span className={`w-8 h-8 rounded-full flex items-center justify-center ${badge}`}>{rank + 1}</span>
+        }
       </div>
 
       <div className="w-10 h-10 flex-shrink-0 rounded-full bg-bg-elevated border border-border flex items-center justify-center text-lg font-bold text-chakra-blue">
