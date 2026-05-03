@@ -75,10 +75,10 @@ const TITLE_IMAGES: Record<number, string> = {
 }
 
 function getRank(level: number) {
-  if (level >= 80) return { name: 'Kage', cls: 'rank-kage' }
-  if (level >= 40) return { name: 'Jonin', cls: 'rank-jonin' }
-  if (level >= 15) return { name: 'Chunin', cls: 'rank-chunin' }
-  return { name: 'Genin', cls: 'rank-genin' }
+  if (level >= 80) return { name: 'Kage',   cls: 'rank-kage' }
+  if (level >= 40) return { name: 'Jōnin',  cls: 'rank-jonin' }
+  if (level >= 15) return { name: 'Chūnin', cls: 'rank-chunin' }
+  return                   { name: 'Genin',  cls: 'rank-genin' }
 }
 
 function getRankingTitle(playerRank: number) {

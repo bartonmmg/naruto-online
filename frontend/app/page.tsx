@@ -11,7 +11,6 @@ import {
   Shield,
   Trophy,
   Swords,
-  Star,
 } from 'lucide-react'
 import Navbar from '@/components/Navbar'
 import FloatingParticles from '@/components/animations/FloatingParticles'
@@ -47,11 +46,11 @@ const FEATURES = [
 ]
 
 const RANKS = [
-  { name: 'Genin', xp: '0 – 999 XP', cls: 'rank-genin' },
-  { name: 'Chunin', xp: '1K – 4.9K XP', cls: 'rank-chunin' },
-  { name: 'Jonin', xp: '5K – 19.9K XP', cls: 'rank-jonin' },
-  { name: 'Kage', xp: '20K+ XP', cls: 'rank-kage' },
-  { name: 'Akatsuki', xp: 'Clan especial', cls: 'rank-akatsuki' },
+  { name: 'Genin',    desc: 'El comienzo del camino ninja',              cls: 'rank-genin',    img: '/images/rangos/genin.png' },
+  { name: 'Chūnin',  desc: 'Ninja con experiencia probada',              cls: 'rank-chunin',   img: '/images/rangos/chunin.png' },
+  { name: 'Jōnin',   desc: 'Maestro con guías de alto impacto',         cls: 'rank-jonin',    img: '/images/rangos/jonin.png' },
+  { name: 'Kage',    desc: 'Leyenda de la comunidad',                   cls: 'rank-kage',     img: '/images/rangos/kage.png' },
+  { name: 'Akatsuki', desc: 'Rango prestige — los más temidos del mundo', cls: 'rank-akatsuki', img: '/images/rangos/akatsuki.png' },
 ]
 
 export default function Home() {
@@ -286,17 +285,18 @@ export default function Home() {
             </div>
 
             <div className="space-y-3">
-              {RANKS.map(({ name, xp, cls }, i) => (
+              {RANKS.map(({ name, desc, cls, img }, i) => (
                 <div
                   key={name}
-                  className="game-card p-4 flex items-center justify-between animate-fade-up"
+                  className="game-card p-4 flex items-center gap-4 animate-fade-up"
                   style={{ animationDelay: `${i * 0.08}s` }}
                 >
-                  <div className="flex items-center gap-3">
-                    <Star className="w-4 h-4 text-text-dim" />
-                    <span className="font-montserrat font-bold text-sm text-text-primary">{name}</span>
+                  <img src={img} alt={name} className="w-10 h-10 object-contain flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <span className="font-cinzel font-bold text-sm text-text-primary">{name}</span>
+                    <p className="text-xs text-text-dim mt-0.5 truncate">{desc}</p>
                   </div>
-                  <span className={`text-xs font-cinzel px-3 py-1 rounded-full ${cls}`}>{xp}</span>
+                  <span className={`text-xs font-cinzel px-2 py-1 rounded-full flex-shrink-0 ${cls}`}>{name}</span>
                 </div>
               ))}
             </div>
