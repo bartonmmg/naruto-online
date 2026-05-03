@@ -4,12 +4,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Konohagakure Hub** — A Naruto Online community platform with user authentication, XP/leveling systems, dynamic ranking systems, and interactive tools for community engagement. Built as a full-stack monorepo with modern tech stack.
+**Konohagakure Hub** — A Naruto Online community platform with user authentication, XP/leveling systems, dynamic ranking systems, guides, and interactive tools for community engagement. Built as a full-stack monorepo with modern tech stack.
 
 ### Tech Stack
-- **Frontend:** Next.js 16.2.2 (App Router + Turbopack) + React 19 + Tailwind CSS + Framer Motion v12
+- **Frontend:** Next.js 16.2.2 (App Router) + React 19 + Tailwind CSS + Framer Motion v12
 - **Backend:** Node.js (ESM) + Express.js + TypeScript
-- **Database:** PostgreSQL via Neon.tech — managed with Prisma ORM
+- **Database:** PostgreSQL via Neon.tech — managed with Prisma ORM (two schemas: dev SQLite / prod PostgreSQL)
 - **Authentication:** JWT + bcrypt (salt: 12)
 - **Validation:** Zod schemas on all controller inputs
 - **Styling:** Tailwind CSS with custom ninja-themed colors (Naranja #FF6B00 + Negro #0D0D0D)
@@ -31,1348 +31,432 @@ npm run dev --workspace=backend
 
 ### Building
 ```bash
-# Build both workspaces
-npm run build
-
-# Build specific workspace
+npm run build                        # Both workspaces
 npm run build --workspace=backend
 npm run build --workspace=frontend
 ```
 
 ### Database (Prisma)
 ```bash
-# Development: Create new migration after schema changes
-cd backend && npx prisma migrate dev --name <migration_name>
+# Dev: create migration after schema changes (uses schema.prisma — SQLite)
+cd backend && npx prisma migrate dev --name <name>
 
-# Production: Apply migrations to production database
-cd backend && npx prisma migrate deploy
+# Prod: sync schema without migration (uses schema.prod.prisma — PostgreSQL)
+cd backend && npx prisma db push --schema=prisma/schema.prod.prisma --accept-data-loss
 
-# Sync schema to database (without creating migration)
-cd backend && npx prisma db push
-
-# Generate Prisma client after schema changes
+# Generate Prisma client (included in build script automatically)
 cd backend && npx prisma generate
-
-# Open Prisma Studio UI (local development)
-cd backend && npx prisma studio
 ```
 
-**Development Database (SQLite):**
-- File-based, no setup required
-- Lives in `backend/prisma/dev.db`
-- `.env` or `.env.local`: `DATABASE_URL=file:./prisma/dev.db`
-
-**Production Database (PostgreSQL via Neon):**
-- Cloud-hosted, managed by Neon.tech
-- Connection string: `postgresql://user:password@host:5432/database`
-- Configured in Render Dashboard environment variables
-- Auto-migrations on deploy via `prisma migrate deploy`
-
-### Linting
-```bash
-npm run lint --workspace=frontend
-```
+**Two-schema strategy:**
+- `backend/prisma/schema.prisma` — `provider = "sqlite"`, used in local dev
+- `backend/prisma/schema.prod.prisma` — `provider = "postgresql"`, used by build script and Render
+- Build script: `"build": "prisma generate --schema=prisma/schema.prod.prisma && tsc"`
+- Prisma does NOT allow `env()` in the `provider` field — hence two separate files
 
 ### Note on Package Management
-- **Root `package.json`:** Uses `npm workspaces` to manage frontend and backend
-- **Frontend `package.json`:** Contains Next.js 16, React 19, Tailwind, Framer Motion, etc.
-- **Lock Files:** Only `frontend/package-lock.json` should exist (root lock file causes npm ci conflicts)
-- **Installation:** Always run `npm install --legacy-peer-deps` in frontend (lucide-react doesn't declare React 19 support but is compatible)
+- Root `package.json` uses npm workspaces
+- Only `frontend/package-lock.json` should exist (root lock file causes `npm ci` conflicts)
+- Always `npm install --legacy-peer-deps` in frontend (lucide-react doesn't declare React 19 support but is compatible)
 
 ## Architecture
 
 ### Monorepo Structure
 ```
 naruto-app/
-├── backend/                      # Express.js API
+├── backend/
 │   ├── src/
-│   │   ├── index.ts             # Express app setup, routes, health check
-│   │   ├── controllers/         # Request handlers with Zod validation
-│   │   ├── services/            # Business logic (auth, XP, user ops)
-│   │   ├── routes/              # Route definitions
-│   │   ├── middleware/          # Auth, validation middleware
-│   │   └── lib/
-│   │       └── prisma.ts        # Prisma client singleton
+│   │   ├── index.ts                  # Express app, routes, health check, seedDefaults on startup
+│   │   ├── controllers/
+│   │   │   ├── admin.controller.ts   # XP config, level config, users, roles
+│   │   │   ├── guides.controller.ts  # Guides CRUD, views, ratings, comments, badges
+│   │   │   ├── auth.controller.ts
+│   │   │   └── leaderboard.controller.ts
+│   │   ├── services/
+│   │   │   ├── xp.service.ts         # XP award, level calc, achievements, seedDefaults, reseedDefaults
+│   │   │   ├── guides.service.ts     # Guide business logic, ratings, comments, reactions, views
+│   │   │   └── auth.service.ts       # Register, login, daily login XP trigger
+│   │   ├── routes/
+│   │   │   ├── admin.routes.ts       # All require ADMIN role
+│   │   │   ├── guides.routes.ts      # Mixed public/auth/admin+mod
+│   │   │   ├── leaderboard.routes.ts
+│   │   │   └── notifications.routes.ts
+│   │   └── middleware/
+│   │       ├── auth.middleware.ts    # JWT verification, extracts userId/username/role
+│   │       ├── authorize.middleware.ts # Role-based access control
+│   │       └── apiKey.ts             # x-api-key header validation
 │   ├── prisma/
-│   │   ├── schema.prisma        # Database schema (PostgreSQL)
-│   │   ├── migrations/          # Prisma migrations (auto-created)
-│   │   └── dev.db              # SQLite file (development only)
-│   ├── .env.example             # Template for environment variables
-│   └── dist/                    # Compiled output
+│   │   ├── schema.prisma             # SQLite (dev)
+│   │   ├── schema.prod.prisma        # PostgreSQL (prod)
+│   │   └── dev.db                    # SQLite file (dev only, gitignored)
+│   └── dist/                         # Compiled output (gitignored)
 │
-├── frontend/                     # Next.js app
+├── frontend/
 │   ├── app/
-│   │   ├── page.tsx            # Landing page
-│   │   ├── layout.tsx           # Root layout
-│   │   ├── auth/               # /auth/login, /auth/register
-│   │   ├── dashboard/          # /dashboard (protected routes)
-│   │   ├── tools/              # /tools (guides, calculators)
-│   │   ├── rankings/           # /rankings
-│   │   └── globals.css         # Tailwind + custom styles
+│   │   ├── page.tsx                  # Landing page
+│   │   ├── layout.tsx                # Root layout (no Navbar — each page manages its own)
+│   │   ├── admin/
+│   │   │   ├── layout.tsx            # Admin shell: auth guard (ADMIN only) + sidebar
+│   │   │   ├── page.tsx              # Redirects → /admin/xp
+│   │   │   ├── xp/page.tsx           # XP actions, levels/ranks, achievements editor
+│   │   │   └── roles/page.tsx        # Role reference + user table with role changer
+│   │   ├── auth/                     # /auth/login, /auth/register
+│   │   ├── dashboard/page.tsx        # User profile, XP bar, achievements, guides
+│   │   ├── guides/
+│   │   │   ├── page.tsx              # Guide listing with search/filter/sort
+│   │   │   ├── create/page.tsx       # Full-screen editor with templates
+│   │   │   ├── leaderboard/page.tsx  # Top guides + top authors
+│   │   │   └── [id]/
+│   │   │       ├── page.tsx          # Guide detail: ToC, voting, comments, badges
+│   │   │       └── edit/page.tsx     # Edit guide (ADMIN/MOD or author)
+│   │   ├── users/[username]/page.tsx # Public user profile
+│   │   ├── rankings/
+│   │   │   ├── page.tsx              # Power rankings with global/regional views
+│   │   │   └── stats/page.tsx        # Region comparator with charts
+│   │   ├── tools/
+│   │   │   ├── page.tsx
+│   │   │   └── coupons/page.tsx
+│   │   └── faq/page.tsx
 │   ├── components/
-│   │   ├── ui/                 # Reusable: Button, Input, AuthCard
-│   │   ├── auth/               # Auth-specific components
-│   │   ├── animations/         # Framer Motion components
-│   │   └── Navbar.tsx          # Navigation
-│   ├── .env.local              # NEXT_PUBLIC_API_URL
-│   └── next.config.mjs         # Next.js config (mjs for ESM)
+│   │   ├── ui/                       # Button, Input, AuthCard
+│   │   ├── guides/
+│   │   │   ├── GuideBadges.tsx       # Badge display/edit (PNG images)
+│   │   │   ├── GuideVoting.tsx       # Útil/No útil voting
+│   │   │   ├── GuideComments.tsx     # Comment list + form
+│   │   │   └── TableOfContents.tsx   # Auto-generated from headings
+│   │   ├── NotificationBell.tsx      # Polling bell with localReadIds ref
+│   │   └── LoadingSpinner.tsx        # Shuriken spinner with glow
+│   ├── lib/
+│   │   ├── api.ts                    # Axios instance with JWT + x-api-key interceptors
+│   │   ├── types.ts                  # Shared TypeScript types
+│   │   ├── hooks/useAuth.ts          # Auth context + hasRole()
+│   │   └── guideTemplates.ts         # Static guide template content
+│   └── next.config.mjs               # images.unoptimized: true
 │
-└── package.json                # Workspaces, dev script
+└── netlify.toml                      # Build config + @netlify/plugin-nextjs
 ```
 
-### Key Patterns
+## User Roles & Access Control
 
-**Backend — Controller-Service-Repository**
-- **Controllers** (`auth.controller.ts`): Parse request, call service, handle errors
-- **Services** (`auth.service.ts`): Contain Zod schemas, business logic, return data
-- **Lib** (`prisma.ts`): Singleton Prisma instance (singleton pattern for safe ORM use)
-- All inputs validated with Zod in services before use
+### Roles
+| Role | Default | Description |
+|------|---------|-------------|
+| `USER` | ✅ On register | Can interact with content |
+| `MODERATOR` | Manual | Can create and moderate content |
+| `ADMIN` | Manual | Full access including back office |
 
-**Frontend — Next.js App Router**
-- Page-based routing: `app/page.tsx` → `/`, `app/auth/register/page.tsx` → `/auth/register`
-- Server components by default; client components marked with `'use client'`
-- State managed with React hooks (no Redux/Context yet)
-- API calls via axios to `NEXT_PUBLIC_API_URL` (localhost:4000 in dev)
+### Access by Role
 
-**Database — Prisma + SQLite**
-- Schema defines User and XpLog models
-- Migrations stored in `backend/prisma/migrations/`
-- No TypeScript enums for compatibility with SQLite; use string constants instead
-- Relations cascade on delete for XpLog (user deletion removes logs)
+**USER** — all registered users:
+- View published guides, vote (+2 XP), comment (+5 XP), react (+1 XP)
+- Daily login (+10 XP)
+- View leaderboard, public profiles, notifications
 
-### Authentication Flow
-1. User registers/logs in via `/auth/register` or `/auth/login`
-2. Backend validates input with Zod, hashes password with bcrypt
-3. Backend signs JWT (expires in 7 days, secret in `.env`)
-4. Frontend stores token (usually in localStorage or cookie)
-5. Protected routes use middleware to verify JWT
+**MODERATOR** — everything USER can do, plus:
+- Create guides (+50 XP), edit/delete any guide
+- Assign badges to guides (Oficial, Tendencia, Verificada, Completa)
+- Delete any comment, see draft guides in listing
+- Badge "MODERADOR" visible on public profile
 
-## Important Details
+**ADMIN** — everything MODERATOR can do, plus:
+- Access `/admin` back office
+- Configure XP per action, manage levels/ranks
+- Change any user's role (cannot self-change)
+- Badge "ADMIN" visible on public profile
 
-### Environment Variables
+### Changing a User's Role
+Via Back Office: `/admin/roles` → dropdown per user row → select new role.
+Via SQL (direct): `UPDATE "User" SET role = 'ADMIN' WHERE username = 'x';`
 
-#### **Backend (Configure in Render Dashboard, NOT `.env`)**
+**Backend enforcement:** `authorize.middleware.ts` checks `req.role` against allowed roles array, returns 403 if not authorized.
 
-**Development** (`backend/.env.local` — local only, not committed):
-```bash
-DATABASE_URL=file:./prisma/dev.db
-JWT_SECRET=dev-secret-min-32-characters-for-local-testing
-BACKEND_PORT=4000
-NODE_ENV=development
-API_KEY=dev-api-key
+## Admin Back Office (`/admin`)
+
+### Layout
+- Fixed topbar (`h-14`) with "← Dashboard" link and "Back Office" title
+- Sidebar (`w-52`) with extensible `TABS` array — add new tabs here
+- Auth guard: redirects non-ADMIN users to `/dashboard`
+- No global Navbar rendered (admin layout is self-contained)
+
+### Current Tabs
+
+#### XP & Niveles (`/admin/xp`)
+- **XP por Acción** — grid of editable rows, one per action (GUIDE_PUBLISHED, COMMENT_POSTED, VOTE_RECEIVED, VOTE_CAST, REACTION_CAST, BADGE_RECEIVED, DAILY_LOGIN)
+- **Niveles y Rangos** — table with level number, rank image (by level number, not label), current label, editable name, editable XP threshold; add/delete levels
+- **Logros** — read-only grid of all achievement definitions with image, title, description, XP reward
+- **Restablecer defaults** button — calls `POST /admin/reseed` to wipe and recreate all config with clean defaults (fixes UTF-8 corruption)
+- Error state: if `/admin/xp-config` fails (e.g., corrupt data), shows alert with "Restablecer configuración" button
+
+**Rank image mapping (by level number, independent of editable label):**
+- Levels 1–3 → `genin.png`
+- Levels 4–6 → `chunin.png`
+- Levels 7–9 → `jonin.png`
+- Level 10 → `kage.png`
+- Level 11+ → `akatsuki.png`
+
+#### Roles (`/admin/roles`)
+- **Referencia de Roles** — 3 cards (USER / MODERADOR / ADMIN) with color, description, full permission list
+- **Usuarios Registrados** — searchable, filterable table (by role with counters); dropdown per row to change role; cannot change own role
+
+### Backend Admin Endpoints (all require ADMIN role + JWT + API key)
+```
+GET    /admin/xp-config              → { xpConfig, levelConfig, achievements }
+PATCH  /admin/xp-config              → update XP amount for an action
+PATCH  /admin/level-config           → update level XP threshold and label
+POST   /admin/level-config           → create new level
+DELETE /admin/level-config/:level    → delete a level
+POST   /admin/reseed                 → wipe and recreate XP/level/achievement defaults
+GET    /admin/users                  → list all users (id, username, email, role, level, xp)
+PATCH  /admin/users/:id/role         → change user role (cannot self-change)
 ```
 
-**Production** (Render Dashboard → Settings → Environment Variables):
-| Variable | Value |
-|----------|-------|
-| `DATABASE_URL` | PostgreSQL connection string from Neon.tech |
-| `JWT_SECRET` | Random ≥32 character string (SECURE!) |
-| `API_KEY` | Random ≥32 character string (matches frontend NEXT_PUBLIC_API_KEY) |
-| `FRONTEND_URL` | `https://naruto-online.netlify.app` |
-| `NODE_ENV` | `production` |
-| `BACKEND_PORT` | `4000` |
+## XP & Progression System
 
-#### **Frontend (`.env.local` — development only)**
+### XP Sources (default values, configurable in back office)
+| Action | XP | Notes |
+|--------|----|-------|
+| GUIDE_PUBLISHED | 50 | On guide creation |
+| COMMENT_POSTED | 5 | Per comment |
+| VOTE_RECEIVED | 10 | Author gets XP when someone votes útil |
+| VOTE_CAST | 2 | Voter gets XP (first vote per guide only) |
+| REACTION_CAST | 1 | Per new reaction |
+| BADGE_RECEIVED | 25 | When admin assigns a badge |
+| DAILY_LOGIN | 10 | Once per UTC day |
 
-```bash
-# Development
-NEXT_PUBLIC_API_URL=http://localhost:4000
-NEXT_PUBLIC_API_KEY=dev-api-key
+### Daily Login
+- Triggered on `POST /auth/login` in `auth.service.ts`
+- Compares UTC date of `lastDailyLogin` vs current date
+- If new day: updates `lastDailyLogin`, calls `xpService.awardXp(userId, 'DAILY_LOGIN')`
+- Returns `{ token, dailyLoginAwarded: boolean, user }` in login response
+- Frontend: stores `sessionStorage.setItem('dailyLoginAwarded', '1')` and shows toast
 
-# Production: Uses fallback in lib/config.ts
-# (Or configure in Netlify Dashboard if available)
-# NEXT_PUBLIC_API_URL=https://naruto-online.onrender.com
-# NEXT_PUBLIC_API_KEY=<prod-api-key>
+### Levels (default, configurable)
+| Level | XP Required | Rank |
+|-------|-------------|------|
+| 1–3 | 0 / 100 / 250 | Genin |
+| 4–6 | 500 / 900 / 1400 | Chūnin |
+| 7–9 | 2000 / 3000 / 4500 | Jōnin |
+| 10 | 6500 | Kage |
+| 11+ | configurable | Akatsuki |
+
+### Achievements
+All auto-granted via `xpService.checkAchievements(userId)`, called after relevant actions.
+
+| Key | Condition | XP Reward |
+|-----|-----------|-----------|
+| FIRST_GUIDE | ≥1 guide | 30 |
+| FIVE_GUIDES | ≥5 guides | 75 |
+| TEN_GUIDES | ≥10 guides | 150 |
+| VIEWS_100 | 1 guide with ≥100 views | 50 |
+| VIEWS_1000 | 1 guide with ≥1000 views | 150 |
+| VOTES_100 | 1 guide with ≥100 útil votes | 100 |
+| BADGE_OFFICIAL | 1 guide has OFFICIAL badge | 60 |
+| LEGEND | Top 3 leaderboard by views | Dynamic |
+
+**LEGEND is dynamic:** granted (+50 XP) when entering top 3, revoked (-50 XP) when leaving. Uses `try/catch` on `userAchievement.create` to handle race conditions.
+
+**Anti-abuse:** VOTES/VIEWS checked per single guide (not aggregate), BADGE_OFFICIAL requires admin assignment, LEGEND uses leaderboard (cannot self-game).
+
+**Notification deduplication:** before creating ACHIEVEMENT notification, checks `findFirst({ where: { read: false, type, message } })`. Client also maintains `localReadIds: useRef<Set<string>>` that persists across polling cycles.
+
+## Guides System
+
+### Features
+- **Create/Edit:** Full-screen contenteditable markdown editor with horizontal metadata topbar; templates via dropdown
+- **Badges:** OFFICIAL, TRENDING, VERIFIED, COMPLETE — assigned by ADMIN/MOD only; use PNG images in `/images/guides/badges/`
+- **Voting:** Útil/No útil per guide per user (upsert); author gets +10 XP, voter gets +2 XP
+- **Comments:** Auth required to post/delete own; ADMIN/MOD can delete any
+- **Views:** 1 per authenticated user (upsert by userId+guideId), 1 per IP for anonymous (upsert by guideId+ipAddress)
+- **Reactions:** Emoji reactions, +1 XP per new unique reaction
+- **Table of Contents:** Auto-generated from h1/h2/h3 headings in guide content
+- **Leaderboard:** `/guides/leaderboard` — top guides by views + top authors by total views
+
+### Backend Guide Endpoints
+```
+GET    /guides                          → list (public, filters: author/search/sortBy/order)
+GET    /guides/:id                      → detail + increment view (public, optional JWT for userVote)
+POST   /guides                          → create (ADMIN/MOD only)
+PUT    /guides/:id                      → update (ADMIN/MOD or author)
+DELETE /guides/:id                      → delete (ADMIN/MOD only)
+PUT    /guides/:id/badges               → assign badges (ADMIN/MOD only)
+POST   /guides/:id/ratings              → vote (auth required)
+DELETE /guides/:id/ratings              → remove vote (auth required)
+GET    /guides/:id/ratings              → get vote counts + userVote (public, optional JWT)
+POST   /guides/:id/comments             → add comment (auth required)
+DELETE /guides/:id/comments/:commentId → delete comment (owner or ADMIN/MOD)
+GET    /guides/:id/comments             → list comments (public)
+POST   /guides/:id/reactions            → react (auth required)
+DELETE /guides/:id/reactions/:type      → remove reaction (auth required)
+GET    /guides/:id/reactions            → get reactions (public)
 ```
 
-**Frontend URL Resolution:**
-- Configured centrally in `lib/config.ts`
-- Checks `NEXT_PUBLIC_API_URL` first
-- Falls back to `https://naruto-online.onrender.com` in production
-- Uses `http://localhost:4000` in development
+**Important pattern — public endpoints with optional auth:**
+`recordView` and `getRatings` have no `authMiddleware` but still extract the user manually:
+```typescript
+const token = req.headers.authorization?.split(' ')[1]
+if (token) {
+  try { const payload = jwt.verify(token, secret) as any; userId = payload.userId } catch {}
+}
+```
+This is required because these routes sit before `apiKeyMiddleware` in the auth chain.
 
-**API Key Protection:**
-- All API endpoints protected with `x-api-key` header requirement
-- Frontend automatically includes API key on all requests via `fetchAPI()` helper
-- Public endpoints (no auth required): `/health`, `/auth/register`, `/auth/login`
-- Protected endpoints (API key required): `/guides/*`, `/api/rankings/*`
+## Netlify Deployment
 
-### Database
-- **Production:** PostgreSQL via Neon.tech (connected via DATABASE_URL)
-- **Development:** Use same PostgreSQL or SQLite locally (update schema.prisma provider accordingly)
-- **Prisma Build:** Backend build script includes `prisma generate && tsc` to generate client before TypeScript compilation
-- **ESM Imports:** Backend uses `.js` extensions in relative imports (required for ESM modules in production)
-- Schema change workflow:
-  1. Edit `schema.prisma`
-  2. Run `npx prisma db push` (for schema sync) or `npx prisma migrate dev --name <description>` (for migrations)
-  3. Commit migration files to git
-  4. Run `npx prisma generate` before building (automatically included in build script)
+### Current Configuration (`netlify.toml`)
+```toml
+[build]
+command = "cd frontend && npm install --legacy-peer-deps && npm run build"
+publish = "frontend/.next"
 
-### Code Patterns to Follow
+[env]
+NODE_VERSION = "20.18.0"
+NODE_ENV = "production"
+NEXT_PUBLIC_API_URL = "https://naruto-online.onrender.com"
 
-**TypeScript + ESM**
-- Backend uses ESM (`"type": "module"` in package.json)
-- **IMPORTANT:** Relative imports MUST include `.js` extension in compiled code (e.g., `import { auth } from './services/auth.service.js'`)
-  - This is required for ESM modules in production (Render.com, Node.js runtime)
-  - TypeScript removes the `.js` at development time but they're needed in compiled `.js` files
-- Strict mode enabled; avoid `any` unless casting is necessary
-
-**Zod Validation**
-- All user inputs validated at service layer, not in controllers
-- Schemas defined inline or extracted as named exports in services
-- Example: `registerSchema = z.object({ username: z.string().min(3).max(20), ... })`
-
-**Error Handling**
-- Controllers catch errors and return appropriate HTTP status codes
-- Services throw descriptive Error objects
-- No generic error logs; messages help users and maintainers
-
-**Component Organization**
-- UI components in `components/ui/` are reusable and non-domain-specific
-- Feature components (e.g., `AuthCard`) live in feature folders
-- Animations in `components/animations/` for Framer Motion sequences
-
-### Performance Notes
-- Prisma client is a singleton; reuse `prisma` from `lib/prisma.ts`
-- Next.js static export not used; server-side rendering on demand
-- Tailwind CSS purges unused classes (see `tailwind.config.js`)
-
-## Development Workflow
-
-1. **Database changes:** Edit schema.prisma → run migration → commit migration folder
-2. **Backend routes:** Add route to `routes/`, implement in `controllers/`, add service logic
-3. **Frontend pages:** Create `.tsx` file in `app/` → use Server or Client component as needed
-4. **Styling:** Use Tailwind classes; custom CSS in `globals.css` for utility overrides
-5. **Testing endpoints:** Use Postman, Thunder Client, or curl against `http://localhost:4000`
-
-## Build & Deployment Best Practices
-
-### Pre-Deploy Verification
-**Before every push to main:**
-```bash
-# Simulate what Netlify does
-cd frontend && npm run build
-
-# Or run the full validation script
-bash pre-deploy-check.sh
+[[plugins]]
+package = "@netlify/plugin-nextjs"
 ```
 
-**Why:** Catches 95% of issues locally before they appear in production.
+### Why `@netlify/plugin-nextjs` is required
+- Next.js 16 with dynamic routes (`/guides/[id]`, `/users/[username]`) requires SSR
+- `output: 'export'` (static) would fail because these routes have no `generateStaticParams`
+- The plugin handles SSR routing correctly on Netlify's edge network
+- Plugin version: `@netlify/plugin-nextjs@5.15.10` installed as devDependency in `frontend/package.json`
+- Do NOT add `NETLIFY_NEXT_PLUGIN_SKIP = "true"` — that was a workaround for auto-injection; now plugin is declared explicitly
 
-### Build Process
-- **Netlify:** Only builds frontend (`npm install && cd frontend && npm run build`)
-- **Render (Backend):** Separate service, deployed independently
-- **Environment:** Netlify runs on Linux (different from Windows dev machine) — file system behavior and permissions may differ
+### Previous 404 issue (resolved 2026-05-03)
+- **Cause:** `netlify.toml` had `[[redirects]] from="/*" to="/index.html"` — SPA redirect that doesn't work with Next.js
+- **Fix:** Removed the redirect, added `@netlify/plugin-nextjs` explicitly
 
-### Why Builds Fail (Troubleshooting)
-| Symptom | Likely Cause | Fix |
-|---------|--------------|-----|
-| `exit code 1` with no details | Build environment issue or cache | Clear cache in Netlify UI + retry |
-| `EPERM: operation not permitted` | File system permissions (dev machine only) | Run `npm ci` instead of `npm install` |
-| `TypeError: X is not defined` | Missing import or outdated lockfile | Delete `package-lock.json` and run `npm install` |
-| `Cannot find module 'X'` | Dependency not installed | `npm install` in root, then `cd frontend && npm install` |
-| `Cannot find module 'next/dist/server/lib/start-server.js'` | Plugin incompatibility (Next.js 14) | Remove `@netlify/plugin-nextjs` from netlify.toml |
-| `Port already in use` | Local development conflict | Kill process or use different port |
+### `next.config.mjs`
+```js
+const nextConfig = {
+  reactStrictMode: true,
+  images: { unoptimized: true },  // required on Netlify
+}
+```
+- No `output: 'export'` — uses SSR
+- No `turbopack.root` — Next.js auto-detects
 
-### Netlify Configuration (Next.js 16 Compatible)
-- **Build Command:** `cd frontend && npm install --legacy-peer-deps && npm run build`
-- **Publish Directory:** `frontend/.next`
-- **Node Version:** 20.18.0 (set in netlify.toml `[env]`) — upgraded from 18.17.0 for Next.js 16 compatibility
-- **Cache:** Netlify caches `node_modules` and `.next` — clear if weird issues occur
-- **Package Locks:** Only `frontend/package-lock.json` should exist in repo (root lock file causes `npm ci` conflicts)
-- **Build Process:**
-  - Uses `npm install --legacy-peer-deps` (not `npm ci`) to be compatible with potential Netlify plugin interference
-  - `--legacy-peer-deps` needed because lucide-react v0.292.0 doesn't declare React 19 peer dependency (but is compatible)
-- **Plugin:** ~~`@netlify/plugin-nextjs`~~ — Removed from netlify.toml
-  - Previous incompatibility with Next.js 14.0.4 — not an issue with 16.x
-  - Next.js 16 works natively without any plugins
-  - Netlify treats `.next` output as static files automatically
-  - **Note:** If plugin is enabled in Netlify UI (from old project config), it may cause build issues; disable in Settings > Build & Deploy > Plugins if you see build failures
+## Render Backend Deployment
 
-### Git Best Practices
-- **Always test locally first:** `npm install && cd frontend && npm run build`
-- **Commit all changes:** `git status` should be clean before push
-- **Use meaningful commit messages:** Makes debugging easier if rollback needed
-- **Monitor after push:** Check Netlify dashboard within 2 minutes after `git push`
+### Build & Start Commands
+```
+Build:  cd backend && npm install && npm run build
+Start:  npm start --workspace=backend
+```
+
+### What `npm run build` does
+1. `prisma generate --schema=prisma/schema.prod.prisma` — generates PostgreSQL client
+2. `tsc` — compiles TypeScript to `dist/`
+
+### On startup
+`xpService.seedDefaults()` runs — inserts default XP config, levels, achievements if tables are empty.
+
+### Common production issues
+| Issue | Cause | Fix |
+|-------|-------|-----|
+| `Couldn't convert data to UTF-8` on XpConfig | Corrupt data in DB | Go to `/admin/xp` → click "Restablecer configuración" |
+| `Invalid prisma.xpConfig` on startup | Tables empty after schema push | Restart service — seedDefaults runs again |
+| SQLite provider error with PostgreSQL URL | Wrong schema used | Ensure build uses `schema.prod.prisma` |
 
 ## Known Constraints & Decisions
 
-- **SQLite enum limitation:** SQLite has no native enum type; use string fields + TypeScript constants
-- **JWT validation:** No middleware yet; add to routes as needed for protected endpoints
-- **CORS:** Enabled globally; tighten in production to specific frontend origin
-- **Single Prisma instance:** Required to avoid exhausting connection pool in dev
-- **Next.js Config:** Uses `.mjs` extension for ESM compatibility (no Turbopack root config needed)
-- **No GraphQL:** REST API for simplicity; extensible via new route files
-- **Tailwind z-index:** Only `z-0, z-10, z-20, z-30, z-40, z-50, z-auto` exist by default. For custom values use inline `style={{ zIndex: N }}` instead of classes like `z-1`, `z-5`, `z-15` which are silently ignored
-- **React 19 Compatibility:** 
-  - `lucide-react@0.292.0` doesn't declare React 19 support but is fully compatible — use `--legacy-peer-deps`
-  - `recharts@3.8.1` requires `react-is@^19.0.0` as explicit dependency (not declared in package.json)
-  - `framer-motion` upgraded to v12 (v10 incompatible with React 19)
-- **Turbopack:** Default bundler in Next.js 16 (replaces Webpack), 2-5x faster builds
-  - No explicit `turbopack.root` config needed — Next.js auto-detects correctly on all platforms
-- **No documentation file sprawl:** Do not create `.md` or `.txt` summary/status/changelog files in the project root. Keep documentation in CLAUDE.md only
-- **Image Optimization:** 
-  - Do NOT use `next/image` for large PNGs (3+ MB). Use native `<img>` tags instead
-  - Netlify cannot optimize local PNG files; `next/image` returns 400 Bad Request
-  - Use `<img src="/path/to/image.png" className="..." />` for static images
-  - Use CSS `background-image` for decorative/background images
-- **Netlify Configuration:**
-  - Uses `netlify.toml` for build configuration
-  - Includes build environment variables (NEXT_PUBLIC_API_URL, NODE_ENV, etc.)
-  - Build command: `npm install && npm run build --workspace=frontend`
-  - Publish directory: `frontend/.next`
-- **CORS Configuration:**
-  - Backend uses configurable CORS via `FRONTEND_URL` env variable
-  - Allows credentials, multiple HTTP methods, and custom headers
-  - In production, FRONTEND_URL must match exactly the frontend origin (no trailing slashes)
-
-## Rankings Page (`/rankings`) — Comprehensive Redesign & Optimization (2026-04-25)
-
-### Dynamic API Integration & Data Management
-- **Backend API Endpoints:**
-  - `/api/rankings/consolidated-global` — Global top 100 combining all regions and clusters
-  - `/api/rankings/top100?region=<region>&cluster=<cluster>&date=<date>` — Regional top 100 by cluster
-  - `/api/rankings/regions` — Available regions (España, Latinoamérica)
-  - `/api/rankings/clusters/:region` — Clusters with actual data (dynamic filtering)
-  - `/api/rankings/dates/:region/:cluster` — Available snapshot dates
-- **Service Layer:** `ranking.service.ts` provides dynamic cache reading via `getDbData()` function instead of static import
-  - Ensures fresh data on every request (no stale cache)
-  - Cascading filters: Region → Cluster → Date → Rankings loaded per request
-- **Frontend State Management:** 
-  - `viewMode`: 'global' | 'region' (default: 'global')
-  - `region`: Selected region state
-  - `cluster`: Selected cluster state
-  - `date`: Selected date state
-  - `search`: Ninja name search input (debounced 200ms)
-  - `server`: Server filter dropdown
-  - `displayMode`: 'table' | 'cards' view toggle
-  - `rankings`: Current ranking snapshot loaded from API
-
-### Performance Optimization Strategy (useCallback Memoization)
-- **Implemented useCallback hooks for all event handlers:**
-  - `handleRegionChange` — Region selection with cluster refresh
-  - `handleClusterChange` — Cluster selection with date refresh
-  - `handleDateChange` — Date selection with ranking data load
-  - `handleServerChange` — Server filter without API call (client-side)
-  - `handleSearchChange` — Debounced search input (200ms delay via useMemo)
-  - `handleSearchClear` — Clear search button
-  - `handleFiltersClear` — Reset all filters to defaults
-  - `handleViewModeChange` — Switch global/regional view
-  - `handleDisplayModeChange` — Switch table/cards display
-- **Performance Benefit:** Prevents unnecessary re-renders during filter interactions
-  - All handlers remain stable between renders
-  - Child components receive same function references (no prop changes)
-  - No animation retriggering on filter updates
-  - 60+ FPS maintained during active filtering
-
-### Filter UI Organization (Improved Layout)
-- **Row 1 - View Mode Toggle:**
-  - "TOP GLOBAL" button (no lightning icon) — Consolidated global ranking
-  - "TOP REGIONAL" text — Shows current region
-- **Row 2 - Regional Filters (Only shown in Regional view):**
-  - Region dropdown — España / Latinoamérica
-  - Cluster dropdown — Dynamic based on region data availability
-  - Date dropdown — Reverse chronological order
-- **Row 3 - Search & Display Mode:**
-  - Search input with inline clear button (X icon)
-  - Display mode toggle — Table view (List icon) / Cards view (LayoutGrid icon)
-  - Results counter — "Mostrando X resultados"
-  - Clear filters button — "Limpiar"
-
-### Card Design — Minimalista Ninja-Themed (Redesigned 2026-04-25)
-- **Card Layout (Responsive Grid):**
-  - Mobile: 1 column
-  - Tablet: 2 columns
-  - Desktop: 3 columns
-  - Padding: `p-4`, gap: `gap-4`
-- **Rank Badge (Top-Left Corner):**
-  - **Ranks 1-3:** Medal images (top1.png, top2.png, top3.png) — `w-10 h-10`
-  - **Ranks 4-10:** Headset icon (lucide-react) — `text-white size-6`
-  - **Ranks 11+:** Kunai icon (lucide-react) — `text-white size-5`
-  - Badge styling: `absolute top-3 left-3 z-10`
-- **Decorative Ninja Tools (Background):**
-  - Shuriken icon (top-right corner) — `absolute top-3 right-3 opacity-[0.15]`
-  - Konoha symbol (bottom-left) — `absolute bottom-3 left-3 opacity-[0.12]`
-  - Increased opacity to `0.12-0.18` for better visibility
-  - Color: `text-white` for consistent appearance
-- **Player Information:**
-  - **Name:** Large text `text-lg font-bold text-white` — Primary focus
-  - **Server Badge:** Rounded pill badge `text-xs px-2 py-1 bg-white/10 text-white/80` (placed below name)
-  - **Level & Power (Animated Separator):**
-    - Shows as informational stats with animated divider lines
-    - Level: `text-sm text-white/70`
-    - Power: `text-sm text-power-red` (highlighted color)
-    - Animated border separator between stats
-    - No visible percentage boxes or raw numbers cluttering layout
-- **Progress Visualization:**
-  - Animated horizontal lines represent level and power proportionally
-  - Uses CSS animations for fade-in effect on card load
-  - Lines: `h-1 bg-gradient-to-r from-power-red to-orange-600`
-
-### Table View Design
-- **Responsive Grid Layout:** 12 columns for desktop, 8 columns for tablet
-- **Column Order:** `#` | `Ninja` | `Nivel` | `Poder` | `Server`
-- **Styling:**
-  - Header row: `text-white/60` all-caps tracking
-  - Medal icons for top 3 (left-aligned)
-  - Rank numbers for 4+ (centered circle badges)
-  - Player names: `text-white` bold
-  - Level/Power: `text-white/80` numeric
-  - Server: `text-white` for known servers, `text-white/40` for unknown
-- **Responsive:** Hidden columns on mobile, full on desktop
-
-### Default View & Behavior
-- **Default View Mode:** Set to 'global' (consolidated ranking across all regions)
-- **Cascading useEffect Hooks:**
-  1. Load regions on mount
-  2. Load clusters when region changes
-  3. Load available dates when cluster changes
-  4. Load ranking data when date changes
-- **Data Filtering:** 
-  - Only clusters with actual data shown (dynamic filtering in getClusters)
-  - Only dates with data shown (reverse chronological)
-  - Search filters applied client-side via useMemo
-
-**Overview:** Dark Naruto Shippuden-themed battlefield UI. Characters (Hashirama left, Madara right) with pulsing aura glows for epic effect. Ranking content floats centered. Efficient chakra particle effects. Fully optimized for 60 FPS performance across all browsers. Only visible on `lg+` breakpoint.
-
-### Character Images & Layout
-- **Hashirama** (`hashiizq.webp`, 312KB): `position: fixed; bottom: 0; left: 0; width: 1000px` — **Converted from PNG (3.7MB) to WebP (312KB = 91% size reduction)**
-- **Madara** (`madaraderecha.webp`, 235KB): `position: fixed; bottom: 0; right: 0; width: 1000px` — **Converted from PNG (3.6MB) to WebP (235KB = 91% size reduction)**
-- Both use `CSS background-image` (not `next/image`), `opacity: 0.75`, CSS masks for edge fading
-- `z-index: 1` — in front of aura glow (`z-index: 0`), behind ranking content (`z-index: 10`)
-
-### Character Aura Glow (GPU-Optimized)
-- **Aura Implementation:** Two separate divs (left + right) with pulsing `opacity` animation
-- **Why opacity-only?** GPU compositor can animate opacity without any repaints/reflows — essentially zero performance cost
-- **Hashirama Aura (Green):**
-  - `@keyframes aura-pulse-left`: opacity 0.25 → 0.65 over 2.5s
-  - Radial gradient from left center: `rgba(0,220,110,0.8)` → transparent
-  - Box-shadow: `-40px 0 100px` (outer) + `inset -30px 0 80px` (inner)
-  - Follows character contour via same CSS masks as character image
-  - `zIndex: 0` — renders behind character for depth effect
-- **Madara Aura (Red/Orange):**
-  - `@keyframes aura-pulse-right`: opacity 0.2 → 0.55 over 2.5s
-  - Radial gradient from right center: `rgba(240,70,40,0.8)` → transparent
-  - Box-shadow: `40px 0 100px` (outer) + `inset 30px 0 80px` (inner)
-  - Same contour masks for perfect alignment
-  - `zIndex: 0` — behind character image
-- **Performance:** <1% GPU usage (vs 20-30% for previous filter-based glow)
-
-### Chakra Particle Effects (Performance-Optimized)
-- **Chakra Drifts** (`chakra-drift` animation): 16 particles total (8 per side)
-  - Size: 4–7px circles
-  - Green for Hashirama side: `rgba(0,220,110,0.8)` — **Simplified: single 60px box-shadow instead of 3-layer (66% fewer shadow calculations)**
-  - Red/orange for Madara side: `rgba(240,70,40,0.8)` — **Simplified: single 60px box-shadow**
-  - Duration: 6.5–9.5s with cubic-bezier(0.4, 0.0, 0.6, 1) easing
-  - Staggered delays 0–2.5s for organic appearance
-  - **Removed:** `filter: blur(0.5px)` on each particle (imperceptible but GPU-expensive)
-- **Accent Orbs** (`orb-pulse` animation): 4 sparkles (2–2.5px)
-  - Pulsing effect using `scale()` transform (GPU-efficient)
-  - **Simplified:** single 30px box-shadow instead of 2-layer
-  - **Removed:** `filter: blur(0.3px)` 
-- Fixed positions (no `Math.random`) for SSR compatibility
-- `z-index: 2` — above characters, below ranking content
-
-**Animation Performance Gains:**
-- Before: 25 simultaneous animations (breathing ×2, edge-glow ×2, chakra-drift ×16, orb-pulse ×4, gradient ×1)
-- After: 18 simultaneous animations (breathing ×2, chakra-drift ×16, aura-pulse ×2)
-- Removed: mousemove parallax listener, expensive filter animations, blur filters
-
-### Ranking Data Display
-- **Table View** columns: `#`, `Ninja`, `Nivel` (was "Nv."), `Poder`, `Server` (was "Srv.")
-  - Headers: `text-white/60`, all-caps tracking
-  - Rows: Medal icons for top 3, numbered circles for 4+
-  - Top 3 highlighted with medal colors and border accents
-  - Server field: `text-white` for normal servers, `text-white/40` for unknown ("S??")
-
-- **Cards View**: Grid `2 col mobile / 3 col tablet / 4 col desktop`
-  - Title images (`top1-titulo.png`, `top2-titulo.png`) for top 1 & 2
-  - Medal images for top 3, numbered circles for 4+
-  - **Ranking Title Badges** (personalized by rank via `getRankingTitle()`):
-    - Rank 1: Dorado/Amarillo 🟡 "Forzudo de espacio tiempo"
-    - Rank 2: Plateado ⚪ "Tirano de espacio tiempo"
-    - Rank 3: Bronce 🟠 "Tirano de espacio tiempo"
-    - Ranks 4–10: Naranja 🟠 "Dios Viviente"
-    - Ranks 11–50: Azul Chakra 🔵 "Ninja Legendario"
-    - Ranks 51–100: Verde 🟢 "Maestro Supremo"
-  - Power display: `text-white` (always), icon in power-red
-  - Server + Level: `text-white/70` for visibility
-
-### Filters & Navigation
-- Search: Ninja name filtering with inline clear button (X icon)
-- Server dropdown: Filter by "Todos" or specific server
-- View toggle: Table ↔ Cards (List / LayoutGrid icons)
-- Results counter & "Limpiar" (clear all filters) button
-
-### Color Scheme
-- Background: Dark battlefield `#080810` with subtle grid overlay
-- Moon glow: Subtle blue radial gradient top-center
-- Ground mist: Linear fade at bottom (z-index: 3)
-- Ambient orbs: Red radial gradients (decoration)
-- Text: White/white-80 primary, white/60 secondary (headers), white/30 dividers
-- Title: "LATAM · Poder de Combate" in `font-bold text-power-red/70`
-
-### CSS Animations
-- `chakra-drift`: Upward float with horizontal drift, 6.5–9.5s, cubic-bezier easing
-- `orb-pulse`: Scale 1→1.3 with vertical nudge, 3.5–4.2s ease-in-out
-- `shimmer`: Opacity pulse 0.3→0.9 (reserved for future use)
-- Existing `animate-fire-float` (from earlier iterations) not used; replaced by `chakra-drift`
-
-### Important Notes
-- `MEDAL` constant: Only ranks 1–3 defined; always guard with `isTop3 && medal` in cards
-- `getRankingTitle(playerRank)` function: Returns object `{ name: string, cls: string, icon: string }`
-  - Maps rank ranges to titles with corresponding CSS classes and emoji icons
-  - Used in both `/rankings` and `/dashboard` pages
-  - Example: Rank 1 returns `{ name: 'Forzudo de espacio tiempo', cls: 'bg-sage-gold/20 text-sage-gold', icon: '🥇' }`
-- `getRank(level)` function: Maps level to Genin/Chunin/Jonin/Kage with CSS classes (dashboard only)
-- Medal images (top1.png, top2.png, top3.png): Use native `<img>` tags, NOT `next/image` (Netlify compatibility)
-- Tooltip hover (table): Shows rank name, full power, position number
-- Responsive: Characters hidden on mobile/tablet (`hidden lg:block`), ranking adapts gracefully
-
-## Rankings Page Assets
-
-Located in `frontend/public/images/power-ranking/`:
-- **Character Images (Optimized):**
-  - `hashiizq.webp` (312KB) — Hashirama, left side character ⭐ *Converted from PNG 3.7MB (91% reduction)*
-  - `madaraderecha.webp` (235KB) — Madara, right side character ⭐ *Converted from PNG 3.6MB (91% reduction)*
-- **Medal Icons:**
-  - `top1.png` (4.2KB), `top2.png` (5KB), `top3.png` (5.1KB) — Medal icons for top 3
-- **Title Graphics:**
-  - `top1-titulo.png` (26KB), `top2-titulo.png` (20KB) — Title graphics for top 1 & 2 cards
-
-## Security & Confidentiality
-
-**NEVER commit to git:**
-- `.env` files (JWT_SECRET, DATABASE_URL, API keys) — properly ignored by `.gitignore`
-- `.env.local` files (contains API_URL) — properly ignored by `.gitignore`
-- Database files (`.db`, `.sqlite`, `dev.db*`)
-- `dist/` and `build/` directories (regenerable)
-- `node_modules/` (regenerable)
-- `.next/` build cache
-- IDE settings (`.vscode/`, `.idea/`)
-- OS files (`Thumbs.db`, `.DS_Store`)
-- Logs (`*-debug.log`, `*.log`)
-- `.claude/` directory (local Claude Code config)
-
-**Production Environment Variables (Render Dashboard):**
-- `DATABASE_URL`: PostgreSQL connection string (from Neon.tech)
-- `JWT_SECRET`: Must be random ≥32 character string (NOT the placeholder)
-- `API_KEY`: Must be random ≥32 character string (for API authentication)
-- `FRONTEND_URL`: Exact frontend origin (e.g., `https://naruto-online.netlify.app`)
-- `BACKEND_PORT`: Set to `4000`
-- `NODE_ENV`: Set to `production`
-
-**Frontend Environment Variables (Netlify Dashboard):**
-- `NEXT_PUBLIC_API_URL`: Backend URL (e.g., `https://naruto-online.onrender.com`)
-- `NEXT_PUBLIC_API_KEY`: Must match backend `API_KEY` value (for API authentication)
-
-**Authentication & Secrets:**
-- JWT_SECRET must be ≥32 characters and random in production (current placeholder is only for development)
-- Never log tokens or passwords
-- bcrypt salt rounds fixed at 12 (do not change)
-- CORS restricted to frontend origin in production via `FRONTEND_URL` environment variable
-
-**File Protection:**
-- `.env` and `.env.local` are properly gitignored and safe
-- `.env.example` documents required variables (created for backend reference)
-- Database migrations committed but connection handled via DATABASE_URL env var
-- All sensitive config flows through environment variables, never hardcoded
-
-## Deployment & Production
-
-### **Current Deployment Status:**
-- ✅ **Backend:** Render.com (https://naruto-online.onrender.com)
-- ✅ **Frontend:** Netlify (https://naruto-online.netlify.app)
-- ✅ **Database:** Neon.tech PostgreSQL (Free tier with $5/month of free credits)
-
-### **Production Services Configuration:**
-
-#### **Render Backend** (https://naruto-online.onrender.com)
-1. Git repo connected: auto-deploys on push to main
-2. Environment Variables set (see Environment Variables section above)
-3. Build command: `cd backend && npm install && npm run build`
-4. Start command: `npm start --workspace=backend`
-5. Auto-runs `prisma migrate deploy` on startup (via build script)
-
-#### **Netlify Frontend** (https://naruto-online.netlify.app)
-1. Git repo connected: auto-deploys on push to main
-2. Build command: `cd frontend && npm install --legacy-peer-deps && npm run build`
-3. Publish directory: `frontend/.next`
-4. Auto-detects Next.js 16 (no plugin needed)
-
-#### **Neon PostgreSQL Database**
-- Connection string: Configured in Render environment variables
-- Free tier: Expires if no activity for 7 days (but can be used indefinitely with $5/month)
-- Migrations auto-applied on Render deploy
-- Accessible from Render backend only (internal connection)
-
-### **Pre-Deployment Checklist:**
-- [x] Configure all environment variables in Render Dashboard
-- [x] Set up PostgreSQL database in Neon.tech
-- [x] Test registration and login end-to-end
-- [x] Verify CORS allows Netlify frontend
-- [x] Monitor Render/Netlify deploy logs
-- [x] Backup DATABASE_URL connection string locally (in `.env.render.local`)
-
-### **Post-Deployment Verification:**
-```bash
-# Check backend health
-curl https://naruto-online.onrender.com/health
-
-# Test registration
-# Navigate to https://naruto-online.netlify.app/auth/register
-# Should register and redirect to /dashboard
-```
-
-**Common Issues & Fixes:**
-1. **CORS Errors:** Check `FRONTEND_URL` in Render matches exactly the frontend origin (no trailing slash)
-2. **Image 404 Errors:** Use native `<img>` tags for PNGs, not `next/image` on Netlify
-3. **Database Connection Errors:** Verify `DATABASE_URL` is correctly set in Render environment
-4. **ESM Import Errors:** Ensure backend uses `.js` extensions in relative imports (required for production)
-5. **Netlify Build Failures (exit code 1):**
-   - **Cause:** Often related to environment differences or file system issues (e.g., Prisma permissions on Linux vs Windows)
-   - **Prevention:** Run `pre-deploy-check.sh` script before pushing
-   - **Fix if it happens:**
-     - Check Netlify deploy logs for exact error message
-     - Manually trigger "Clear cache and retry deploy" in Netlify dashboard
-     - Ensure all files are committed to git (no `node_modules` pollution)
-     - Verify `netlify.toml` has correct build command: `npm install && cd frontend && npm run build`
-   - **Why it happens:** Netlify runs on Linux (different file system/permissions than Windows dev), and build caching can cause stale issues
-
-**Pre-Deployment Checklist:**
-- ✅ Run local build: `cd frontend && npm run build` (should show ✓ Compiled successfully)
-- ✅ Run pre-deploy script: `bash pre-deploy-check.sh` (catches most issues)
-- ✅ Verify all changes committed: `git status` (should be clean)
-- ✅ Push to main: `git push origin main`
-- ✅ Monitor Netlify: https://app.netlify.com/sites/naruto-online/deploys
-
-## Rankings Page Visual Effects (Performance-Optimized 2026-04-05)
-
-**Active Effects (✅ Implemented & Working):**
-
-### 1. **Character Breathing Animation**
-- **File:** `frontend/app/globals.css` - `@keyframes character-breathe`
-- **Behavior:**
-  - Subtle scale animation (1 → 1.015 → 1)
-  - Makes characters appear alive and present
-  - Continuous loop every 4 seconds
-- **Implementation:**
-  - Uses CSS `transform: scale()` (GPU-composited, zero repaints)
-  - Pure CSS, no JavaScript required
-  - Very efficient animation — scales naturally with breathing effect
-- **Applied to:** `[data-character="left"]` (Hashirama) and `[data-character="right"]` (Madara)
-
-### 2. **Aura Glow (Efecto de Brillo Pulsante) — GPU-Optimized**
-- **File:** `frontend/app/globals.css` - `@keyframes aura-pulse-left` / `aura-pulse-right` + `frontend/app/rankings/page.tsx` lines 151-170 (aura divs)
-- **Why Opacity-Only Animation?**
-  - The GPU compositor can animate `opacity` without ANY repaints or reflows
-  - Previous implementation (filter: drop-shadow) caused 20-30% GPU load
-  - Current implementation (<1% GPU load) — effectively free visually
-- **Behavior:**
-  - Green aura (left): pulses 0.25 → 0.65 opacity over 2.5s
-  - Red/orange aura (right): pulses 0.2 → 0.55 opacity over 2.5s
-  - Appears behind character images for depth effect
-- **Implementation Details:**
-  - Separate div for each aura (left + right), full 1000px width
-  - Radial gradient from character center: `radial-gradient(ellipse at [left/right] center, color, transparent)`
-  - Dual box-shadow: outer glow (40px spread) + inset glow (30px spread)
-  - CSS masks identical to character images for perfect contour alignment
-  - `will-change: opacity` + GPU hints for instant compositing
-- **Visual Effect:** Characters glow from behind, creating epic ninja aesthetic without performance penalty
-
-### 3. **Chakra Particles (Efficient Implementation)**
-- **File:** `frontend/app/rankings/page.tsx` lines 175-259 + `frontend/app/globals.css` `@keyframes chakra-drift`
-- **Behavior:**
-  - 16 particles total (8 green left, 8 red/orange right)
-  - Float upward with horizontal drift via cubic-bezier easing
-  - Duration: 6.5–9.5s with staggered delays (0–2.5s) for organic appearance
-- **Performance Optimizations:**
-  - ✅ **Simplified box-shadows:** 3-layer shadows reduced to single `0 0 60px` (66% fewer calculations)
-  - ✅ **Removed blur filters:** `filter: blur(0.5px)` removed from all particles (imperceptible but GPU-expensive)
-  - ✅ **Transform-only animation:** `chakra-drift` uses `translateY + translateX` (GPU-composited)
-  - ✅ **Opacity only in keyframes:** Opacity transitions in animation (cheap for GPU)
-
-**Performance Summary:**
-- **Before:** 25 simultaneous animations (breathing ×2, edge-glow filter ×2, chakra-drift ×16, orb-pulse ×4, gradient animation ×1)
-- **After:** 18 simultaneous animations (breathing ×2, aura-pulse ×2, chakra-drift ×16)
-- **Removed:** mousemove parallax listener, filter: drop-shadow animations, multiple box-shadow layers, blur filters
-- **FPS Improvement:** 45-50 FPS → 75-90+ FPS (60% improvement, consistent on Chrome & Firefox)
-
-**Tested & Working:**
-- ✅ Breathing + Aura + Chakra particles all work without conflicts
-- ✅ Aura properly follows character contours
-- ✅ Consistent 60 FPS across Chrome, Firefox, Safari on desktop
-- ✅ Effects are balanced and visually impressive without performance penalty
-- ✅ Responsive: Effects hidden on mobile/tablet (`hidden lg:block`)
-
-**Previous Issues Fixed:**
-- ❌ **Removed:** Parallax mousemove effect (constant event listener overhead)
-- ❌ **Removed:** Edge-glow filter animations (forced repaints on large elements)
-- ❌ **Removed:** Multiple 3-layer box-shadows on particles (48 shadow calculations)
-- ❌ **Removed:** Blur filters on particles (GPU overhead)
-- ❌ **Removed:** Gradient background-position animation on title (unneeded animation)
-- ⚡ **Optimized:** PNG → WebP conversion (91% image size reduction)
-- ⚡ **Optimized:** Fake loading spinner (removed unnecessary render cycle)
-
-## Rankings Page Performance Optimization (Updated 2026-04-05)
-
-### Problem Statement
-The `/rankings` page was loading slowly in Chrome (45-50 FPS) while Firefox handled it better. Initial investigation revealed 5 major performance bottlenecks accumulating to 60-90% unnecessary GPU/CPU usage.
-
-### Root Causes & Solutions
-
-**1. Image Size Bottleneck (Biggest Impact)**
-- **Problem:** Character images were 7.3 MB total (3.7 MB + 3.6 MB) uncompressed PNG
-- **Impact:** Slow initial load, especially on slower connections
-- **Solution:** Convert to WebP format
-  - `hashiizq.png` 3.7 MB → `hashiizq.webp` 312 KB (91% reduction)
-  - `madaraderecha.png` 3.6 MB → `madaraderecha.webp` 235 KB (91% reduction)
-  - Total: 7.3 MB → 547 KB
-- **Browser Support:** WebP supported in all modern browsers (fallback not needed for this app)
-
-**2. Fake Loading Spinner (Unnecessary Render Cycle)**
-- **Problem:** Page rendered loading spinner briefly even though data was already loaded (static JSON)
-- **Impact:** Added extra render cycle before content appears
-- **Solution:** Removed `loading` state, spinner div, and `useEffect` that set it to false
-- **Result:** Content appears instantly
-
-**3. Parallax Mousemove Effect (Constant Overhead)**
-- **Problem:** `mousemove` listener fired 60-120 times per second with direct DOM mutations (`style.left`, `style.right`)
-- **Impact:** Constant main-thread work, potential layout thrashing
-- **Solution:** Completely removed the parallax effect
-  - Removed `useEffect` with mousemove/mouseleave listeners
-  - Removed DOM style mutations on characters
-- **Result:** Eliminates continuous event processing overhead
-
-**4. Filter: Drop-Shadow on Large Elements (Chrome-Specific)**
-- **Problem:** Animating `filter: drop-shadow()` on 1000px × viewport elements
-- **Chrome Behavior:** Rendered as CPU-intensive pixel-by-pixel repaints instead of GPU compositing
-- **Firefox Behavior:** Better GPU optimization, so less noticeable there
-- **Impact:** 20-30% GPU usage just for glow animation
-- **Solution:** Replaced with opacity-only animation on separate overlay divs
-  - Moved glow to separate smaller divs (still 1000px but masked)
-  - Changed animation property from `filter` to `opacity`
-  - GPU compositor handles opacity without any repaints
-- **Result:** <1% GPU usage, same visual effect
-
-**5. Multiple Box-Shadow Layers on Particles**
-- **Problem:** 16 particles × 3-layer box-shadows = 48 shadow recalculations per animation frame
-- **Shadow Setup:** `0 0 30px`, `0 0 60px`, `0 0 80px` with different opacities
-- **Impact:** Expensive CPU calculations for shadow blur kernels
-- **Solution:** Reduce to single optimized shadow per particle
-  - `0 0 30px rgba(...,0.9), 0 0 60px rgba(...,0.6), 0 0 80px rgba(...,0.3)` → `0 0 60px rgba(...,0.7)`
-  - Same visual appearance, 66% fewer calculations
-- **Result:** 20-25% FPS improvement
-
-**6. Blur Filters on Particles**
-- **Problem:** `filter: blur(0.5px)` on 20 elements (imperceptible to human eye)
-- **Impact:** GPU overhead for blur kernel processing
-- **Solution:** Remove blur filters entirely
-  - `filter: blur(0.5px)` and `filter: blur(0.3px)` deleted from particle styles
-- **Result:** 10-15% FPS improvement (imperceptible visual difference)
-
-**7. Gradient Animation on Title**
-- **Problem:** Background-position animation on "Poder" title (3s cycle, 200% background size)
-- **Impact:** 5-10% FPS overhead
-- **Solution:** Remove animation, keep static gradient
-  - Deleted `@keyframes gradient-x` from CSS
-  - Removed `animation: gradient-x 3s ease infinite` from title
-  - Removed `backgroundSize: '200% 200%'` (reduced to implicit 100%)
-- **Result:** Cleaner visual (static gradient still looks good)
-
-### Performance Metrics
-
-| Metric | Before | After | Improvement |
-|--------|--------|-------|-------------|
-| FPS (Chrome) | 45-50 | 75-90+ | +60-80% |
-| FPS (Firefox) | 70-80 | 75-90+ | +10-20% |
-| First Load Time | 1.5-2s | <500ms | -75% |
-| Image Bundle | 7.3 MB | 547 KB | -92% |
-| Active Animations | 25 | 18 | -28% |
-| GPU Usage | 20-30% | 1-2% | -95% |
-| Bundle Size | 9.09 kB | 8.76 kB | -0.33 kB |
-
-### Why This Approach Works
-
-1. **WebP Conversion:** Industry standard for image optimization, dramatic size reduction
-2. **Removing Paralax:** Eliminates a performance sink that wasn't critical to experience
-3. **Opacity-Only Animation:** GPU compositor can handle opacity changes without CPU/GPU overhead — it's essentially "free"
-4. **Simplified Shadows:** Single shadow is visually similar to triple-layer but much cheaper
-5. **Removed Filters:** Blur filters on tiny particles are imperceptible but costly
-6. **Static Gradient:** Title looks identical with or without animation — animation was unnecessary
-
-### Key Insight
-The biggest wins came from **removing expensive animations entirely** rather than trying to optimize them. Parallax, filter animations, and gradient animations were all "nice-to-have" effects that didn't significantly impact the visual experience but heavily impacted performance.
-
-The final page maintains visual excellence while being **6-8x more efficient** than before.
-
-## Future Phases
-
-1. **Phase 2:** Daily login XP system, daily streak tracking
-2. **Phase 3:** Tools (guides, coupon calculators)
-3. **Phase 4:** Community features (posts, comments)
-4. **Phase 5:** Achievements, leaderboards, clans
-
-## Typography & Styling (Updated 2026-04-04)
-
-### Fonts
-- **Titles (h1-h6, .font-cinzel):** Bebas Neue (Google Fonts)
-  - Large, bold, impactful ninja aesthetic
-  - Used for: Main headings, page titles, large labels
-- **Body Text:** Montserrat (Google Fonts)
-  - Clean, modern, highly readable sans-serif
-  - Used for: Paragraphs, buttons, form inputs, secondary text, feature titles
-- **Special Cases:** Some feature/rank titles use Montserrat instead of Bebas to prevent letter-spacing issues
-  - Examples: "Sistema de XP", "Genin", "Misiones Diarias", etc.
-
-### Font Loading
-- Imported from Google Fonts via `frontend/app/fonts.css`
-- Uses `@import url()` for reliability
-- Global CSS applies fonts with `!important` to override component-level classes
-- Fallback: `sans-serif`
-
-## Homepage & UI Improvements (Updated 2026-04-04)
-
-### Navbar Component (`components/Navbar.tsx`)
-- **Logo Size:** Increased kanji from `text-lg` → `text-2xl`, letters from `text-sm` → `text-lg`
-- **Navbar Height:** `h-16` → `h-20` (more spacious)
-- **Desktop Links:** 
-  - Font: Bebas Neue → Montserrat (semibold)
-  - Size: `text-xs` → `text-base`
-  - Added underline animation on hover (pseudo-element `::after`)
-  - Gap: `gap-8` → `gap-10`
-  - Color: `text-[#B0B0B0]` → `text-white/70` (better contrast)
-- **Auth Buttons:**
-  - "Entrar": Ghost style with border, hover effect to red
-  - "Registrarse": Gradient (power-red to accent-orange) with shadow and scale animation
-  - Size: `sm` → `md`, text `text-xs` → `text-base`
-- **Mobile Menu:** Updated with gradient border, improved button styles
-
-### Landing Page (`app/page.tsx`)
-- **Removed:** Stats cards (duplicated with Features section)
-- **Button Improvements:**
-  - Primary CTA ("Comenzar tu camino ninja"): Gradient rojo-naranja, large shadow, scale animation
-  - Secondary CTA ("Ya eres ninja"): Border style, hover to red
-  - All buttons: Montserrat semibold, better spacing, active states
-- **Color Improvements:**
-  - Changed muted grays to `text-white/70` for better visibility
-  - All subtitle and description text: More contrast
-- **Rankings Page Navbar:** Text sizes increased (`text-xs` → `text-sm`)
-
-### Rankings Page (`app/rankings/page.tsx`)
-- **Navbar Links:** `text-xs` → `text-sm`, color improved to `text-white/70`
-- **User Display:** Username and rank badge sizes increased
-- **Logout Button:** Larger icon and text for better visibility
-
-## Pages & Routes
-
-### Home (`/`) — app/page.tsx
-- **Hero Section:** Village background with parallax (`village.png`), overlay opacity 0.6
-- **Buttons:** Orange gradient (orange-600 → orange-500) with hover overlay effect
-- **FloatingParticles:** 20 animated particles with variable duration/delay
-- **Kanji Decorations:** Animated floating Kanji background elements (忍, 暁, 滅, 力)
-- **Sections:** Features (3 main cards + 3 secondary), Rank System, CTA, Footer
-
-### Guides (`/guides`) — app/guides/page.tsx
-- **Background:** `guias.png` with 0.7 opacity overlay
-- **Hero Section:** Title, description, category filter buttons
-- **Cards:** 6 guide templates (all marked "Próximamente")
-  - Shows shuriken icon, difficulty badge, category, read time
-  - Grayed out (opacity-60) with "Próximamente" status
-- **Filter:** Todos (default), by category
-- **CTA Section:** Link back to home
-
-### Tools (`/tools`) — app/tools/page.tsx
-- **Background:** `herramientas.png` with 0.7 opacity overlay
-- **Hero Section:** Title, description, filter buttons
-- **Filter:** Todos, Disponibles, Próximamente
-- **Cards:** 4 tools (1 available: Calculadora de Cupones → `/tools/coupons`)
-  - Available: Orange border, clickable Link, CheckCircle badge
-  - Unavailable: Grayed out, "Próximamente" status
-- **CTA Section:** Link back to home
-
-### Rankings (`/rankings`) — app/rankings/page.tsx
-- **Background:** Dark battlefield (#080810) with character animations
-- **Navbar:** Global Navbar (no custom header)
-- **Hero:** Title "Ranking de Poder", decorative line, player count badge
-- **Filters:** Search by name, Server dropdown, View toggle (Table/Cards)
-- **Character Animations:**
-  - Hashirama (left), Madara (right): Breathing + Edge Glow animations
-  - Chakra particles: Green (left), Red/Orange (right) with drift animation
-  - Parallax effect: Characters move slightly based on mouse position
-- **Content:** Ranking table/cards with medals, titles, power levels
-
-### Tools/Coupons (`/tools/coupons`) — app/tools/coupons/page.tsx
-- Coupon calculator with event selection and reward simulation
-- Exclusive to authenticated users (redirects to login if not)
-
-## Navigation
-
-### Navbar Component (`components/Navbar.tsx`)
-- **Global Navigation:** Used on all pages
-- **Links:**
-  - Logo: Redirects to `/` (kanji + HDRV)
-  - `/#features` (Características) — Home page section
-  - `/#community` (Comunidad) — Home page section
-  - `/rankings` — Ranking page
-  - `/tools` — Tools landing
-  - `/guides` — Guides landing
-- **Mobile Menu:** Hamburger toggle for responsive navigation
-- **Auth Buttons:** Login/Register (or Logout on protected pages)
-- **Behavior:** Adds backdrop blur on scroll > 30px
-
-**Important:** Anchors must include `/` prefix (`/#features`, `/#community`) to work correctly from nested pages.
-
-## Security & Production Readiness
-
-### Sensitive Files Protection (All Ignored in `.gitignore`)
-- ✅ **Environment Files:**
-  - `.env`, `.env.local`, `.env.*.local` (DATABASE_URL, JWT_SECRET, API keys)
-  - `.env.production`, `.env.production.local`
-  - `.env.development`, `.env.development.local`
-  - `.env.test`, `.env.test.local`
-- ✅ **Credentials & Secrets:**
-  - `CREDENCIALES.md`, `CREDENCIALES-*.md` (passwords, tokens, test accounts)
-  - `SECRETS.md`, `TOKENS.md` (authentication tokens, API keys)
-  - `*.key`, `*.pem`, `*.p8`, `*.p12`, `*.pfx` (certificate files)
-- ✅ **Database Files:**
-  - `*.db`, `*.sqlite`, `*.sqlite3` (SQLite development databases)
-  - `*.db-journal`, `*.db-wal`, `*.db-shm` (SQLite temporary files)
-  - `backend/prisma/dev.db`, `backend/prisma/dev.db-journal`
-- ✅ **Claude Code Config:**
-  - `.claude/` directory (local settings, cache, history, state)
-  - `.claude-cache/`, `.claude-debug/`, `.claude-history/`, `.claude-state/`
-- ✅ **Build Artifacts & Logs:**
-  - `dist/`, `build/`, `frontend/.next/`, `.turbo/`
-  - `*.log`, `logs/`, `npm-debug.log*`, `yarn-error.log*`
-  - `coverage/`, `.nyc_output/`, `test-results/`
-- ✅ **IDE & Editor Config:**
-  - `.vscode/`, `.idea/`, `*.code-workspace`, `.history/`
-- ✅ **OS & Temporary Files:**
-  - `.DS_Store`, `Thumbs.db`, `tmp/`, `temp/`, `*.tmp`, `*.bak`
-- ✅ **Private Documentation:**
-  - `PRIVATE-*.md`, `NOTES-*.md`, `DRAFT-*.md`, `TODO-*.md`
-
-### Pre-Deployment Checklist
-1. **Environment Variables Set (Render Dashboard):**
-   - `DATABASE_URL` (PostgreSQL from Neon.tech)
-   - `JWT_SECRET` (≥32 random characters, NOT the development placeholder)
-   - `FRONTEND_URL` (exact origin, e.g., `https://naruto-online.netlify.app`)
-   - `BACKEND_PORT` (default: `4000`)
-   - `NODE_ENV` (`production`)
-
-2. **Environment Variables Set (Netlify Dashboard):**
-   - `NEXT_PUBLIC_API_URL` (backend URL, e.g., `https://naruto-online.onrender.com`)
-
-3. **Database:**
-   - Ensure Neon.tech PostgreSQL is provisioned
-   - Run migrations: `npx prisma db push` on backend before deployment
-
-4. **Build Verification:**
-   - Local: `npm run build` (both workspaces should succeed)
-   - Next.js: First Load JS ~93–94 kB (acceptable range)
-   - No TypeScript errors or unused variables
-
-5. **Git Status:**
-   - `git status` should show clean (no `.env`, `.db`, `.claude/` files)
-   - All changes committed
-
-### Known Issues & Mitigations
-- **Next.js on Netlify:** Cannot optimize local PNG files with `next/image` → Use native `<img>` tags
-- **ESM Imports in Backend:** Production requires `.js` extensions in relative imports
-- **CORS:** Restricted to FRONTEND_URL env var (must match exactly, no trailing slash)
-- **JWT Expiration:** Hardcoded to 7 days (change in `auth.service.ts` if needed)
-
-## Development Workflow
-
-### **Starting Development**
-```bash
-# Install dependencies
-npm install
-
-# Setup development database (SQLite)
-cd backend
-cp .env.example .env.local
-# Edit .env.local: DATABASE_URL=file:./prisma/dev.db
-
-# Create initial migration if needed
-npx prisma migrate dev --name init
-
-# Go back to root and start both servers
-cd ..
-npm run dev
-```
-
-Frontend runs on `http://localhost:3000`
-Backend runs on `http://localhost:4000`
-
-### **Making Database Changes**
-```bash
-# 1. Edit backend/prisma/schema.prisma
-# 2. Create migration
-cd backend
-npx prisma migrate dev --name <description>
-
-# 3. Prisma client auto-updates
-# 4. Commit migration files to git
-```
-
-### **Pushing to Production**
-```bash
-# 1. All changes committed and pushed to main
-git push origin main
-
-# 2. Render auto-deploys backend
-# - Runs build script (includes prisma generate)
-# - Runs prisma migrate deploy on startup
-# - Auto-syncs schema with Neon PostgreSQL
-
-# 3. Netlify auto-deploys frontend
-# - Builds Next.js app
-# - Publishes to CDN
-```
-
-### **Debugging Production Issues**
-- **Backend logs:** Render Dashboard → Logs
-- **Frontend errors:** Browser DevTools console
-- **Database:** `npx prisma studio` (local dev only) or Neon Dashboard
-- **Health check:** `curl https://naruto-online.onrender.com/health`
+- **Two Prisma schemas:** `schema.prisma` (SQLite/dev) and `schema.prod.prisma` (PostgreSQL/prod). Prisma doesn't support `env()` in `provider` field.
+- **ESM imports:** Backend relative imports MUST have `.js` extension (required for Node ESM at runtime).
+- **Image optimization:** Do NOT use `next/image` for static PNGs — use native `<img>` tags. Netlify returns 400 for local image optimization.
+- **Tailwind z-index:** Only standard values (`z-0` through `z-50`) exist. Use `style={{ zIndex: N }}` for custom values.
+- **React 19:** `lucide-react@0.292.0` compatible but doesn't declare it — use `--legacy-peer-deps`. `recharts@3.8.1` requires explicit `react-is@^19.0.0`.
+- **No documentation sprawl:** No `.md` files in project root other than CLAUDE.md.
+- **CORS:** Restricted to `FRONTEND_URL` env var in production (must match exactly, no trailing slash).
+- **Admin layout is self-contained:** Does not render the global Navbar. Root `layout.tsx` only renders `{children}`.
+
+## Rankings Page (`/rankings`)
+
+### API Endpoints
+- `/api/rankings/consolidated-global` — Global top 100 across all regions/clusters
+- `/api/rankings/top100?region=&cluster=&date=` — Regional top 100
+- `/api/rankings/regions` — Available regions
+- `/api/rankings/clusters/:region` — Clusters with data
+- `/api/rankings/dates/:region/:cluster` — Available snapshot dates
+
+### Visual Design
+- Dark battlefield (`#080810`) background
+- Hashirama (left, `hashiizq.webp` 312KB) + Madara (right, `madaraderecha.webp` 235KB) characters — WebP, CSS background-image, opacity 0.75
+- GPU-optimized aura glow: opacity-only animation on separate divs (<1% GPU vs 20-30% for filter-based)
+- 16 chakra particles (8 green left, 8 red/orange right) with `chakra-drift` animation
+- All effects hidden on mobile/tablet (`hidden lg:block`)
+
+### Card/Table Views
+- **Table:** `#` | Ninja | Nivel | Poder | Server — medals for top 3, numbered circles for 4+
+- **Cards:** Grid 2/3/4 col by breakpoint; rank title badges via `getRankingTitle(rank)`
+- `getRankingTitle(rank)` → `{ name, cls, icon }` — used in `/rankings` and `/dashboard`
+
+## Security
+
+**Never commit:** `.env*`, `*.db`, `dist/`, `.next/`, `node_modules/`, `.claude/`
+
+**Production env vars (Render):**
+- `DATABASE_URL` — PostgreSQL from Neon.tech
+- `JWT_SECRET` — ≥32 random chars
+- `API_KEY` — ≥32 random chars (matches frontend `NEXT_PUBLIC_API_KEY`)
+- `FRONTEND_URL` — exact frontend origin
+- `NODE_ENV=production`, `BACKEND_PORT=4000`
+
+**Production env vars (Netlify):**
+- `NEXT_PUBLIC_API_URL` — backend URL
+- `NEXT_PUBLIC_API_KEY` — matches backend API_KEY
+
+**API Key middleware:** All endpoints except `/health`, `/auth/register`, `/auth/login` require `x-api-key` header. Frontend axios interceptor adds it automatically.
+
+## Pages & Routes Summary
+
+| Route | Access | Description |
+|-------|--------|-------------|
+| `/` | Public | Landing page with video hero |
+| `/auth/login` `/auth/register` | Public | Auth pages |
+| `/dashboard` | Auth | XP bar, rank, achievements, guides |
+| `/guides` | Public | Guide listing with search/filter/sort |
+| `/guides/create` | ADMIN/MOD | Full-screen editor with templates |
+| `/guides/[id]` | Public | Guide detail with ToC, voting, comments |
+| `/guides/[id]/edit` | ADMIN/MOD or author | Edit guide |
+| `/guides/leaderboard` | Public | Top guides + top authors |
+| `/users/[username]` | Public | User profile with XP, rank, achievements |
+| `/rankings` | Public | Power rankings global/regional |
+| `/rankings/stats` | Public | Region comparator with charts |
+| `/tools/coupons` | Auth | Coupon calculator |
+| `/faq` | Public | Collapsible FAQ sections |
+| `/admin` | ADMIN | Redirects → /admin/xp |
+| `/admin/xp` | ADMIN | XP actions, levels, achievements config |
+| `/admin/roles` | ADMIN | Role reference + user role management |
+
+## Assets
+
+**Rank images** (`frontend/public/images/rangos/`):
+`genin.png`, `chunin.png`, `jonin.png`, `kage.png`, `akatsuki.png`, `akatsuki2.png`, `kage2.png`
+
+**Guide badges** (`frontend/public/images/guides/badges/`):
+`badge-oficial.png`, `badge-tendencia.png`, `badge-verificada.png`, `badge-completa.png`
+
+**Achievements** (`frontend/public/images/guides/logros/`):
+`logro-primera-guia.png`, `logro-5-guias.png`, `logro-10-guias.png`, `logro-100-vistas.png`, `logro-1000-vistas.png`, `logro-votos.png`, `logro-badge-oficial.png`, `logro-leyenda.png`
+
+**Rankings** (`frontend/public/images/power-ranking/`):
+`hashiizq.webp`, `madaraderecha.webp`, `top1.png`, `top2.png`, `top3.png`, `top1-titulo.png`, `top2-titulo.png`
 
 ## Last Updated
-2026-04-26 (Loading Spinner with Shuriken + Video Background)
-
-### Loading Spinner Implementation (2026-04-26)
-**Status:** ✅ **COMPLETE** — Animated shuriken with pulsing glow effect
-
-**What's New:**
-- ✅ **New Component:** `frontend/components/LoadingSpinner.tsx`
-- ✅ **Features:**
-  - Shuriken image rotating continuously
-  - Red glow effect that pulses (0.3 → 0.6 opacity over 2s)
-  - Customizable sizes: `sm` (16x16), `md` (24x24), `lg` (40x40)
-  - Full-screen or inline modes
-  - Customizable loading message + "Espera unos momentos..." subtitle
-  
-**Where Applied:**
-- ✅ `/rankings` — Shows loading when fetching ranking data
-- ✅ `/guides` — Shows loading when fetching guides
-- ✅ `/rankings/stats` — Shows loading via StatsSkeleton wrapper
-
-**Design Details:**
-- Uses `/images/tools/shuriken.png` asset
-- Drop-shadow glow: `drop-shadow(0 0 10px → 30px rgba(204, 0, 0, 0.3 → 0.6))`
-- Pulsing animation synchronized with rotation (2s cycle)
-- Minimalista ninja aesthetic, fits dark HDRV theme
-
-**Video Background Implementation (2026-04-26)**
-- Replaced static PNG background in home page hero section
-- Native HTML5 `<video>` element with `/videos/Naruto Online - Official Cinematic Trailer.mp4`
-- Attributes: `autoPlay`, `muted`, `loop`, `playsInline`
-- Controls hidden: `controlsList="nodownload nofullscreen noremoteplayback"`
-- Maintains same functionality as image (full viewport coverage, overlay for text readability)
-
----
-
-2026-04-25 (Rankings Page UI/UX Comprehensive Redesign + Dynamic API Integration + Performance Optimization)
-
-### Major Migration: Next.js 14 → 16 (2026-04-05)
-**Status:** ✅ **COMPLETE** — Both Netlify and Render deploying successfully
-
-**What Changed:**
-- ✅ **Framework:** Next.js 14.2.3 → **16.2.2** (latest stable)
-- ✅ **React:** 18.2.0 → **19.2.4** (required by Next.js 16)
-- ✅ **Framer Motion:** 10.16.16 → **12.38.0** (React 19 compatible)
-- ✅ **Build Tool:** Webpack → **Turbopack** (default in Next.js 16, 2-5x faster)
-- ✅ **Node.js:** 18.17.0 → **20.18.0** (18 no longer supported)
-- ✅ **React Compiler:** Stable support (not enabled by default)
-- ✅ **New Dependencies:** Added `react-is@^19.0.0` (required by Recharts v3.8.1)
-
-**Breaking Changes (NOT Impacting This Project):**
-- ❌ Async Request APIs (`cookies()`, `headers()`, `params`) — Project has no server components or dynamic routes
-- ❌ Fetch caching changes — All fetching done via axios in `useEffect`
-- ❌ `useFormState` → `useActionState` — Project uses plain `useState` + axios
-- ❌ `middleware.ts` deprecation — No middleware exists
-- ❌ Parallel routes `default.js` — No parallel routes used
-- ❌ AMP removal — No AMP configuration
-- ❌ `@next/font` removal — Fonts loaded via CSS `@import`
-
-**Fixes Applied:**
-1. **TypeScript Error in Button.tsx:** Fixed `React.cloneElement` typing for React 19 with `React.ReactElement<any>` cast
-2. **Layout.tsx:** Added `suppressHydrationWarning` + `data-scroll-behavior="smooth"` for React 19 compatibility
-3. **ESLint Issues:** Removed eslint/eslint-config-next (incompatible with ESM, not needed for deployment)
-4. **React-is Dependency:** Added as explicit dependency (Recharts v3.8.1 requires it with React 19)
-5. **Turbopack Config:** Removed explicit `turbopack.root` — Next.js auto-detects correctly
-6. **Package Lock:** Removed root `package-lock.json` (was conflicting with `npm ci` on Netlify)
-7. **Build Command:** Changed from `npm ci` to `npm install --legacy-peer-deps` (more flexible, compatible with Netlify plugin interference)
-
-**Deployment Status:**
-- ✅ **Render (Backend):** Deploy successful after removing turbopack.root config
-- ✅ **Netlify (Frontend):** Deploy successful with `npm install` command
-- ✅ **Local Build:** All 10 pages generate successfully, 0 TypeScript errors
-- ✅ **Animation Compatibility:** Framer Motion v12 renders all animations correctly
-
-**Performance Impact:**
-- Turbopack builds ~2-5x faster than Webpack
-- No regression in app performance or visual effects
-- All existing animations (breathing, aura, chakra particles) work perfectly with React 19
-
----
-
-### Rankings Page Redesign Session Summary (2026-04-25)
-
-**Security Fix:**
-- Moved `db.json` from `backend/db.json` → `backend/data/db.json` to prevent public exposure
-- JSON file is no longer accessible via HTTP (not in `public/` directory)
-- Updated `ranking.service.ts` path from `../../db.json` → `../../data/db.json`
-- Added `data/` to `.gitignore` to prevent accidental version control commits
-
-**Fixes & Improvements Completed:**
-
-1. **Backend JSON Data Errors Fixed:**
-   - Fixed missing comma after rank 30 "Miller" entry in db.json
-   - Fixed LATAM cluster 2 object positioned outside rankings array
-   - Converted static file read to dynamic `getDbData()` function for fresh data on each request
-   - Validated JSON structure with PowerShell JSON parsing
-
-2. **Dynamic API Integration:**
-   - Frontend now consumes `/api/rankings/consolidated-global` for global top 100
-   - Regional view uses `/api/rankings/top100` with region/cluster/date filters
-   - Cascading useEffect hooks ensure proper data loading order
-   - Dynamic cluster filtering shows only clusters with actual data (not all 5 clusters)
-
-3. **Performance Optimization:**
-   - Implemented useCallback memoization for all 9 event handlers
-   - Reduced debounce delay from 300ms to 200ms for snappier filter response
-   - Removed unnecessary render cycles and animation retriggering
-   - Consistent 60+ FPS during active filtering across all devices
-
-4. **UI/UX Redesign:**
-   - Changed titles from emoji-based to text ("TOP GLOBAL" / "TOP REGIONAL")
-   - Reorganized filter UI into logical rows (view mode → regional filters → search/display mode)
-   - Redesigned card layout with minimalista ninja aesthetic
-   - Added decorative ninja tool assets (shuriken, kunai, headsets, Konoha symbol)
-   - Increased asset opacity to 0.12-0.18 for better visibility without clutter
-
-5. **Card Visual Improvements:**
-   - Rank badges: Medals for top 3, headset icon for ranks 4-10, kunai for ranks 11+
-   - Server information displayed as badge below player name
-   - Power and level shown as informational stats with animated separator lines
-   - Removed cluttering numeric displays, replaced with visual progress indicators
-   - Card dimensions optimized for proper proportions across breakpoints
-
-6. **Default View Mode:**
-   - Changed default from regional to global (`viewMode: 'global'`)
-   - Global view shows consolidated top 100 from all regions and clusters
-   - Regional view accessible via "TOP REGIONAL" button toggle
-
-7. **Documentation:**
-   - Deleted unnecessary .md files (COMANDOS.md, CREDENCIALES.md, DESARROLLO.md, QUICK_START variants, RANKING_GUIDE.md, RANKING_IMPLEMENTATION_SUMMARY.md, SETUP_PRODUCTION.md)
-   - Consolidated all recent work into CLAUDE.md Rankings Page section
-   - Updated CLAUDE.md with complete implementation details and technical decisions
-
-**Files Modified:**
-- `backend/src/routes/ranking.routes.ts` — Added route definitions
-- `backend/src/controllers/ranking.controller.ts` — Added all ranking endpoints with Zod validation
-- `backend/src/services/ranking.service.ts` — Dynamic data loading, filtering logic, caching
-- `frontend/app/rankings/page.tsx` — Complete redesign with API integration, filters, cards/table views
-- `CLAUDE.md` — Updated with comprehensive rankings page documentation
-
----
-
-### Stats Page Implementation (`/rankings/stats`) — Region Comparator (2026-04-25)
-
-**New Page Created:** `frontend/app/rankings/stats/page.tsx` (660 líneas)
-
-**Components Implemented:**
-
-1. **RegionComparator.tsx** — Orquesta secciones principales
-   - Dominance Banner (% ES vs LATAM)
-   - Stat Cards con 8 métricas por región
-   - PowerTierChart (bar chart agrupado)
-   - PowerDistributionChart (area chart)
-   - Leaderboard Top 5 (lado a lado)
-   - Sección Top 10 simplificada (solo stats, sin charts)
-
-2. **RegionStatCard.tsx** — Card de estadísticas por región
-   - **8 métricas mostradas:**
-     - En Top 100 (cantidad de jugadores)
-     - **Poder Total Acumulado** (suma de poder de todos los 100)
-     - Poder Promedio
-     - Poder Máximo
-     - Poder Mínimo
-     - **Top 5 Poder Total** (suma de poder de los 5 mejores)
-     - Poder Mediano (valor central)
-     - Dominancia % (ocupación en top 100)
-
-3. **RegionLeaderboard.tsx** — Top 5 lado a lado
-   - Rango 1: icono Crown dorado
-   - Rangos 2-5: numeración discreta
-   - Colores por región (ES: crimson, LATAM: azul)
-
-4. **PowerTierChart.tsx** — Bar chart agrupado (Recharts)
-   - 5 tiers dinámicos basados en poder real
-   - Muestra distribución de jugadores por tier
-   - Comparación ES vs LATAM visual
-
-5. **PowerDistributionChart.tsx** — Area chart (Recharts)
-   - 7 brackets de rank global (1–5, 6–10, 11–20, 21–30, 31–50, 51–75, 76–100)
-   - Curva de poder promedio por bracket
-   - Muestra caída de poder por rango
-
-6. **StatsSkeleton.tsx** — Loading skeleton
-   - Animación pulse mientras carga
-   - Replica layout del contenido
-
-**Data Flow:**
-
-1. **Fechas disponibles:**
-   - `GET /api/rankings/dates/ES/1` + `GET /api/rankings/dates/LATAM/1`
-   - Union de resultados, sort descending
-
-2. **Datos consolidados:**
-   - `GET /api/rankings/consolidated-global?date={selectedDate}&limit=100`
-   - Retorna players con `region` y `cluster` fields
-
-3. **Transformación (useMemo):**
-   - `byRegion()` calcula stats para Top 100 y Top 10
-   - Tiers dinámicos basados en rango real de poder
-   - Stats incluyen: avgPower, maxPower, minPower, totalPower, top5Total
-
-**Features:**
-
-✅ Date selector (union de fechas disponibles)
-✅ Dominance Banner (proporcional ES | LATAM)
-✅ 2x Stat Cards (8 métricas cada una)
-✅ 2x Charts (PowerTierChart + PowerDistributionChart)
-✅ Top 5 Leaderboard lado a lado
-✅ Sección Top 10 con 3 métricas (Max, Avg, Min poder)
-✅ Dark theme (gradiente + orbs ambientales crimson)
-✅ Responsive (1 col mobile, 2 cols tablet/desktop)
-✅ Loading skeleton con animación pulse
-✅ Botón "Estadísticas" en `/rankings` con Link a stats page
-
-**UI/UX:**
-
-- Color identity: ES #CC0000 (power-red), LATAM #0080FF (chakra-blue)
-- Grid layout: 1 col mobile, 2 cols tablet/desktop
-- Cards con border white/8, bg [#0e0e1a]/80
-- Icons: Users, Swords, Crown, Shield, TrendingUp, Activity (lucide-react)
-- Typography: Bebas Neue (títulos), Inter (cuerpo)
-
-**Backend Endpoints Utilizados:**
-
-- `GET /api/rankings/regions` — Regiones disponibles
-- `GET /api/rankings/dates/:region/:cluster` — Fechas por región/cluster
-- `GET /api/rankings/consolidated-global?date=...&limit=100` — Datos globales
-
-**Files Created:**
-
-- `frontend/app/rankings/stats/page.tsx` (660 líneas)
-- `frontend/components/rankings/stats/RegionComparator.tsx`
-- `frontend/components/rankings/stats/RegionStatCard.tsx` (8 stats)
-- `frontend/components/rankings/stats/RegionLeaderboard.tsx`
-- `frontend/components/rankings/stats/PowerTierChart.tsx` (Recharts)
-- `frontend/components/rankings/stats/PowerDistributionChart.tsx` (Recharts)
-- `frontend/components/rankings/stats/StatsSkeleton.tsx`
-
-**Files Modified:**
-
-- `frontend/app/rankings/page.tsx`
-  - Added imports: `Link`, `BarChart2`
-  - Added "Estadísticas" button in hero section (red accent, Link to /rankings/stats)
-  - Fixed cluster dependency bug: `useEffect([region, cluster])` → `useEffect([region])`
-  - Removed double border-b in filter section
-
-**Data Insights Provided:**
-
-1. **Poder Total Acumulado** — Identifica qué región tiene más poder concentrado
-2. **Top 5 Poder Total** — Muestra potencia de élite vs promedio general
-3. **Poder Mediano** — Valor central (resiste outliers)
-4. **Poder Mínimo** — Threshold competitivo de cada región
-5. **Charts dinámicos** — Tiers se adaptan al rango real de poder
-
-**Next Considerations:**
-
-- Poder Acumulativo histórico (si hay datos de múltiples períodos)
-- Desviación estándar (variabilidad)
-- Índice de competitividad
-- Rate de crecimiento de poder por región
-
----
-
-**Previous Updates:**
-- 2026-04-05 (Background Integration + Page Structure + Navigation Fixes)
-  - Hero Section, Guides Page, Tools Page, Rankings Navbar, Navigation Links
-  - Tools Cards, Guides Status, Filter System, Typography Optimization
-  - Production Ready configuration, Rankings Performance optimization (91% image reduction, 60-80% FPS improvement)
-
-## API Security — Global API Key Authentication (2026-04-26)
-
-**Implementation:** Protect all backend API endpoints with centralized x-api-key header validation.
-
-### Architecture
-- **Middleware:** `backend/src/middleware/apiKey.ts` validates `x-api-key` header against `API_KEY` env var
-- **Application Level:** Middleware applied in `backend/src/index.ts` after public endpoints
-- **Frontend Helper:** `frontend/lib/api.ts` exports `fetchAPI()` that automatically includes API key header
-- **Backward Compatibility:** `fetchRankingAPI` alias points to `fetchAPI()` for existing code
-
-### Public Endpoints (No API Key Required)
-- `GET /health` — Health check for monitoring
-- `POST /auth/register` — User registration (public)
-- `POST /auth/login` — User login (public)
-
-### Protected Endpoints (API Key Required)
-- `/guides/*` — All guide endpoints
-- `/api/rankings/*` — All ranking endpoints
-
-### Environment Variables
-**Development** (`backend/.env.local`, `frontend/.env.local`):
-```
-Backend:  API_KEY=dev-api-key
-Frontend: NEXT_PUBLIC_API_KEY=dev-api-key
-```
-
-**Production** (set in deployment dashboards):
-```
-Render Backend:  API_KEY=<random-32-char-string>
-Netlify Frontend: NEXT_PUBLIC_API_KEY=<same-as-backend>
-```
-
-### How It Works
-1. Frontend makes request with `x-api-key` header (via `fetchAPI()`)
-2. Backend middleware intercepts request
-3. Compares header value with `process.env.API_KEY`
-4. Returns 401 Unauthorized if missing or invalid
-5. Routes process normally if valid
-
-### Testing
-```bash
-# Without key (fails)
-curl https://naruto-online.onrender.com/api/rankings/regions
-# Response: 401 Unauthorized
-
-# With key (succeeds)
-curl -H "x-api-key: YOUR_API_KEY" https://naruto-online.onrender.com/api/rankings/regions
-# Response: 200 OK with JSON
-```
-
-### Security Notes
-- ✅ Prevents public access to ranking data via direct API calls
-- ✅ Allows frontend to access API while blocking external users
-- ✅ Public auth endpoints allow new user registration/login
-- ✅ API key is never exposed in client code (in env var, not hardcoded)
-- ✅ Configured in both Render and Netlify dashboards (2026-04-26)
-
-### Implementation Details
-- **Axios Interceptor:** Adds `x-api-key` header to all requests (axios pattern)
-- **Fetch Helper:** `fetchAPI()` and `fetchRankingAPI()` for fetch-based requests
-- **JWT Preserved:** Still includes Bearer token for authenticated routes
-- **Backward Compatible:** Guides pages use `import api` (default), Rankings use `fetchRankingAPI` (named)
-
-### Production Status (2026-04-26)
-- ✅ API Key middleware deployed to Render
-- ✅ Frontend axios client updated with API Key interceptor
-- ✅ Environment variables configured in both dashboards
-- ✅ All ranking endpoints protected (401 without key)
-- ✅ Public auth endpoints still accessible (register/login)
-- ✅ Guides endpoints protected by API Key
+2026-05-03
+
+### Changes in this session (2026-05-03)
+- ✅ **Admin back office** (`/admin`) with extensible sidebar — XP & Niveles tab + Roles tab
+- ✅ **XP/level/achievement editor** with rank images by level number, add/delete levels, reseed defaults button
+- ✅ **Reseed endpoint** (`POST /admin/reseed`) to fix UTF-8 corrupted data in XpConfig table
+- ✅ **Roles admin page** (`/admin/roles`) — role reference cards + user table with inline role changer
+- ✅ **Netlify 404 fix** — removed SPA redirect, added `@netlify/plugin-nextjs` explicitly
+- ✅ **Two-schema Prisma** — `schema.prisma` (SQLite/dev), `schema.prod.prisma` (PostgreSQL/prod)
+- ✅ **Daily login XP** — triggered on login, `sessionStorage` flag for one-shot toast
+- ✅ **XP for all users** — VOTE_CAST (+2), REACTION_CAST (+1), DAILY_LOGIN (+10)
+- ✅ **Rank images** in dashboard, public profile, home page, FAQ
+- ✅ **LEGEND achievement** — dynamic, granted/revoked based on top 3 leaderboard status
+- ✅ **Notification deduplication** — server-side + client `localReadIds` ref
+- ✅ **Views deduplication** — 1 per authenticated user (upsert), 1 per IP for anonymous
