@@ -44,7 +44,7 @@ app.use('/leaderboard', leaderboardRoutes)
 app.use('/notifications', notificationsRoutes)
 app.use('/admin', adminRoutes)
 
-const server = app.listen(PORT, () => {
+const server = app.listen(PORT, async () => {
   console.log(`🚀 Backend running on http://localhost:${PORT}`)
   // Seed XP/level/achievement defaults on startup
   xpService.seedDefaults().catch(console.error)
