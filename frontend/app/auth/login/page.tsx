@@ -40,6 +40,10 @@ export default function LoginPage() {
       console.log('Login response:', response.data)
       localStorage.setItem('token', response.data.token)
       localStorage.setItem('user', JSON.stringify(response.data.user))
+      // Store daily login flag to show toast on dashboard
+      if (response.data.dailyLoginAwarded) {
+        sessionStorage.setItem('dailyLoginAwarded', '1')
+      }
       router.push('/dashboard')
     } catch (error: any) {
       console.error('Login error:', error)

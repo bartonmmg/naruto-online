@@ -260,15 +260,31 @@ export const guidesService = {
 
   async rateGuide(guideId: string, userId: string, value: number) {
     const guide = await prisma.guide.findUnique({ where: { id: guideId } })
-    if (!guide) {
-      throw new Error('Guía no encontrada')
-    }
+    if (!guide) throw new Error('Guía no encontrada')
 
-    return await prisma.guideRating.upsert({
+    // Check if this is a new vote (not updating existing)
+    const existing = await prisma.guideRating.findUnique({
+      where: { guideId_userId: { guideId, userId } },
+    })
+
+    const result = await prisma.guideRating.upsert({
       where: { guideId_userId: { guideId, userId } },
       create: { guideId, userId, value },
       update: { value },
     })
+
+    // Award XP to voter only on first vote (not on toggle/change)
+    if (!existing) {
+      xpService.awardXp(userId, 'VOTE_CAST').catch(() => {})
+    }
+
+    // Award XP to guide author when receiving an upvote
+    if (value === 1 && guide.authorId !== userId) {
+      xpService.awardXp(guide.authorId, 'VOTE_RECEIVED').catch(() => {})
+      xpService.checkAchievements(guide.authorId).catch(() => {})
+    }
+
+    return result
   },
 
   async removeRating(guideId: string, userId: string) {
@@ -410,13 +426,11 @@ export const guidesService = {
     })
 
     if (existing) {
-      await prisma.guideReaction.delete({
-        where: { id: existing.id },
-      })
+      await prisma.guideReaction.delete({ where: { id: existing.id } })
     } else {
-      await prisma.guideReaction.create({
-        data: { guideId, userId, emoji },
-      })
+      await prisma.guideReaction.create({ data: { guideId, userId, emoji } })
+      // Award XP to reactor on first reaction of this emoji on this guide
+      xpService.awardXp(userId, 'REACTION_CAST').catch(() => {})
     }
 
     return await this.getReactions(guideId, userId)

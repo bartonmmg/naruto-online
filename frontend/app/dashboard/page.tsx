@@ -77,10 +77,18 @@ export default function DashboardPage() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
   const [showAllAchievements, setShowAllAchievements] = useState(false)
+  const [dailyToast, setDailyToast] = useState(false)
 
   useEffect(() => {
     const token = localStorage.getItem('token')
     if (!token) { router.push('/auth/login'); return }
+
+    // Show daily login toast if just awarded
+    if (typeof window !== 'undefined' && sessionStorage.getItem('dailyLoginAwarded')) {
+      sessionStorage.removeItem('dailyLoginAwarded')
+      setDailyToast(true)
+      setTimeout(() => setDailyToast(false), 4000)
+    }
 
     api.get('/leaderboard/me')
       .then(r => setProfile(r.data))
@@ -138,7 +146,7 @@ export default function DashboardPage() {
           </Link>
           <div className="flex items-center gap-3">
             {profile.role === 'ADMIN' && (
-              <Link href="/dashboard/admin/xp" className="flex items-center gap-1.5 text-xs text-accent-orange/70 hover:text-accent-orange transition-colors font-cinzel tracking-wider">
+              <Link href="/admin" className="flex items-center gap-1.5 text-xs text-accent-orange/70 hover:text-accent-orange transition-colors font-cinzel tracking-wider">
                 <Settings className="w-3.5 h-3.5" />
                 Back Office
               </Link>
@@ -338,6 +346,17 @@ export default function DashboardPage() {
           <Link href="/guides/leaderboard" className="hover:text-power-red transition-colors">→ Leaderboard</Link>
         </div>
       </div>
+
+      {/* Daily login toast */}
+      {dailyToast && (
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3.5 bg-bg-elevated border border-nature-green/40 rounded-xl shadow-2xl shadow-black/40 animate-fade-up">
+          <span className="text-xl">⚡</span>
+          <div>
+            <p className="font-cinzel font-bold text-sm text-nature-green">¡Login diario!</p>
+            <p className="text-xs text-white/60 font-montserrat">Ganaste XP por iniciar sesión hoy</p>
+          </div>
+        </div>
+      )}
     </main>
   )
 }

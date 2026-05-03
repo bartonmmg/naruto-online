@@ -1,6 +1,7 @@
 import bcrypt from 'bcrypt'
 import jwt, { type SignOptions } from 'jsonwebtoken'
 import { prisma } from '../lib/prisma.js'
+import { xpService } from './xp.service.js'
 import { z } from 'zod'
 
 export const registerSchema = z.object({
@@ -71,6 +72,31 @@ export const authService = {
       throw new Error('Email o contraseña incorrectos')
     }
 
+    // Daily login XP — award once per calendar day
+    const now = new Date()
+    const lastLogin = user.lastDailyLogin
+    const isNewDay = !lastLogin || (
+      lastLogin.getUTCFullYear() !== now.getUTCFullYear() ||
+      lastLogin.getUTCMonth() !== now.getUTCMonth() ||
+      lastLogin.getUTCDate() !== now.getUTCDate()
+    )
+
+    if (isNewDay) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { lastDailyLogin: now },
+      })
+      // Fire-and-forget: award XP + check achievements
+      xpService.awardXp(user.id, 'DAILY_LOGIN').catch(() => {})
+      xpService.checkAchievements(user.id).catch(() => {})
+    }
+
+    // Fetch fresh XP/level after potential daily login award
+    const freshUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { xp: true, level: true },
+    })
+
     const token = jwt.sign(
       { userId: user.id, username: user.username, role: user.role },
       process.env.JWT_SECRET as string,
@@ -79,12 +105,13 @@ export const authService = {
 
     return {
       token,
+      dailyLoginAwarded: isNewDay,
       user: {
         id: user.id,
         username: user.username,
         email: user.email,
-        level: user.level,
-        xp: user.xp,
+        level: freshUser?.level ?? user.level,
+        xp: freshUser?.xp ?? user.xp,
         role: user.role,
       },
     }

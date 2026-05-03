@@ -2,11 +2,13 @@ import { prisma } from '../lib/prisma.js'
 
 // Default XP config — seeded on first run
 export const DEFAULT_XP_CONFIG = [
-  { action: 'GUIDE_PUBLISHED', label: 'Publicar una guía',  xpAmount: 50 },
-  { action: 'COMMENT_POSTED',  label: 'Comentar una guía', xpAmount: 5 },
-  { action: 'VOTE_RECEIVED',   label: 'Recibir voto útil', xpAmount: 10 },
-  { action: 'BADGE_RECEIVED',  label: 'Recibir un badge',  xpAmount: 25 },
-  { action: 'DAILY_LOGIN',     label: 'Login diario',       xpAmount: 10 },
+  { action: 'GUIDE_PUBLISHED', label: 'Publicar una guía',           xpAmount: 50 },
+  { action: 'COMMENT_POSTED',  label: 'Comentar una guía',           xpAmount: 5  },
+  { action: 'VOTE_RECEIVED',   label: 'Recibir voto útil (autor)',   xpAmount: 10 },
+  { action: 'VOTE_CAST',       label: 'Votar una guía (votante)',    xpAmount: 2  },
+  { action: 'REACTION_CAST',   label: 'Reaccionar a una guía',      xpAmount: 1  },
+  { action: 'BADGE_RECEIVED',  label: 'Recibir un badge',            xpAmount: 25 },
+  { action: 'DAILY_LOGIN',     label: 'Login diario',                xpAmount: 10 },
 ]
 
 export const DEFAULT_LEVELS = [
