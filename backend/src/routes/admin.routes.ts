@@ -14,5 +14,7 @@ router.patch('/level-config', adminController.updateLevelConfig)
 router.post('/level-config', adminController.createLevelConfig)
 router.delete('/level-config/:level', adminController.deleteLevelConfig)
 router.post('/reseed', adminController.reseedConfig)
+router.get('/users', adminController.listUsers)
+router.patch('/users/:id/role', adminController.updateUserRole)
 
 export default router

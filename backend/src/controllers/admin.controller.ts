@@ -2,6 +2,7 @@ import { Response } from 'express'
 import { z } from 'zod'
 import { AuthRequest } from '../middleware/auth.middleware.js'
 import { xpService } from '../services/xp.service.js'
+import { prisma } from '../lib/prisma.js'
 
 const updateXpSchema = z.object({
   action: z.string(),
@@ -12,6 +13,10 @@ const createLevelSchema = z.object({
   level: z.number().int().min(1),
   xpRequired: z.number().int().min(0),
   label: z.string().min(1).max(50),
+})
+
+const updateRoleSchema = z.object({
+  role: z.enum(['USER', 'MODERATOR', 'ADMIN']),
 })
 
 const updateLevelSchema = z.object({
@@ -83,6 +88,34 @@ export const adminController = {
       res.json({ ok: true, message: 'Configuración restablecida con valores por defecto' })
     } catch (e: any) {
       res.status(500).json({ error: e.message })
+    }
+  },
+
+  async listUsers(req: AuthRequest, res: Response) {
+    try {
+      const users = await prisma.user.findMany({
+        select: { id: true, username: true, email: true, role: true, level: true, xp: true, createdAt: true },
+        orderBy: { createdAt: 'asc' },
+      })
+      res.json(users)
+    } catch (e: any) {
+      res.status(500).json({ error: e.message })
+    }
+  },
+
+  async updateUserRole(req: AuthRequest, res: Response) {
+    try {
+      const { id } = req.params
+      const { role } = updateRoleSchema.parse(req.body)
+      if (id === req.userId) return res.status(400).json({ error: 'No podés cambiar tu propio rol' })
+      const updated = await prisma.user.update({
+        where: { id },
+        data: { role },
+        select: { id: true, username: true, role: true },
+      })
+      res.json(updated)
+    } catch (e: any) {
+      res.status(400).json({ error: e.message })
     }
   },
 }

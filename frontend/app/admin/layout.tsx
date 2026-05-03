@@ -5,11 +5,11 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth } from '@/lib/hooks/useAuth'
-import { Settings, Zap, ChevronLeft, Loader2 } from 'lucide-react'
+import { Settings, Zap, ChevronLeft, Loader2, Users } from 'lucide-react'
 
 const TABS = [
-  { href: '/admin/xp',     label: 'XP & Niveles', icon: <Zap className="w-4 h-4" /> },
-  // Future tabs go here
+  { href: '/admin/xp',    label: 'XP & Niveles', icon: <Zap className="w-4 h-4" /> },
+  { href: '/admin/roles', label: 'Roles',         icon: <Users className="w-4 h-4" /> },
 ]
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
