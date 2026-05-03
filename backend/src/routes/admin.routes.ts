@@ -11,5 +11,8 @@ router.use(authMiddleware, authorize(['ADMIN']))
 router.get('/xp-config', adminController.getXpConfig)
 router.patch('/xp-config', adminController.updateXpConfig)
 router.patch('/level-config', adminController.updateLevelConfig)
+router.post('/level-config', adminController.createLevelConfig)
+router.delete('/level-config/:level', adminController.deleteLevelConfig)
+router.post('/reseed', adminController.reseedConfig)
 
 export default router

@@ -8,6 +8,12 @@ const updateXpSchema = z.object({
   xpAmount: z.number().int().min(0).max(10000),
 })
 
+const createLevelSchema = z.object({
+  level: z.number().int().min(1),
+  xpRequired: z.number().int().min(0),
+  label: z.string().min(1).max(50),
+})
+
 const updateLevelSchema = z.object({
   level: z.number().int().min(1),
   xpRequired: z.number().int().min(0),
@@ -45,6 +51,38 @@ export const adminController = {
       res.json(updated)
     } catch (e: any) {
       res.status(400).json({ error: e.message })
+    }
+  },
+
+  async createLevelConfig(req: AuthRequest, res: Response) {
+    try {
+      const { level, xpRequired, label } = createLevelSchema.parse(req.body)
+      const existing = await xpService.getLevelByNumber(level)
+      if (existing) return res.status(409).json({ error: `El nivel ${level} ya existe` })
+      const created = await xpService.createLevelConfig(level, xpRequired, label)
+      res.status(201).json(created)
+    } catch (e: any) {
+      res.status(400).json({ error: e.message })
+    }
+  },
+
+  async deleteLevelConfig(req: AuthRequest, res: Response) {
+    try {
+      const level = parseInt(req.params.level)
+      if (isNaN(level)) return res.status(400).json({ error: 'Nivel inválido' })
+      await xpService.deleteLevelConfig(level)
+      res.json({ ok: true })
+    } catch (e: any) {
+      res.status(400).json({ error: e.message })
+    }
+  },
+
+  async reseedConfig(req: AuthRequest, res: Response) {
+    try {
+      await xpService.reseedDefaults()
+      res.json({ ok: true, message: 'Configuración restablecida con valores por defecto' })
+    } catch (e: any) {
+      res.status(500).json({ error: e.message })
     }
   },
 }

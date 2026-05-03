@@ -101,6 +101,16 @@ export const xpService = {
     }
   },
 
+  // Force-reseed: wipe and recreate XpConfig, LevelConfig, Achievement with clean defaults
+  async reseedDefaults() {
+    await prisma.xpConfig.deleteMany()
+    await prisma.levelConfig.deleteMany()
+    await prisma.achievement.deleteMany()
+    await prisma.xpConfig.createMany({ data: DEFAULT_XP_CONFIG })
+    await prisma.levelConfig.createMany({ data: DEFAULT_LEVELS })
+    await prisma.achievement.createMany({ data: ACHIEVEMENT_DEFS })
+  },
+
   async getXpConfig() {
     return prisma.xpConfig.findMany({ orderBy: { action: 'asc' } })
   },
@@ -115,6 +125,18 @@ export const xpService = {
 
   async updateLevelConfig(level: number, xpRequired: number, label: string) {
     return prisma.levelConfig.update({ where: { level }, data: { xpRequired, label } })
+  },
+
+  async getLevelByNumber(level: number) {
+    return prisma.levelConfig.findUnique({ where: { level } })
+  },
+
+  async createLevelConfig(level: number, xpRequired: number, label: string) {
+    return prisma.levelConfig.create({ data: { level, xpRequired, label } })
+  },
+
+  async deleteLevelConfig(level: number) {
+    return prisma.levelConfig.delete({ where: { level } })
   },
 
   // Award XP to user and recalculate level
