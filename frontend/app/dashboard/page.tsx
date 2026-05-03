@@ -50,10 +50,11 @@ interface Profile {
 }
 
 function getRankLabel(level: number) {
-  if (level >= 10) return { name: 'Kage',   color: 'text-sage-gold',    icon: '🔥' }
-  if (level >= 7)  return { name: 'Jōnin',  color: 'text-accent-orange', icon: '⚡' }
-  if (level >= 4)  return { name: 'Chūnin', color: 'text-chakra-blue',   icon: '💧' }
-  return               { name: 'Genin',  color: 'text-nature-green',  icon: '🌿' }
+  if (level >= 10) return { name: 'Akatsuki', color: 'text-power-red',     icon: '☁️', img: '/images/rangos/akatsuki.png' }
+  if (level >= 8)  return { name: 'Kage',     color: 'text-sage-gold',     icon: '🔥', img: '/images/rangos/kage.png' }
+  if (level >= 5)  return { name: 'Jōnin',   color: 'text-accent-orange',  icon: '⚡', img: '/images/rangos/jonin.png' }
+  if (level >= 3)  return { name: 'Chūnin',  color: 'text-chakra-blue',    icon: '💧', img: '/images/rangos/chunin.png' }
+  return                   { name: 'Genin',   color: 'text-nature-green',   icon: '🌿', img: '/images/rangos/genin.png' }
 }
 
 function getDiffColor(d: string) {
@@ -157,8 +158,9 @@ export default function DashboardPage() {
 
         {/* ── Hero: Avatar + nombre + rango ── */}
         <div className="flex items-center gap-6 mb-10">
-          <div className="w-20 h-20 rounded-2xl bg-bg-elevated border-2 border-border flex items-center justify-center text-3xl font-black text-accent-orange font-cinzel flex-shrink-0">
-            {profile.username[0].toUpperCase()}
+          {/* Rank image as avatar background */}
+          <div className="relative flex-shrink-0">
+            <img src={rank.img} alt={rank.name} className="w-20 h-20 object-contain" />
           </div>
           <div>
             <div className="flex items-center gap-3 flex-wrap mb-1">
@@ -172,7 +174,7 @@ export default function DashboardPage() {
               )}
             </div>
             <div className="flex items-center gap-3 text-sm text-white/50 flex-wrap">
-              <span className={`font-cinzel font-bold ${rank.color}`}>{rank.icon} {rank.name}</span>
+              <span className={`font-cinzel font-bold ${rank.color}`}>{rank.name}</span>
               <span>Nivel {profile.level}</span>
               <span>{profile.xp.toLocaleString()} XP</span>
             </div>

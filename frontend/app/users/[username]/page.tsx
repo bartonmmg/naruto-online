@@ -44,10 +44,11 @@ interface UserProfile {
 }
 
 const getRankLabel = (level: number) => {
-  if (level >= 60) return { label: 'Kage', color: 'text-sage-gold' }
-  if (level >= 40) return { label: 'Jōnin', color: 'text-accent-orange' }
-  if (level >= 20) return { label: 'Chūnin', color: 'text-chakra-blue' }
-  return { label: 'Genin', color: 'text-nature-green' }
+  if (level >= 10) return { label: 'Akatsuki', color: 'text-power-red',    img: '/images/rangos/akatsuki.png' }
+  if (level >= 8)  return { label: 'Kage',     color: 'text-sage-gold',    img: '/images/rangos/kage.png' }
+  if (level >= 5)  return { label: 'Jōnin',   color: 'text-accent-orange', img: '/images/rangos/jonin.png' }
+  if (level >= 3)  return { label: 'Chūnin',  color: 'text-chakra-blue',   img: '/images/rangos/chunin.png' }
+  return                   { label: 'Genin',   color: 'text-nature-green',  img: '/images/rangos/genin.png' }
 }
 
 const getDiffColor = (d: string) => {
@@ -103,7 +104,7 @@ export default function UserProfilePage() {
     )
   }
 
-  const { label: rankLabel, color: rankColor } = getRankLabel(profile.level)
+  const { label: rankLabel, color: rankColor, img: rankImg } = getRankLabel(profile.level)
   const roleInfo = getRoleLabel(profile.role)
   const joinedYear = new Date(profile.createdAt).getFullYear()
 
@@ -123,10 +124,8 @@ export default function UserProfilePage() {
           </Link>
 
           <div className="flex items-start gap-6 flex-wrap">
-            {/* Avatar */}
-            <div className="w-20 h-20 rounded-2xl bg-bg-elevated border-2 border-border flex items-center justify-center text-3xl font-black text-chakra-blue font-cinzel flex-shrink-0">
-              {profile.username[0].toUpperCase()}
-            </div>
+            {/* Rank image */}
+            <img src={rankImg} alt={rankLabel} className="w-20 h-20 object-contain flex-shrink-0" />
 
             {/* Info */}
             <div className="flex-1">

@@ -17,12 +17,12 @@ interface Section {
   faqs: FAQ[]
 }
 
-// Rangos — actualizar imágenes cuando estén disponibles en /images/rangos/
 const RANGOS = [
-  { rango: 'Genin',  color: 'text-nature-green',  desc: 'El comienzo del camino ninja',       img: null },
-  { rango: 'Chūnin', color: 'text-chakra-blue',   desc: 'Ninja con experiencia probada',       img: null },
-  { rango: 'Jōnin',  color: 'text-accent-orange', desc: 'Maestro con guías de alto impacto',  img: null },
-  { rango: 'Kage',   color: 'text-sage-gold',     desc: 'Leyenda de la comunidad',             img: null },
+  { rango: 'Genin',    color: 'text-nature-green',  desc: 'El comienzo del camino ninja',              img: '/images/rangos/genin.png' },
+  { rango: 'Chūnin',  color: 'text-chakra-blue',   desc: 'Ninja con experiencia probada',              img: '/images/rangos/chunin.png' },
+  { rango: 'Jōnin',   color: 'text-accent-orange', desc: 'Maestro con guías de alto impacto',         img: '/images/rangos/jonin.png' },
+  { rango: 'Kage',    color: 'text-sage-gold',     desc: 'Leyenda de la comunidad',                   img: '/images/rangos/kage.png' },
+  { rango: 'Akatsuki', color: 'text-power-red',    desc: 'Rango prestige — los más temidos del mundo ninja', img: '/images/rangos/akatsuki.png' },
 ]
 
 const SECTIONS: Section[] = [
@@ -154,17 +154,10 @@ const SECTIONS: Section[] = [
             <p className="text-white/50 text-xs mb-3">
               Tu rango refleja tu nivel de contribución a la comunidad. Avanzás acumulando XP.
             </p>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {RANGOS.map(r => (
                 <div key={r.rango} className="flex items-center gap-3 p-3 rounded-xl bg-bg-elevated/50 border border-border/40">
-                  {r.img
-                    ? <img src={r.img} className="w-12 h-12 object-contain" />
-                    : (
-                      <div className="w-12 h-12 rounded-full bg-bg-card border border-border/50 flex items-center justify-center flex-shrink-0">
-                        <span className={`font-cinzel font-black text-lg ${r.color}`}>忍</span>
-                      </div>
-                    )
-                  }
+                  <img src={r.img} alt={r.rango} className="w-12 h-12 object-contain flex-shrink-0" />
                   <div>
                     <p className={`font-cinzel font-bold text-sm ${r.color}`}>{r.rango}</p>
                     <p className="text-xs text-white/40 leading-tight">{r.desc}</p>
