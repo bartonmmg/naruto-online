@@ -1,5 +1,6 @@
 import { prisma } from '../lib/prisma.js'
 import { z } from 'zod'
+import { Client, GatewayIntentBits, TextChannel } from 'discord.js'
 
 export const DISCORD_CHANNELS = [
   { envKey: 'DISCORD_CH_NINJAS',      category: 'Ninjas',             type: 'CHINA'     },
@@ -170,20 +171,34 @@ export const newsService = {
     console.log(`[news sync] ${category}: ${messages.length} messages fetched`)
   },
 
-  async fetchDiscordMessages(channelId: string, afterId: string | undefined, token: string) {
-    let url = `https://discord.com/api/v10/channels/${channelId}/messages?limit=100`
-    if (afterId) url += `&after=${afterId}`
+  async fetchDiscordMessages(channelId: string, afterId: string | undefined, token: string): Promise<any[]> {
+    const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] })
 
-    const res = await fetch(url, {
-      headers: { Authorization: `Bot ${token}` },
-    })
+    await client.login(token)
+    await new Promise<void>(resolve => client.once('ready', () => resolve()))
 
-    if (!res.ok) {
-      const body = await res.text().catch(() => '')
-      console.error(`[news sync] Discord API ${res.status} channel=${channelId} body=${body}`)
-      throw new Error(`Discord API ${res.status}: ${body}`)
+    try {
+      const channel = await client.channels.fetch(channelId)
+      if (!channel || !(channel instanceof TextChannel)) {
+        throw new Error(`Channel ${channelId} not found or not a text channel`)
+      }
+      const options: { limit: number; after?: string } = { limit: 100 }
+      if (afterId) options.after = afterId
+
+      const messages = await channel.messages.fetch(options)
+      return Array.from(messages.values()).map(m => ({
+        id: m.id,
+        content: m.content,
+        timestamp: m.createdAt.toISOString(),
+        author: { bot: m.author.bot, username: m.author.username },
+        attachments: Array.from(m.attachments.values()).map(a => ({
+          url: a.url,
+          content_type: a.contentType ?? '',
+        })),
+      }))
+    } finally {
+      client.destroy()
     }
-    return res.json() as Promise<any[]>
   },
 
   // Force sync — resets lastMessageId to fetch ALL messages from the beginning
