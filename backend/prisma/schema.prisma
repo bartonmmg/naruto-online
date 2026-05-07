@@ -29,6 +29,7 @@ model User {
   guideReactions GuideReaction[]
   notifications  Notification[]
   achievements   UserAchievement[]
+  newsPosts      NewsPost[]
 }
 
 // XP system config — managed by admin backoffice
@@ -176,6 +177,32 @@ model GuideReaction {
   @@unique([guideId, userId, emoji])
   @@index([guideId])
   @@index([userId])
+}
+
+model NewsPost {
+  id               String   @id @default(cuid())
+  title            String
+  content          String
+  type             String   @default("GENERAL")  // CHINA | TENTATIVE | EVENT | GENERAL
+  category         String   @default("General")
+  imageUrls        String   @default("[]")       // JSON array
+  authorId         String?                        // null = auto-synced from Discord
+  author           User?    @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  discordMessageId String?  @unique               // prevents duplicates on re-sync
+  publishedAt      DateTime @default(now())
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([type])
+  @@index([category])
+  @@index([publishedAt])
+}
+
+model SyncLog {
+  id            String   @id @default(cuid())
+  channelId     String   @unique
+  lastSyncAt    DateTime
+  lastMessageId String?
 }
 
 model Notification {

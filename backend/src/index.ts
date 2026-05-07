@@ -2,6 +2,7 @@ import express from 'express'
 import cors from 'cors'
 import dotenv from 'dotenv'
 import { authRouter } from './routes/auth.routes.js'
+import newsRoutes from './routes/news.routes.js'
 import guidesRouter from './routes/guides.routes.js'
 import rankingRouter from './routes/ranking.routes.js'
 import leaderboardRoutes from './routes/leaderboard.routes.js'
@@ -35,6 +36,9 @@ app.get('/health', (req, res) => {
 
 // Public auth endpoints (no API key required)
 app.use('/auth', authRouter)
+
+// News — public read, protected write (before apiKeyMiddleware)
+app.use('/news', newsRoutes)
 
 // Protected endpoints (API key required)
 app.use(apiKeyMiddleware)

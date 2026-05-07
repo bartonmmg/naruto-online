@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import {
   Zap,
@@ -304,6 +304,9 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ── Novedades ─────────────────────────────────── */}
+      <LatestNews />
+
       {/* ── CTA ──────────────────────────────────────── */}
       <section className="py-32 px-6 relative overflow-hidden grid-bg">
         <div className="absolute inset-0 orb-orange opacity-20 pointer-events-none" />
@@ -358,5 +361,73 @@ export default function Home() {
         </div>
       </footer>
     </main>
+  )
+}
+
+const TYPE_META: Record<string, { label: string; color: string; bg: string; border: string; icon: string }> = {
+  CHINA:     { label: 'China',     color: 'text-red-400',     bg: 'bg-red-400/10',     border: 'border-red-400/20',     icon: '🔴' },
+  EVENT:     { label: 'Evento',    color: 'text-chakra-blue', bg: 'bg-chakra-blue/10', border: 'border-chakra-blue/20', icon: '📅' },
+  TENTATIVE: { label: 'Tentativa', color: 'text-sage-gold',   bg: 'bg-sage-gold/10',   border: 'border-sage-gold/20',   icon: '⚡' },
+  GENERAL:   { label: 'General',   color: 'text-white/50',    bg: 'bg-white/5',         border: 'border-white/10',       icon: '📢' },
+}
+
+function timeAgo(dateStr: string) {
+  const diff = Date.now() - new Date(dateStr).getTime()
+  const d = Math.floor(diff / 86400000)
+  if (d === 0) return 'hoy'
+  if (d === 1) return 'ayer'
+  if (d < 7) return `hace ${d}d`
+  return `hace ${Math.floor(d / 7)}sem`
+}
+
+function LatestNews() {
+  const [posts, setPosts] = useState<any[]>([])
+
+  useEffect(() => {
+    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/news?limit=3`)
+      .then(r => r.json())
+      .then(d => setPosts(d.items ?? []))
+      .catch(() => {})
+  }, [])
+
+  if (!posts.length) return null
+
+  return (
+    <section className="py-24 px-6 relative border-t border-border/20">
+      <div className="max-w-5xl mx-auto">
+        <div className="flex items-center justify-between mb-10">
+          <div>
+            <h2 className="font-cinzel font-black text-3xl text-text-primary">Últimas Novedades</h2>
+            <p className="text-white/40 font-montserrat text-sm mt-1">Lo más reciente del servidor</p>
+          </div>
+          <Link href="/novedades" className="text-xs font-montserrat font-semibold text-accent-orange hover:text-accent-orange/80 transition-colors flex items-center gap-1">
+            Ver todas →
+          </Link>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {posts.map((post: any) => {
+            const meta = TYPE_META[post.type] ?? TYPE_META.GENERAL
+            return (
+              <Link key={post.id} href={`/novedades/${post.id}`}
+                className="bg-bg-card border border-border/50 rounded-2xl p-5 hover:border-border/80 hover:bg-bg-elevated/30 transition-all group">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className={`text-[10px] font-montserrat font-bold px-2 py-0.5 rounded-full border ${meta.bg} ${meta.color} ${meta.border}`}>
+                    {meta.icon} {meta.label}
+                  </span>
+                  <span className="ml-auto text-[10px] text-white/30 font-montserrat">{timeAgo(post.publishedAt)}</span>
+                </div>
+                <p className="font-cinzel font-bold text-sm text-text-primary line-clamp-2 group-hover:text-accent-orange transition-colors mb-2">
+                  {post.title}
+                </p>
+                <p className="text-xs text-white/40 font-montserrat line-clamp-2 leading-relaxed">
+                  {post.content.replace(/\n/g, ' ').trim()}
+                </p>
+              </Link>
+            )
+          })}
+        </div>
+      </div>
+    </section>
   )
 }

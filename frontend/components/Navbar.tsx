@@ -11,6 +11,7 @@ import NotificationBell from './NotificationBell'
 const navLinks = [
   { href: '/#features',  label: 'Características' },
   { href: '/#community', label: 'Comunidad' },
+  { href: '/novedades',  label: 'Novedades' },
   { href: '/rankings',   label: 'Rankings' },
   { href: '/tools',      label: 'Herramientas' },
   { href: '/guides',     label: 'Guías' },
