@@ -116,8 +116,11 @@ export const newsService = {
   },
 
   async syncChannel(channelId: string, category: string, type: string, lastMessageId: string | undefined, token: string) {
+    console.log(`[news sync] starting sync for ${category} (channelId=${channelId})`)
     const messages = await newsService.fetchDiscordMessages(channelId, lastMessageId, token)
+    console.log(`[news sync] fetched ${messages.length} messages for ${category}`)
     if (!messages.length) {
+      console.log(`[news sync] no new messages for ${category}, updating lastSyncAt`)
       // Still update lastSyncAt so we don't retry today
       await prisma.syncLog.upsert({
         where:  { channelId },
@@ -172,12 +175,28 @@ export const newsService = {
   },
 
   async fetchDiscordMessages(channelId: string, afterId: string | undefined, token: string): Promise<any[]> {
-    const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] })
+    if (!token) throw new Error('DISCORD_BOT_TOKEN no configurado')
 
-    await client.login(token)
-    await new Promise<void>(resolve => client.once('ready', () => resolve()))
+    const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] })
+    let readyTimeout: NodeJS.Timeout | null = null
 
     try {
+      console.log(`[discord] logging in bot...`)
+      await Promise.race([
+        client.login(token),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Bot login timeout (5s)')), 5000))
+      ])
+      console.log(`[discord] waiting for ready event...`)
+
+      await new Promise<void>((resolve, reject) => {
+        readyTimeout = setTimeout(() => reject(new Error('Bot ready timeout (8s)')), 8000)
+        client.once('ready', () => {
+          if (readyTimeout) clearTimeout(readyTimeout)
+          resolve()
+        })
+      })
+      console.log(`[discord] bot ready, fetching channel ${channelId}...`)
+
       const channel = await client.channels.fetch(channelId)
       if (!channel || !(channel instanceof TextChannel)) {
         throw new Error(`Channel ${channelId} not found or not a text channel`)
@@ -185,7 +204,9 @@ export const newsService = {
       const options: { limit: number; after?: string } = { limit: 100 }
       if (afterId) options.after = afterId
 
+      console.log(`[discord] fetching messages (limit=100, after=${afterId ?? 'undefined'})...`)
       const messages = await channel.messages.fetch(options)
+      console.log(`[discord] got ${messages.size} messages`)
       return Array.from(messages.values()).map(m => ({
         id: m.id,
         content: m.content,
@@ -196,8 +217,12 @@ export const newsService = {
           content_type: a.contentType ?? '',
         })),
       }))
+    } catch (e: any) {
+      console.error(`[discord] fetch failed:`, e.message)
+      throw e
     } finally {
-      client.destroy()
+      if (readyTimeout) clearTimeout(readyTimeout)
+      try { client.destroy() } catch {}
     }
   },
 
@@ -247,8 +272,9 @@ export const newsService = {
         results.push({ channel: channelId, category: ch.category, fetched: messages.length, saved })
         console.log(`[news forceSync] ${ch.category}: fetched=${messages.length} saved=${saved}`)
       } catch (e: any) {
-        results.push({ channel: channelId, category: ch.category, fetched: 0, saved: 0, error: e.message })
-        console.error(`[news forceSync] ${ch.category} failed:`, e.message)
+        const errorMsg = e.message || String(e)
+        results.push({ channel: channelId, category: ch.category, fetched: 0, saved: 0, error: errorMsg })
+        console.error(`[news forceSync] ${ch.category} failed:`, errorMsg, e.stack)
       }
     }
     return results
