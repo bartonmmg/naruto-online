@@ -42,7 +42,14 @@ export default function AdminNovedadesPage() {
   const forceSync = async () => {
     setSyncing(true)
     try {
-      await api.post('/news/sync')
+      const r = await api.post('/news/sync')
+      const { totalSaved, results } = r.data
+      const detail = results.map((x: any) =>
+        x.error
+          ? `❌ ${x.category}: ${x.error}`
+          : `✅ ${x.category}: ${x.fetched} mensajes, ${x.saved} guardados`
+      ).join('\n')
+      alert(`Sync completado — ${totalSaved} nuevos posts\n\n${detail}`)
       load()
     } catch (e: any) {
       alert(e.response?.data?.error || 'Error al sincronizar')

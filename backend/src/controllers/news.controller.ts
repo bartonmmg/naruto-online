@@ -86,8 +86,9 @@ export const newsController = {
 
   async triggerSync(req: AuthRequest, res: Response) {
     try {
-      await newsService.forceSync()
-      res.json({ ok: true, message: 'Sync completado' })
+      const results = await newsService.forceSync()
+      const totalSaved = results.reduce((s, r) => s + r.saved, 0)
+      res.json({ ok: true, totalSaved, results })
     } catch (e: any) {
       res.status(500).json({ error: e.message })
     }

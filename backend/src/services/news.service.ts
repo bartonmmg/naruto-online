@@ -179,22 +179,63 @@ export const newsService = {
     })
 
     if (!res.ok) {
-      console.error(`[news sync] Discord API ${res.status} for channel ${channelId}`)
-      return []
+      const body = await res.text().catch(() => '')
+      console.error(`[news sync] Discord API ${res.status} channel=${channelId} body=${body}`)
+      throw new Error(`Discord API ${res.status}: ${body}`)
     }
     return res.json() as Promise<any[]>
   },
 
-  // Force sync ignoring lastSyncAt check (admin use)
-  async forceSync() {
+  // Force sync — resets lastMessageId to fetch ALL messages from the beginning
+  async forceSync(): Promise<{ channel: string; category: string; fetched: number; saved: number; error?: string }[]> {
     const token = process.env.DISCORD_BOT_TOKEN
     if (!token) throw new Error('DISCORD_BOT_TOKEN no configurado')
 
+    const results = []
     for (const ch of DISCORD_CHANNELS) {
       const channelId = process.env[ch.envKey]
-      if (!channelId) continue
-      const log = await prisma.syncLog.findUnique({ where: { channelId } })
-      await newsService.syncChannel(channelId, ch.category, ch.type, log?.lastMessageId ?? undefined, token)
+      if (!channelId) {
+        results.push({ channel: ch.envKey, category: ch.category, fetched: 0, saved: 0, error: 'env var no configurada' })
+        continue
+      }
+
+      try {
+        // Always fetch from scratch on force sync (no afterId)
+        const messages = await newsService.fetchDiscordMessages(channelId, undefined, token)
+        let saved = 0
+
+        const ordered = [...messages].reverse()
+        for (const msg of ordered) {
+          if (!msg.content && !msg.attachments?.length) continue
+          if (msg.author?.bot) continue
+          const content = msg.content || ''
+          const lines   = content.split('\n').filter(Boolean)
+          const title   = lines[0]?.slice(0, 120) || 'Sin título'
+          const images: string[] = (msg.attachments ?? [])
+            .filter((a: any) => a.content_type?.startsWith('image/'))
+            .map((a: any) => a.url)
+          try {
+            await prisma.newsPost.create({
+              data: { title, content, type: ch.type, category: ch.category, imageUrls: JSON.stringify(images), discordMessageId: msg.id, publishedAt: new Date(msg.timestamp) },
+            })
+            saved++
+          } catch { /* duplicate */ }
+        }
+
+        const newestId = ordered[ordered.length - 1]?.id
+        await prisma.syncLog.upsert({
+          where:  { channelId },
+          update: { lastSyncAt: new Date(), lastMessageId: newestId ?? null },
+          create: { channelId, lastSyncAt: new Date(), lastMessageId: newestId ?? null },
+        })
+
+        results.push({ channel: channelId, category: ch.category, fetched: messages.length, saved })
+        console.log(`[news forceSync] ${ch.category}: fetched=${messages.length} saved=${saved}`)
+      } catch (e: any) {
+        results.push({ channel: channelId, category: ch.category, fetched: 0, saved: 0, error: e.message })
+        console.error(`[news forceSync] ${ch.category} failed:`, e.message)
+      }
     }
+    return results
   },
 }
