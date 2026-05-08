@@ -181,10 +181,10 @@ export const newsService = {
     let readyTimeout: NodeJS.Timeout | null = null
 
     try {
-      console.log(`[discord] logging in bot...`)
+      console.log(`[discord] logging in bot with token: ${token.substring(0, 10)}...`)
       await Promise.race([
         client.login(token),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Bot login timeout (5s)')), 5000))
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Bot login timeout (15s)')), 15000))
       ])
       console.log(`[discord] waiting for ready event...`)
 
