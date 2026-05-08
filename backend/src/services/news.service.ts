@@ -179,8 +179,17 @@ export const newsService = {
 
     const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] })
 
+    return Promise.race([
+      this._fetchWithClient(client, channelId, afterId, token),
+      new Promise<any[]>((_, reject) => setTimeout(() => reject(new Error('Discord fetch timeout (20s)')), 20000))
+    ]).finally(() => {
+      try { client.destroy() } catch {}
+    })
+  },
+
+  private async _fetchWithClient(client: any, channelId: string, afterId: string | undefined, token: string): Promise<any[]> {
     try {
-      console.log(`[discord] logging in bot (no ready wait)...`)
+      console.log(`[discord] logging in bot...`)
       const loginPromise = client.login(token)
 
       // Don't wait for ready event, just wait 2s for connection to establish
@@ -213,8 +222,6 @@ export const newsService = {
     } catch (e: any) {
       console.error(`[discord] fetch failed:`, e.message)
       throw e
-    } finally {
-      try { client.destroy() } catch {}
     }
   },
 
