@@ -1,7 +1,5 @@
 import { prisma } from '../lib/prisma.js'
 import { z } from 'zod'
-import { REST } from '@discordjs/rest'
-import { Routes } from 'discord-api-types/v10'
 
 export const DISCORD_CHANNELS = [
   { envKey: 'DISCORD_CH_NINJAS',      category: 'Ninjas',             type: 'CHINA'     },
@@ -178,24 +176,50 @@ export const newsService = {
   async fetchDiscordMessages(channelId: string, afterId: string | undefined, token: string): Promise<any[]> {
     if (!token) throw new Error('DISCORD_BOT_TOKEN no configurado')
 
-    const rest = new REST({ version: '10' }).setToken(token)
-    const query = new URLSearchParams({ limit: '100' })
-    if (afterId) query.set('after', afterId)
+    const params = new URLSearchParams({ limit: '100' })
+    if (afterId) params.set('after', afterId)
+    const url = `https://discord.com/api/v10/channels/${channelId}/messages?${params.toString()}`
 
-    console.log(`[discord] REST fetch channel=${channelId} query=${query.toString()}`)
-    const messages = await rest.get(Routes.channelMessages(channelId), { query }) as any[]
-    console.log(`[discord] got ${messages.length} messages`)
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 10000)
 
-    return messages.map((m: any) => ({
-      id: m.id,
-      content: m.content,
-      timestamp: m.timestamp,
-      author: { bot: m.author?.bot ?? false, username: m.author?.username ?? '' },
-      attachments: (m.attachments ?? []).map((a: any) => ({
-        url: a.url,
-        content_type: a.content_type ?? '',
-      })),
-    }))
+    console.log(`[discord] fetch ${url}`)
+    try {
+      const res = await fetch(url, {
+        headers: {
+          'Authorization': `Bot ${token}`,
+          'User-Agent': 'NarutoOnlineBot (https://naruto-online.netlify.app, 1.0)',
+        },
+        signal: controller.signal,
+      })
+
+      const status = res.status
+      const text = await res.text()
+      console.log(`[discord] response status=${status} bodyLen=${text.length}`)
+
+      if (!res.ok) {
+        throw new Error(`Discord API ${status}: ${text.slice(0, 200)}`)
+      }
+
+      const messages = JSON.parse(text) as any[]
+      console.log(`[discord] got ${messages.length} messages`)
+
+      return messages.map((m: any) => ({
+        id: m.id,
+        content: m.content,
+        timestamp: m.timestamp,
+        author: { bot: m.author?.bot ?? false, username: m.author?.username ?? '' },
+        attachments: (m.attachments ?? []).map((a: any) => ({
+          url: a.url,
+          content_type: a.content_type ?? '',
+        })),
+      }))
+    } catch (e: any) {
+      if (e.name === 'AbortError') throw new Error('Discord fetch aborted (10s timeout)')
+      throw e
+    } finally {
+      clearTimeout(timeout)
+    }
   },
 
   // Force sync — resets lastMessageId to fetch ALL messages from the beginning
