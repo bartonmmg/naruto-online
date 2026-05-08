@@ -178,24 +178,17 @@ export const newsService = {
     if (!token) throw new Error('DISCORD_BOT_TOKEN no configurado')
 
     const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] })
-    let readyTimeout: NodeJS.Timeout | null = null
 
     try {
-      console.log(`[discord] logging in bot with token: ${token.substring(0, 10)}...`)
-      await Promise.race([
-        client.login(token),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Bot login timeout (15s)')), 15000))
-      ])
-      console.log(`[discord] waiting for ready event...`)
+      console.log(`[discord] logging in bot (no ready wait)...`)
+      const loginPromise = client.login(token)
 
-      await new Promise<void>((resolve, reject) => {
-        readyTimeout = setTimeout(() => reject(new Error('Bot ready timeout (8s)')), 8000)
-        client.once('ready', () => {
-          if (readyTimeout) clearTimeout(readyTimeout)
-          resolve()
-        })
-      })
-      console.log(`[discord] bot ready, fetching channel ${channelId}...`)
+      // Don't wait for ready event, just wait 2s for connection to establish
+      await Promise.race([
+        loginPromise,
+        new Promise(r => setTimeout(r, 2000))
+      ])
+      console.log(`[discord] bot login initiated, fetching channel ${channelId}...`)
 
       const channel = await client.channels.fetch(channelId)
       if (!channel || !(channel instanceof TextChannel)) {
@@ -221,7 +214,6 @@ export const newsService = {
       console.error(`[discord] fetch failed:`, e.message)
       throw e
     } finally {
-      if (readyTimeout) clearTimeout(readyTimeout)
       try { client.destroy() } catch {}
     }
   },
