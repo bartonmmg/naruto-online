@@ -179,50 +179,49 @@ export const newsService = {
 
     const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] })
 
-    return Promise.race([
-      this._fetchWithClient(client, channelId, afterId, token),
-      new Promise<any[]>((_, reject) => setTimeout(() => reject(new Error('Discord fetch timeout (20s)')), 20000))
-    ]).finally(() => {
-      try { client.destroy() } catch {}
-    })
-  },
+    const fetchLogic = async () => {
+      try {
+        console.log(`[discord] logging in bot...`)
+        const loginPromise = client.login(token)
 
-  private async _fetchWithClient(client: any, channelId: string, afterId: string | undefined, token: string): Promise<any[]> {
-    try {
-      console.log(`[discord] logging in bot...`)
-      const loginPromise = client.login(token)
+        await Promise.race([
+          loginPromise,
+          new Promise(r => setTimeout(r, 2000))
+        ])
+        console.log(`[discord] bot login initiated, fetching channel ${channelId}...`)
 
-      // Don't wait for ready event, just wait 2s for connection to establish
-      await Promise.race([
-        loginPromise,
-        new Promise(r => setTimeout(r, 2000))
-      ])
-      console.log(`[discord] bot login initiated, fetching channel ${channelId}...`)
+        const channel = await client.channels.fetch(channelId)
+        if (!channel || !(channel instanceof TextChannel)) {
+          throw new Error(`Channel ${channelId} not found or not a text channel`)
+        }
+        const options: { limit: number; after?: string } = { limit: 100 }
+        if (afterId) options.after = afterId
 
-      const channel = await client.channels.fetch(channelId)
-      if (!channel || !(channel instanceof TextChannel)) {
-        throw new Error(`Channel ${channelId} not found or not a text channel`)
+        console.log(`[discord] fetching messages (limit=100, after=${afterId ?? 'undefined'})...`)
+        const messages = await channel.messages.fetch(options)
+        console.log(`[discord] got ${messages.size} messages`)
+        return Array.from(messages.values()).map(m => ({
+          id: m.id,
+          content: m.content,
+          timestamp: m.createdAt.toISOString(),
+          author: { bot: m.author.bot, username: m.author.username },
+          attachments: Array.from(m.attachments.values()).map(a => ({
+            url: a.url,
+            content_type: a.contentType ?? '',
+          })),
+        }))
+      } catch (e: any) {
+        console.error(`[discord] fetch failed:`, e.message)
+        throw e
+      } finally {
+        try { client.destroy() } catch {}
       }
-      const options: { limit: number; after?: string } = { limit: 100 }
-      if (afterId) options.after = afterId
-
-      console.log(`[discord] fetching messages (limit=100, after=${afterId ?? 'undefined'})...`)
-      const messages = await channel.messages.fetch(options)
-      console.log(`[discord] got ${messages.size} messages`)
-      return Array.from(messages.values()).map(m => ({
-        id: m.id,
-        content: m.content,
-        timestamp: m.createdAt.toISOString(),
-        author: { bot: m.author.bot, username: m.author.username },
-        attachments: Array.from(m.attachments.values()).map(a => ({
-          url: a.url,
-          content_type: a.contentType ?? '',
-        })),
-      }))
-    } catch (e: any) {
-      console.error(`[discord] fetch failed:`, e.message)
-      throw e
     }
+
+    return Promise.race([
+      fetchLogic(),
+      new Promise<any[]>((_, reject) => setTimeout(() => reject(new Error('Discord fetch timeout (20s)')), 20000))
+    ])
   },
 
   // Force sync — resets lastMessageId to fetch ALL messages from the beginning
