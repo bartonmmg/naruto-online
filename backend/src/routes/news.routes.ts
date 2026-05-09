@@ -22,6 +22,7 @@ router.post('/sync',       authMiddleware, authorize(['ADMIN']), newsController.
 router.get('/sync/state',  authMiddleware, authorize(['ADMIN']), newsController.getSyncState)
 
 // Server-to-server — called by GitHub Actions cron (auth via x-api-key)
-router.post('/ingest', newsController.ingest)
+router.post('/ingest',       newsController.ingest)
+router.post('/ingest-forum', newsController.ingestForum)
 
 export default router

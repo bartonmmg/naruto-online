@@ -4,8 +4,8 @@ import { z } from 'zod'
 export const DISCORD_CHANNELS = [
   { envKey: 'DISCORD_CH_NINJAS',      category: 'Ninjas',             type: 'CHINA',  acceptBots: false },
   { envKey: 'DISCORD_CH_ESPIRITUS',   category: 'Espíritus Animales', type: 'CHINA',  acceptBots: false },
-  { envKey: 'DISCORD_LATAM_EVENTOS',  category: 'Eventos Semanales',  type: 'EVENT',  acceptBots: true  },
   { envKey: 'DISCORD_CH_MODAS',       category: 'Modas',              type: 'CHINA',  acceptBots: false },
+  // Eventos Semanales viene del foro oficial — ver sync-forum.mjs
 ]
 
 export const createNewsSchema = z.object({
@@ -17,6 +17,23 @@ export const createNewsSchema = z.object({
 })
 
 export const updateNewsSchema = createNewsSchema.partial()
+
+// Strip markdown so the title renders as plain text in cards/lists
+function stripMarkdown(s: string): string {
+  return s
+    .replace(/^#{1,6}\s+/g, '')
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/__(.+?)__/g, '$1')
+    .replace(/\*(.+?)\*/g, '$1')
+    .replace(/_(.+?)_/g, '$1')
+    .replace(/~~(.+?)~~/g, '$1')
+    .replace(/`(.+?)`/g, '$1')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/<a?:(\w+):\d+>/g, ':$1:')
+    .replace(/<@!?\d+>/g, '@usuario')
+    .replace(/<#\d+>/g, '#canal')
+    .trim()
+}
 
 export const newsService = {
   async listNews(filters: { type?: string; category?: string; limit?: number; offset?: number }) {
@@ -140,7 +157,8 @@ export const newsService = {
 
       const content = msg.content || ''
       const lines = content.split('\n').filter(Boolean)
-      const title = lines[0]?.slice(0, 120) || 'Sin título'
+      const rawTitle = lines[0] || 'Sin título'
+      const title = (stripMarkdown(rawTitle) || 'Sin título').slice(0, 120)
       const images = (msg.attachments ?? [])
         .filter(a => (a.content_type ?? '').startsWith('image/'))
         .map(a => a.url)
@@ -178,6 +196,41 @@ export const newsService = {
     }
 
     return { saved, duplicates, total: messages.length, category: ch.category }
+  },
+
+  // Generic ingest for forum scraping (or any external source).
+  // Each item must include a stable externalId for dedup.
+  async ingestForumPosts(items: Array<{
+    externalId: string
+    title: string
+    content: string
+    publishedAt?: string
+    imageUrls?: string[]
+  }>, category: string, type: string, sourceLabel: string) {
+    let saved = 0
+    let duplicates = 0
+
+    for (const it of items) {
+      try {
+        await prisma.newsPost.create({
+          data: {
+            title: it.title.slice(0, 200),
+            content: it.content,
+            type,
+            category,
+            imageUrls: JSON.stringify(it.imageUrls ?? []),
+            discordMessageId: `forum:${it.externalId}`, // reuse @unique for dedup
+            discordAuthor: sourceLabel,                  // e.g. "🌐 Foro Oficial"
+            publishedAt: it.publishedAt ? new Date(it.publishedAt) : new Date(),
+          },
+        })
+        saved++
+      } catch {
+        duplicates++
+      }
+    }
+
+    return { saved, duplicates, total: items.length, category }
   },
 
   async getSyncState() {

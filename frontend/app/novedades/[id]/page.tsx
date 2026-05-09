@@ -38,11 +38,23 @@ function normalizeDiscordContent(content: string): string {
 
 function authorLabel(post: NewsPost): string {
   if (post.author) return `@${post.author.username}`
-  if (post.discordAuthor) {
-    const isBot = post.discordAuthor === 'BOT' || /bot/i.test(post.discordAuthor)
-    return isBot ? `🤖 ${post.discordAuthor}` : post.discordAuthor
-  }
-  return 'Discord'
+  if (!post.discordAuthor) return 'Discord'
+  const name = post.discordAuthor.replace(/#\d{4}$/, '').trim()
+  const isBot = name === 'BOT' || /bot/i.test(name)
+  return isBot ? `🤖 ${name}` : `@${name}`
+}
+
+function cleanTitle(s: string): string {
+  return s
+    .replace(/^#{1,6}\s+/g, '')
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/__(.+?)__/g, '$1')
+    .replace(/\*(.+?)\*/g, '$1')
+    .replace(/_(.+?)_/g, '$1')
+    .replace(/~~(.+?)~~/g, '$1')
+    .replace(/`(.+?)`/g, '$1')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .trim()
 }
 
 const TYPE_META: Record<string, { label: string; color: string; bg: string; border: string; icon: string }> = {
@@ -143,7 +155,7 @@ export default function NovedadDetailPage() {
           </div>
 
           <div className="flex items-start gap-3 mb-4">
-            <h1 className="font-cinzel font-bold text-2xl text-text-primary flex-1">{post.title}</h1>
+            <h1 className="font-cinzel font-bold text-2xl text-text-primary flex-1">{cleanTitle(post.title)}</h1>
             {post.pinned && (
               <span className="text-[10px] font-montserrat font-bold px-2 py-0.5 rounded-full border bg-accent-orange/15 text-accent-orange border-accent-orange/30 flex items-center gap-1 mt-2 shrink-0">
                 <Pin className="w-2.5 h-2.5" /> DESTACADA

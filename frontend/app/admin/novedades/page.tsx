@@ -17,6 +17,19 @@ interface NewsPost {
   discordMessageId: string | null
 }
 
+function cleanTitle(s: string): string {
+  return s
+    .replace(/^#{1,6}\s+/g, '')
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/__(.+?)__/g, '$1')
+    .replace(/\*(.+?)\*/g, '$1')
+    .replace(/_(.+?)_/g, '$1')
+    .replace(/~~(.+?)~~/g, '$1')
+    .replace(/`(.+?)`/g, '$1')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .trim()
+}
+
 const TYPE_META: Record<string, { label: string; color: string; bg: string; border: string; icon: string }> = {
   CHINA:     { label: 'China',     color: 'text-red-400',     bg: 'bg-red-400/10',     border: 'border-red-400/20',     icon: '🔴' },
   EVENT:     { label: 'Evento',    color: 'text-chakra-blue', bg: 'bg-chakra-blue/10', border: 'border-chakra-blue/20', icon: '📅' },
@@ -211,7 +224,7 @@ export default function AdminNovedadesPage() {
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     {post.pinned && <Pin className="w-3 h-3 text-accent-orange shrink-0" />}
-                    <p className="font-montserrat font-semibold text-sm text-text-primary truncate">{post.title}</p>
+                    <p className="font-montserrat font-semibold text-sm text-text-primary truncate">{cleanTitle(post.title)}</p>
                   </div>
                   <p className="text-[10px] text-white/30 font-montserrat mt-0.5">
                     {new Date(post.publishedAt).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' })}

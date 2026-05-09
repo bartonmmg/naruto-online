@@ -23,11 +23,23 @@ interface NewsPost {
 
 function authorLabel(post: NewsPost): string {
   if (post.author) return `@${post.author.username}`
-  if (post.discordAuthor) {
-    const isBot = post.discordAuthor === 'BOT' || /bot/i.test(post.discordAuthor)
-    return isBot ? `🤖 ${post.discordAuthor}` : post.discordAuthor
-  }
-  return 'Discord'
+  if (!post.discordAuthor) return 'Discord'
+  const name = post.discordAuthor.replace(/#\d{4}$/, '').trim()
+  const isBot = name === 'BOT' || /bot/i.test(name)
+  return isBot ? `🤖 ${name}` : `@${name}`
+}
+
+function cleanTitle(s: string): string {
+  return s
+    .replace(/^#{1,6}\s+/g, '')
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/__(.+?)__/g, '$1')
+    .replace(/\*(.+?)\*/g, '$1')
+    .replace(/_(.+?)_/g, '$1')
+    .replace(/~~(.+?)~~/g, '$1')
+    .replace(/`(.+?)`/g, '$1')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .trim()
 }
 
 const TYPE_META: Record<string, { label: string; color: string; bg: string; border: string; icon: string }> = {
@@ -218,7 +230,7 @@ export default function NovedadesPage() {
                         <span className="ml-auto text-[10px] text-white/40 font-montserrat">{timeAgo(hero.publishedAt)}</span>
                       </div>
                       <h2 className="font-cinzel font-bold text-xl md:text-2xl text-text-primary mb-3 line-clamp-2 group-hover:text-accent-orange transition-colors">
-                        {hero.title}
+                        {cleanTitle(hero.title)}
                       </h2>
                       <p className="text-sm text-white/60 font-montserrat leading-relaxed line-clamp-3 mb-4">
                         {excerpt(hero.content, 240)}
@@ -264,7 +276,7 @@ export default function NovedadesPage() {
                                 <span className="ml-auto text-[10px] text-white/30 font-montserrat">{timeAgo(post.publishedAt)}</span>
                               </div>
                               <p className="font-cinzel font-bold text-sm text-text-primary mb-2 line-clamp-2 group-hover:text-accent-orange transition-colors">
-                                {post.title}
+                                {cleanTitle(post.title)}
                               </p>
                               <p className="text-xs text-white/50 font-montserrat leading-relaxed line-clamp-3">
                                 {excerpt(post.content)}

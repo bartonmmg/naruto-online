@@ -20,8 +20,8 @@ if (!TOKEN || !BACKEND_URL || !API_KEY) {
 const CHANNELS = [
   { envKey: 'DISCORD_CH_NINJAS',     name: 'Ninjas' },
   { envKey: 'DISCORD_CH_ESPIRITUS',  name: 'Espíritus Animales' },
-  { envKey: 'DISCORD_LATAM_EVENTOS', name: 'Eventos Semanales' },
   { envKey: 'DISCORD_CH_MODAS',      name: 'Modas' },
+  // Eventos Semanales se obtienen del foro oficial (sync-forum.mjs)
 ]
 
 // Read sync state from backend so we can fetch only NEW messages per channel

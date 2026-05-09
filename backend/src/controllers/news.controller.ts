@@ -119,6 +119,36 @@ export const newsController = {
     }
   },
 
+  async ingestForum(req: Request, res: Response) {
+    try {
+      const apiKey = req.headers['x-api-key']
+      if (!apiKey || apiKey !== process.env.API_KEY) {
+        return res.status(401).json({ error: 'Invalid API key' })
+      }
+
+      const { category, type, sourceLabel, items } = req.body as {
+        category?: string
+        type?: string
+        sourceLabel?: string
+        items?: any[]
+      }
+
+      if (!category || !type || !Array.isArray(items)) {
+        return res.status(400).json({ error: 'Body requires { category, type, sourceLabel?, items: [...] }' })
+      }
+
+      const result = await newsService.ingestForumPosts(
+        items,
+        category,
+        type,
+        sourceLabel || '🌐 Foro Oficial',
+      )
+      res.json({ ok: true, ...result })
+    } catch (e: any) {
+      res.status(500).json({ error: e.message })
+    }
+  },
+
   // Called by GitHub Actions — auth via x-api-key header (server-to-server)
   async ingest(req: Request, res: Response) {
     try {

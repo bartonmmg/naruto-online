@@ -27,6 +27,12 @@ jobs:
           API_KEY:                 ${{ secrets.API_KEY }}
           DISCORD_CH_NINJAS:       ${{ secrets.DISCORD_CH_NINJAS }}
           DISCORD_CH_ESPIRITUS:    ${{ secrets.DISCORD_CH_ESPIRITUS }}
-          DISCORD_LATAM_EVENTOS:   ${{ secrets.DISCORD_LATAM_EVENTOS }}
           DISCORD_CH_MODAS:        ${{ secrets.DISCORD_CH_MODAS }}
         run: node scripts/sync-discord.mjs
+
+      - name: Run Forum sync (Eventos Semanales)
+        if: always()  # run even if Discord step had partial errors
+        env:
+          BACKEND_URL: ${{ secrets.BACKEND_URL }}
+          API_KEY:     ${{ secrets.API_KEY }}
+        run: node scripts/sync-forum.mjs
