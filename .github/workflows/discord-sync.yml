@@ -1,0 +1,33 @@
+name: Discord Sync
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'  # every 30 minutes
+  workflow_dispatch:         # also allow manual trigger from Actions tab
+
+concurrency:
+  group: discord-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run Discord sync
+        working-directory: naruto-app
+        env:
+          DISCORD_BOT_TOKEN:       ${{ secrets.DISCORD_BOT_TOKEN }}
+          BACKEND_URL:             ${{ secrets.BACKEND_URL }}
+          API_KEY:                 ${{ secrets.API_KEY }}
+          DISCORD_CH_NINJAS:       ${{ secrets.DISCORD_CH_NINJAS }}
+          DISCORD_CH_ESPIRITUS:    ${{ secrets.DISCORD_CH_ESPIRITUS }}
+          DISCORD_LATAM_EVENTOS:   ${{ secrets.DISCORD_LATAM_EVENTOS }}
+          DISCORD_CH_MODAS:        ${{ secrets.DISCORD_CH_MODAS }}
+        run: node scripts/sync-discord.mjs
