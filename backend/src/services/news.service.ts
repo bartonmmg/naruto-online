@@ -2,10 +2,10 @@ import { prisma } from '../lib/prisma.js'
 import { z } from 'zod'
 
 export const DISCORD_CHANNELS = [
-  { envKey: 'DISCORD_CH_NINJAS',      category: 'Ninjas',             type: 'CHINA'     },
-  { envKey: 'DISCORD_CH_ESPIRITUS',   category: 'Espíritus Animales', type: 'CHINA'     },
-  { envKey: 'DISCORD_LATAM_EVENTOS',  category: 'Eventos Semanales',  type: 'EVENT'     },
-  { envKey: 'DISCORD_CH_MODAS',       category: 'Modas',              type: 'CHINA'     },
+  { envKey: 'DISCORD_CH_NINJAS',      category: 'Ninjas',             type: 'CHINA',  acceptBots: false },
+  { envKey: 'DISCORD_CH_ESPIRITUS',   category: 'Espíritus Animales', type: 'CHINA',  acceptBots: false },
+  { envKey: 'DISCORD_LATAM_EVENTOS',  category: 'Eventos Semanales',  type: 'EVENT',  acceptBots: true  },
+  { envKey: 'DISCORD_CH_MODAS',       category: 'Modas',              type: 'CHINA',  acceptBots: false },
 ]
 
 export const createNewsSchema = z.object({
@@ -122,7 +122,7 @@ export const newsService = {
     const ordered = [...messages].reverse()
 
     for (const msg of ordered) {
-      if (msg.author?.bot) continue
+      if (msg.author?.bot && !ch.acceptBots) continue
       if (!msg.content && !(msg.attachments?.length)) continue
 
       const content = msg.content || ''
