@@ -90,18 +90,89 @@ export const newsService = {
     return rows.map(r => r.category)
   },
 
-  // ── Discord sync ──────────────────────────────────────────────────────────
-  // Persistent bot in lib/discord-bot.ts handles real-time message capture via
-  // Gateway events. These methods are kept for compatibility but are no-ops.
+  // Discord sync se hace via GitHub Actions (ver .github/workflows/discord-sync.yml)
+  // que llama a POST /news/ingest. Esto evita el bloqueo de Cloudflare a las IPs de Render.
 
   async syncIfNeeded() {
-    // Bot persistente captura mensajes en tiempo real — no need to poll
     return
   },
 
   async forceSync() {
-    const { forceCatchUp } = await import('../lib/discord-bot.js')
-    return forceCatchUp()
+    return [{ message: 'Sync se ejecuta automáticamente via GitHub Actions cada 30 min' }]
   },
 
+  // Called by GitHub Actions cron — receives messages already fetched from Discord
+  async ingestMessages(channelId: string, messages: Array<{
+    id: string
+    content: string
+    timestamp: string
+    author?: { bot?: boolean; username?: string }
+    attachments?: Array<{ url: string; content_type?: string }>
+  }>) {
+    const ch = DISCORD_CHANNELS.find(c => process.env[c.envKey] === channelId)
+    if (!ch) {
+      throw new Error(`channelId ${channelId} no está configurado en DISCORD_CHANNELS`)
+    }
+
+    let saved = 0
+    let duplicates = 0
+    let lastMessageId: string | undefined
+
+    // Discord returns newest first — process oldest first to keep chronological order
+    const ordered = [...messages].reverse()
+
+    for (const msg of ordered) {
+      if (msg.author?.bot) continue
+      if (!msg.content && !(msg.attachments?.length)) continue
+
+      const content = msg.content || ''
+      const lines = content.split('\n').filter(Boolean)
+      const title = lines[0]?.slice(0, 120) || 'Sin título'
+      const images = (msg.attachments ?? [])
+        .filter(a => (a.content_type ?? '').startsWith('image/'))
+        .map(a => a.url)
+
+      try {
+        await prisma.newsPost.create({
+          data: {
+            title,
+            content,
+            type: ch.type,
+            category: ch.category,
+            imageUrls: JSON.stringify(images),
+            discordMessageId: msg.id,
+            publishedAt: new Date(msg.timestamp),
+          },
+        })
+        saved++
+      } catch {
+        duplicates++
+      }
+      lastMessageId = msg.id
+    }
+
+    if (lastMessageId || messages.length > 0) {
+      await prisma.syncLog.upsert({
+        where: { channelId },
+        update: { lastSyncAt: new Date(), ...(lastMessageId ? { lastMessageId } : {}) },
+        create: { channelId, lastSyncAt: new Date(), lastMessageId: lastMessageId ?? null },
+      })
+    }
+
+    return { saved, duplicates, total: messages.length, category: ch.category }
+  },
+
+  async getSyncState() {
+    const logs = await prisma.syncLog.findMany()
+    return DISCORD_CHANNELS.map(ch => {
+      const channelId = process.env[ch.envKey]
+      const log = logs.find(l => l.channelId === channelId)
+      return {
+        category: ch.category,
+        channelId: channelId ?? null,
+        lastSyncAt: log?.lastSyncAt ?? null,
+        lastMessageId: log?.lastMessageId ?? null,
+      }
+    })
+  },
 }

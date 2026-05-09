@@ -43,16 +43,17 @@ export default function AdminNovedadesPage() {
     setSyncing(true)
     try {
       const r = await api.post('/news/sync')
-      const { totalSaved, results } = r.data
-      const detail = results.map((x: any) =>
-        x.error
-          ? `❌ ${x.category}: ${x.error}`
-          : `✅ ${x.category}: ${x.fetched} mensajes, ${x.saved} guardados`
-      ).join('\n')
-      alert(`Sync completado — ${totalSaved} nuevos posts\n\n${detail}`)
+      const { message, state } = r.data
+      const detail = (state ?? []).map((s: any) => {
+        const last = s.lastSyncAt
+          ? new Date(s.lastSyncAt).toLocaleString('es-AR')
+          : 'nunca'
+        return `• ${s.category}: última sync ${last}`
+      }).join('\n')
+      alert(`${message}\n\n${detail}`)
       load()
     } catch (e: any) {
-      alert(e.response?.data?.error || 'Error al sincronizar')
+      alert(e.response?.data?.error || 'Error al consultar el estado de sincronización')
     } finally {
       setSyncing(false)
     }
@@ -86,7 +87,7 @@ export default function AdminNovedadesPage() {
             className="flex items-center gap-1.5 px-3 h-9 rounded-lg text-xs font-montserrat font-semibold bg-chakra-blue/10 text-chakra-blue border border-chakra-blue/30 hover:bg-chakra-blue/20 transition-all disabled:opacity-40"
           >
             {syncing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
-            Sincronizar Discord
+            Estado de sync
           </button>
           <button
             onClick={() => router.push('/novedades/create')}

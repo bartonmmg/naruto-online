@@ -10,7 +10,6 @@ import notificationsRoutes from './routes/notifications.routes.js'
 import adminRoutes from './routes/admin.routes.js'
 import { apiKeyMiddleware } from './middleware/apiKey.js'
 import { xpService } from './services/xp.service.js'
-import { startDiscordBot } from './lib/discord-bot.js'
 
 // Load environment variables (try .env.local first, then .env)
 dotenv.config({ path: '.env.local' })
@@ -53,8 +52,6 @@ const server = app.listen(PORT, async () => {
   console.log(`🚀 Backend running on http://localhost:${PORT}`)
   // Seed XP/level/achievement defaults on startup
   xpService.seedDefaults().catch(console.error)
-  // Start persistent Discord bot
-  startDiscordBot().catch(e => console.error('[discord-bot] startup failed:', e))
 })
 
 process.on('unhandledRejection', (reason) => {

@@ -86,9 +86,45 @@ export const newsController = {
 
   async triggerSync(req: AuthRequest, res: Response) {
     try {
-      const results = await newsService.forceSync()
-      const totalSaved = results.reduce((s, r) => s + r.saved, 0)
-      res.json({ ok: true, totalSaved, results })
+      const state = await newsService.getSyncState()
+      res.json({
+        ok: true,
+        message: 'La sincronización con Discord se ejecuta automáticamente cada 30 minutos vía GitHub Actions.',
+        state,
+      })
+    } catch (e: any) {
+      res.status(500).json({ error: e.message })
+    }
+  },
+
+  // Called by GitHub Actions — auth via x-api-key header (server-to-server)
+  async ingest(req: Request, res: Response) {
+    try {
+      const apiKey = req.headers['x-api-key']
+      if (!apiKey || apiKey !== process.env.API_KEY) {
+        return res.status(401).json({ error: 'Invalid API key' })
+      }
+
+      const { channelId, messages } = req.body as {
+        channelId?: string
+        messages?: any[]
+      }
+
+      if (!channelId || !Array.isArray(messages)) {
+        return res.status(400).json({ error: 'Body requires { channelId, messages: [...] }' })
+      }
+
+      const result = await newsService.ingestMessages(channelId, messages)
+      res.json({ ok: true, ...result })
+    } catch (e: any) {
+      res.status(500).json({ error: e.message })
+    }
+  },
+
+  async getSyncState(req: AuthRequest, res: Response) {
+    try {
+      const state = await newsService.getSyncState()
+      res.json({ state })
     } catch (e: any) {
       res.status(500).json({ error: e.message })
     }

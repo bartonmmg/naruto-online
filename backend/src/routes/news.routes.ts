@@ -15,7 +15,11 @@ router.post('/',      authMiddleware, authorize(['ADMIN', 'MODERATOR']), newsCon
 router.put('/:id',    authMiddleware, authorize(['ADMIN', 'MODERATOR']), newsController.update)
 router.delete('/:id', authMiddleware, authorize(['ADMIN', 'MODERATOR']), newsController.delete)
 
-// ADMIN — force Discord sync
-router.post('/sync',  authMiddleware, authorize(['ADMIN']), newsController.triggerSync)
+// ADMIN — get current sync state (last sync per channel)
+router.post('/sync',       authMiddleware, authorize(['ADMIN']), newsController.triggerSync)
+router.get('/sync/state',  authMiddleware, authorize(['ADMIN']), newsController.getSyncState)
+
+// Server-to-server — called by GitHub Actions cron (auth via x-api-key)
+router.post('/ingest', newsController.ingest)
 
 export default router
