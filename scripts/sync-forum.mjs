@@ -52,7 +52,7 @@ function parseIndex(html) {
     if (!url.startsWith('http')) url = `${FORUM_BASE}/page/${url}`
     results.push({
       url,
-      title: `ACTUALIZACIONES ${dateStr}`,
+      title: `Actualización de eventos: ${dateStr}`,
       dateStr,
       threadKey: `post-${postId}`,
     })
@@ -80,6 +80,21 @@ function htmlToMarkdown(html) {
   // Normalize newlines and remove scripts/styles
   s = s.replace(/<script[\s\S]*?<\/script>/gi, '')
   s = s.replace(/<style[\s\S]*?<\/style>/gi, '')
+
+  // Strip decorative images: when a <p> has BOTH images and meaningful text,
+  // the images are decorative separators (penguin emojis, dividers, etc).
+  // Keep only <p> blocks that contain ONLY images, or ONLY text.
+  s = s.replace(/<p\b[^>]*>([\s\S]*?)<\/p>/gi, (full, inner) => {
+    const hasImg = /<img\b/i.test(inner)
+    if (!hasImg) return full
+    const textOnly = inner.replace(/<img[^>]*>/gi, '').replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim()
+    if (textOnly.length > 3) {
+      // Mixed → drop the images, keep the text
+      return full.replace(/<img[^>]*>/gi, '')
+    }
+    return full
+  })
+
   // Images
   s = s.replace(/<img[^>]*src=["']([^"']+)["'][^>]*\/?>/gi, '\n\n![]($1)\n\n')
   // Headings
@@ -136,25 +151,40 @@ function extractPostBody(html) {
   // The content extends until the reply/footer section that follows.
   const startRe = /<div[^>]*class="[^"]*forum_detail_content_mian[^"]*"[^>]*>/i
   const start = html.match(startRe)
+  let body
   if (!start) {
     const bm = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i)
-    return bm ? bm[1] : html
-  }
-  const startIdx = (start.index ?? 0) + start[0].length
-  const tail = html.slice(startIdx)
+    body = bm ? bm[1] : html
+  } else {
+    const startIdx = (start.index ?? 0) + start[0].length
+    const tail = html.slice(startIdx)
 
-  const stops = [
-    /<div[^>]*class="[^"]*forum_detail_content_bottom[^"]*"/i,
-    /<div[^>]*class="[^"]*forum_detail_reply[^"]*"/i,
-    /<div[^>]*class="[^"]*post_reply[^"]*"/i,
-    /<div[^>]*class="[^"]*forum_reply[^"]*"/i,
-  ]
-  let endIdx = tail.length
-  for (const re of stops) {
-    const m = tail.match(re)
-    if (m && m.index !== undefined && m.index < endIdx) endIdx = m.index
+    const stops = [
+      /<div[^>]*class="[^"]*forum_detail_content_bottom[^"]*"/i,
+      /<div[^>]*class="[^"]*forum_detail_reply[^"]*"/i,
+      /<div[^>]*class="[^"]*post_reply[^"]*"/i,
+      /<div[^>]*class="[^"]*forum_reply[^"]*"/i,
+    ]
+    let endIdx = tail.length
+    for (const re of stops) {
+      const m = tail.match(re)
+      if (m && m.index !== undefined && m.index < endIdx) endIdx = m.index
+    }
+    body = tail.slice(0, endIdx)
   }
-  return tail.slice(0, endIdx)
+
+  // Strip the "Último post Autor X Edición YYYY-MM-DD" footer line that the
+  // forum injects inside the main content div.
+  body = body.replace(
+    /<div[^>]*style="[^"]*color:\s*#999[^"]*"[^>]*>[\s\S]*?<\/div>/gi,
+    '',
+  )
+  body = body.replace(
+    /Último\s+post\s+Autor[\s\S]*?(?:Edici[oó]n\s+\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})?/gi,
+    '',
+  )
+
+  return body
 }
 
 async function ingestPosts(items) {
@@ -196,14 +226,17 @@ for (const t of threads) {
     const body = extractPostBody(html)
     const content = htmlToMarkdown(body)
     const images = extractImages(body)
+    // Forum images are embedded inside the markdown content via ![](...). We
+    // don't pass them in imageUrls — otherwise they'd render twice (hero +
+    // inline). The frontend can pull a hero from the first ![]() in content.
     items.push({
       externalId: t.threadKey,
       title: t.title,
       content,
       publishedAt: parseDateAR(t.dateStr),
-      imageUrls: images,
+      imageUrls: [],
     })
-    console.log(`  → content ${content.length} chars, ${images.length} images`)
+    console.log(`  → content ${content.length} chars, ${images.length} inline images`)
   } catch (e) {
     console.error(`  ❌ ${e.message}`)
   }
