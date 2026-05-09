@@ -59,17 +59,32 @@ async function fetchChannelMessages(channelId) {
   return all.slice(0, MAX_MESSAGES)
 }
 
+// Send messages in batches to avoid request size limits
+const BATCH_SIZE = 50
+
 async function ingestToBackend(channelId, messages) {
-  const res = await fetch(`${BACKEND_URL}/news/ingest`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-api-key': API_KEY },
-    body: JSON.stringify({ channelId, messages }),
-  })
-  if (!res.ok) {
-    const text = await res.text()
-    throw new Error(`Backend ingest ${res.status}: ${text.slice(0, 200)}`)
+  let saved = 0
+  let duplicates = 0
+  let total = 0
+
+  for (let i = 0; i < messages.length; i += BATCH_SIZE) {
+    const batch = messages.slice(i, i + BATCH_SIZE)
+    const res = await fetch(`${BACKEND_URL}/news/ingest`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': API_KEY },
+      body: JSON.stringify({ channelId, messages: batch }),
+    })
+    if (!res.ok) {
+      const text = await res.text()
+      throw new Error(`Backend ingest ${res.status}: ${text.slice(0, 200)}`)
+    }
+    const result = await res.json()
+    saved      += result.saved ?? 0
+    duplicates += result.duplicates ?? 0
+    total      += result.total ?? batch.length
   }
-  return res.json()
+
+  return { saved, duplicates, total }
 }
 
 let totalSaved = 0
