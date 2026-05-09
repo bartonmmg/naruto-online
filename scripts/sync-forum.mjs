@@ -36,19 +36,26 @@ async function fetchHtml(url) {
 }
 
 // Extract thread links from the index. Returns [{ url, title, dateStr }]
+// HTML pattern: <a aria-label="ACTUALIZACIONES DD/MM/YYYY" href="https://.../show-post-NNN-1.html">ACTUALIZACIONES DD/MM/YYYY</a>
 function parseIndex(html) {
   const results = []
   const seen = new Set()
-  // Match <a href="show-post-XXXX-1.html">... ACTUALIZACIONES DD/MM/YYYY ...</a>
-  const re = /<a[^>]+href="(show-post-\d+-\d+\.html)"[^>]*>([^<]*ACTUALIZACIONES[^<]*?(\d{2}\/\d{2}\/\d{4})[^<]*)<\/a>/gi
+  const re = /<a\b[^>]*aria-label="ACTUALIZACIONES\s+(\d{2}\/\d{2}\/\d{4})"[\s\S]*?href="([^"]*show-post-(\d+)-\d+\.html)"/gi
   let m
   while ((m = re.exec(html)) !== null) {
-    const href = m[1]
-    if (seen.has(href)) continue
-    seen.add(href)
-    const fullUrl = `${FORUM_BASE}/page/${href}`
-    const title = m[2].replace(/\s+/g, ' ').trim()
-    results.push({ url: fullUrl, title, dateStr: m[3], threadKey: href })
+    const dateStr = m[1]
+    let url = m[2]
+    const postId = m[3]
+    if (seen.has(postId)) continue
+    seen.add(postId)
+    if (url.startsWith('/')) url = FORUM_BASE + url
+    if (!url.startsWith('http')) url = `${FORUM_BASE}/page/${url}`
+    results.push({
+      url,
+      title: `ACTUALIZACIONES ${dateStr}`,
+      dateStr,
+      threadKey: `post-${postId}`,
+    })
     if (results.length >= MAX_POSTS) break
   }
   return results
@@ -124,21 +131,30 @@ function extractImages(html) {
 // common pattern is: <div class="show_content"> or similar. We'll fall back
 // to the largest content block between known delimiters.
 function extractPostBody(html) {
-  // Try a few common selectors
-  const patterns = [
-    /<div[^>]*class="[^"]*show_content[^"]*"[^>]*>([\s\S]*?)<\/div>\s*<\/div>/i,
-    /<div[^>]*class="[^"]*post[_-]?body[^"]*"[^>]*>([\s\S]*?)<\/div>/i,
-    /<div[^>]*class="[^"]*content[^"]*"[^>]*>([\s\S]*?)<\/div>\s*(?:<div|<\/div>|<footer)/i,
-    /<article[^>]*>([\s\S]*?)<\/article>/i,
-    /<div[^>]*id="[^"]*content[^"]*"[^>]*>([\s\S]*?)<\/div>/i,
-  ]
-  for (const re of patterns) {
-    const m = html.match(re)
-    if (m && m[1] && m[1].length > 200) return m[1]
+  // Forum-specific: post body lives in <div class="forum_detail_content_mian">
+  // (note: "mian" is the actual class name in the source, not a typo we made).
+  // The content extends until the reply/footer section that follows.
+  const startRe = /<div[^>]*class="[^"]*forum_detail_content_mian[^"]*"[^>]*>/i
+  const start = html.match(startRe)
+  if (!start) {
+    const bm = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i)
+    return bm ? bm[1] : html
   }
-  // Fallback: take everything between <body> and </body>
-  const m = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i)
-  return m ? m[1] : html
+  const startIdx = (start.index ?? 0) + start[0].length
+  const tail = html.slice(startIdx)
+
+  const stops = [
+    /<div[^>]*class="[^"]*forum_detail_content_bottom[^"]*"/i,
+    /<div[^>]*class="[^"]*forum_detail_reply[^"]*"/i,
+    /<div[^>]*class="[^"]*post_reply[^"]*"/i,
+    /<div[^>]*class="[^"]*forum_reply[^"]*"/i,
+  ]
+  let endIdx = tail.length
+  for (const re of stops) {
+    const m = tail.match(re)
+    if (m && m.index !== undefined && m.index < endIdx) endIdx = m.index
+  }
+  return tail.slice(0, endIdx)
 }
 
 async function ingestPosts(items) {
