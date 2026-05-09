@@ -11,9 +11,11 @@ router.get('/categories', newsController.getCategories)
 router.get('/:id',        newsController.getById)
 
 // MOD/ADMIN — create, edit, delete via site
-router.post('/',      authMiddleware, authorize(['ADMIN', 'MODERATOR']), newsController.create)
-router.put('/:id',    authMiddleware, authorize(['ADMIN', 'MODERATOR']), newsController.update)
-router.delete('/:id', authMiddleware, authorize(['ADMIN', 'MODERATOR']), newsController.delete)
+router.post('/',                 authMiddleware, authorize(['ADMIN', 'MODERATOR']), newsController.create)
+router.put('/:id',               authMiddleware, authorize(['ADMIN', 'MODERATOR']), newsController.update)
+router.delete('/:id',            authMiddleware, authorize(['ADMIN', 'MODERATOR']), newsController.delete)
+router.post('/bulk-delete',      authMiddleware, authorize(['ADMIN', 'MODERATOR']), newsController.bulkDelete)
+router.put('/:id/pin',           authMiddleware, authorize(['ADMIN', 'MODERATOR']), newsController.togglePinned)
 
 // ADMIN — get current sync state (last sync per channel)
 router.post('/sync',       authMiddleware, authorize(['ADMIN']), newsController.triggerSync)

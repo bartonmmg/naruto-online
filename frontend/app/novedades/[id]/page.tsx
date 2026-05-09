@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ChevronLeft, Pencil, Trash2, Loader2, Calendar, User } from 'lucide-react'
+import { ChevronLeft, Pencil, Trash2, Loader2, Calendar, User, Link2, Check, Pin, PinOff } from 'lucide-react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import Navbar from '@/components/Navbar'
 import { useAuth } from '@/lib/hooks/useAuth'
 import api from '@/lib/api'
@@ -15,7 +17,32 @@ interface NewsPost {
   category: string
   imageUrls: string[]
   author: { username: string; role: string } | null
+  discordAuthor: string | null
+  pinned: boolean
   publishedAt: string
+}
+
+// Convert Discord-specific syntax to markdown:
+//   <@123>  → @user
+//   <#456>  → #channel
+//   <:name:id> → :name:
+//   <a:name:id> → :name: (animated)
+//   bare URLs → markdown links
+function normalizeDiscordContent(content: string): string {
+  return content
+    .replace(/<@!?(\d+)>/g, '@usuario')
+    .replace(/<#(\d+)>/g, '#canal')
+    .replace(/<a?:(\w+):\d+>/g, ':$1:')
+    .replace(/(?<![\(\[])(https?:\/\/[^\s<>\)]+)/g, '[$1]($1)')
+}
+
+function authorLabel(post: NewsPost): string {
+  if (post.author) return `@${post.author.username}`
+  if (post.discordAuthor) {
+    const isBot = post.discordAuthor === 'BOT' || /bot/i.test(post.discordAuthor)
+    return isBot ? `🤖 ${post.discordAuthor}` : post.discordAuthor
+  }
+  return 'Discord'
 }
 
 const TYPE_META: Record<string, { label: string; color: string; bg: string; border: string; icon: string }> = {
@@ -32,6 +59,8 @@ export default function NovedadDetailPage() {
   const [post, setPost]       = useState<NewsPost | null>(null)
   const [loading, setLoading] = useState(true)
   const [deleting, setDeleting] = useState(false)
+  const [copied, setCopied]   = useState(false)
+  const [pinning, setPinning] = useState(false)
 
   useEffect(() => {
     api.get(`/news/${id}`)
@@ -47,6 +76,25 @@ export default function NovedadDetailPage() {
       await api.delete(`/news/${id}`)
       router.replace('/novedades')
     } catch { setDeleting(false) }
+  }
+
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch {}
+  }
+
+  const handleTogglePin = async () => {
+    if (!post) return
+    setPinning(true)
+    try {
+      const r = await api.put(`/news/${id}/pin`, { pinned: !post.pinned })
+      setPost(r.data)
+    } catch { /* ignore */ } finally {
+      setPinning(false)
+    }
   }
 
   if (loading) return (
@@ -89,32 +137,61 @@ export default function NovedadDetailPage() {
               </span>
               <span className="flex items-center gap-1 text-xs text-white/30 font-montserrat">
                 <User className="w-3 h-3" />
-                {post.author ? `@${post.author.username}` : 'Discord'}
+                {authorLabel(post)}
               </span>
             </div>
           </div>
 
-          <h1 className="font-cinzel font-bold text-2xl text-text-primary mb-4">{post.title}</h1>
+          <div className="flex items-start gap-3 mb-4">
+            <h1 className="font-cinzel font-bold text-2xl text-text-primary flex-1">{post.title}</h1>
+            {post.pinned && (
+              <span className="text-[10px] font-montserrat font-bold px-2 py-0.5 rounded-full border bg-accent-orange/15 text-accent-orange border-accent-orange/30 flex items-center gap-1 mt-2 shrink-0">
+                <Pin className="w-2.5 h-2.5" /> DESTACADA
+              </span>
+            )}
+          </div>
 
-          {/* Admin actions */}
-          {hasRole(['ADMIN', 'MODERATOR']) && (
-            <div className="flex gap-2">
-              <button
-                onClick={() => router.push(`/novedades/${id}/edit`)}
-                className="flex items-center gap-1.5 px-3 h-8 rounded-lg text-xs font-montserrat font-semibold bg-white/5 text-white/50 border border-border hover:text-white/80 transition-all"
-              >
-                <Pencil className="w-3 h-3" /> Editar
-              </button>
-              <button
-                onClick={handleDelete}
-                disabled={deleting}
-                className="flex items-center gap-1.5 px-3 h-8 rounded-lg text-xs font-montserrat font-semibold bg-red-400/10 text-red-400 border border-red-400/20 hover:bg-red-400/20 transition-all disabled:opacity-40"
-              >
-                {deleting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
-                Eliminar
-              </button>
-            </div>
-          )}
+          {/* Actions */}
+          <div className="flex gap-2 flex-wrap">
+            <button
+              onClick={handleCopyLink}
+              className="flex items-center gap-1.5 px-3 h-8 rounded-lg text-xs font-montserrat font-semibold bg-white/5 text-white/60 border border-border hover:text-white/90 hover:bg-white/10 transition-all"
+            >
+              {copied ? <Check className="w-3 h-3 text-green-400" /> : <Link2 className="w-3 h-3" />}
+              {copied ? '¡Copiado!' : 'Copiar link'}
+            </button>
+
+            {hasRole(['ADMIN', 'MODERATOR']) && (
+              <>
+                <button
+                  onClick={handleTogglePin}
+                  disabled={pinning}
+                  className={`flex items-center gap-1.5 px-3 h-8 rounded-lg text-xs font-montserrat font-semibold border transition-all disabled:opacity-40 ${
+                    post.pinned
+                      ? 'bg-accent-orange/15 text-accent-orange border-accent-orange/30 hover:bg-accent-orange/25'
+                      : 'bg-white/5 text-white/50 border-border hover:text-white/80'
+                  }`}
+                >
+                  {pinning ? <Loader2 className="w-3 h-3 animate-spin" /> : post.pinned ? <PinOff className="w-3 h-3" /> : <Pin className="w-3 h-3" />}
+                  {post.pinned ? 'Quitar destacada' : 'Destacar'}
+                </button>
+                <button
+                  onClick={() => router.push(`/novedades/${id}/edit`)}
+                  className="flex items-center gap-1.5 px-3 h-8 rounded-lg text-xs font-montserrat font-semibold bg-white/5 text-white/50 border border-border hover:text-white/80 transition-all"
+                >
+                  <Pencil className="w-3 h-3" /> Editar
+                </button>
+                <button
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="flex items-center gap-1.5 px-3 h-8 rounded-lg text-xs font-montserrat font-semibold bg-red-400/10 text-red-400 border border-red-400/20 hover:bg-red-400/20 transition-all disabled:opacity-40"
+                >
+                  {deleting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+                  Eliminar
+                </button>
+              </>
+            )}
+          </div>
         </div>
 
         {/* Images */}
@@ -128,7 +205,9 @@ export default function NovedadDetailPage() {
 
         {/* Content */}
         <div className="bg-bg-card border border-border/50 rounded-2xl p-6">
-          <p className="text-white/80 font-montserrat text-sm leading-relaxed whitespace-pre-wrap">{post.content}</p>
+          <div className="news-markdown text-white/80 font-montserrat text-sm leading-relaxed">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{normalizeDiscordContent(post.content)}</ReactMarkdown>
+          </div>
         </div>
       </div>
     </div>

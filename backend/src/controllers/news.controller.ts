@@ -75,6 +75,28 @@ export const newsController = {
     }
   },
 
+  async bulkDelete(req: AuthRequest, res: Response) {
+    try {
+      const ids = req.body?.ids
+      if (!Array.isArray(ids) || ids.length === 0) {
+        return res.status(400).json({ error: 'Body requires { ids: [...] }' })
+      }
+      const result = await newsService.bulkDelete(ids)
+      res.json({ ok: true, ...result })
+    } catch (e: any) {
+      res.status(500).json({ error: e.message })
+    }
+  },
+
+  async togglePinned(req: AuthRequest, res: Response) {
+    try {
+      const post = await newsService.togglePinned(req.params.id, !!req.body?.pinned)
+      res.json(formatPost(post))
+    } catch (e: any) {
+      res.status(400).json({ error: e.message })
+    }
+  },
+
   async getCategories(req: Request, res: Response) {
     try {
       const categories = await newsService.getCategories()

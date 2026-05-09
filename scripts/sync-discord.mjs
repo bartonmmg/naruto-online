@@ -32,18 +32,31 @@ async function getSyncState() {
   return {}
 }
 
-async function fetchChannelMessages(channelId, afterId) {
-  const params = new URLSearchParams({ limit: '100' })
-  if (afterId) params.set('after', afterId)
-  const url = `https://discord.com/api/v10/channels/${channelId}/messages?${params}`
-  const res = await fetch(url, {
-    headers: { Authorization: `Bot ${TOKEN}` },
-  })
-  if (!res.ok) {
-    const text = await res.text()
-    throw new Error(`Discord API ${res.status}: ${text.slice(0, 200)}`)
+// Discord API caps each request at 100 messages. Paginate using `before` to
+// keep going further into history, up to MAX_MESSAGES per channel per run.
+const MAX_MESSAGES = 1000
+
+async function fetchChannelMessages(channelId) {
+  const all = []
+  let beforeId = undefined
+
+  while (all.length < MAX_MESSAGES) {
+    const params = new URLSearchParams({ limit: '100' })
+    if (beforeId) params.set('before', beforeId)
+    const url = `https://discord.com/api/v10/channels/${channelId}/messages?${params}`
+    const res = await fetch(url, { headers: { Authorization: `Bot ${TOKEN}` } })
+    if (!res.ok) {
+      const text = await res.text()
+      throw new Error(`Discord API ${res.status}: ${text.slice(0, 200)}`)
+    }
+    const batch = await res.json()
+    if (!batch.length) break
+    all.push(...batch)
+    if (batch.length < 100) break // last page
+    beforeId = batch[batch.length - 1].id // oldest in batch
   }
-  return res.json()
+
+  return all.slice(0, MAX_MESSAGES)
 }
 
 async function ingestToBackend(channelId, messages) {

@@ -27,7 +27,7 @@ export const newsService = {
         ...(category ? { category } : {}),
       },
       include: { author: { select: { username: true, role: true } } },
-      orderBy: { publishedAt: 'desc' },
+      orderBy: [{ pinned: 'desc' }, { publishedAt: 'desc' }],
       take: limit,
       skip: offset,
     })
@@ -81,6 +81,19 @@ export const newsService = {
     return prisma.newsPost.delete({ where: { id } })
   },
 
+  async bulkDelete(ids: string[]) {
+    const result = await prisma.newsPost.deleteMany({ where: { id: { in: ids } } })
+    return { deleted: result.count }
+  },
+
+  async togglePinned(id: string, pinned: boolean) {
+    return prisma.newsPost.update({
+      where: { id },
+      data: { pinned },
+      include: { author: { select: { username: true, role: true } } },
+    })
+  },
+
   async getCategories() {
     const rows = await prisma.newsPost.findMany({
       select:   { category: true },
@@ -132,6 +145,10 @@ export const newsService = {
         .filter(a => (a.content_type ?? '').startsWith('image/'))
         .map(a => a.url)
 
+      const discordAuthor = msg.author?.bot
+        ? (msg.author?.username || 'BOT')
+        : (msg.author?.username || null)
+
       try {
         await prisma.newsPost.create({
           data: {
@@ -141,6 +158,7 @@ export const newsService = {
             category: ch.category,
             imageUrls: JSON.stringify(images),
             discordMessageId: msg.id,
+            discordAuthor,
             publishedAt: new Date(msg.timestamp),
           },
         })
