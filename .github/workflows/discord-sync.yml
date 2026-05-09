@@ -1,9 +1,12 @@
 name: Discord Sync
 
+# Discord posts (Ninjas / Espíritus / Modas) are infrequent — sync twice a week.
+# Times in UTC; Argentina is UTC-3, so 13:00 UTC = 10:00 ART.
 on:
   schedule:
-    - cron: '*/30 * * * *'  # every 30 minutes
-  workflow_dispatch:         # also allow manual trigger from Actions tab
+    - cron: '0 13 * * 2'   # Tuesdays 10:00 ART
+    - cron: '0 13 * * 5'   # Fridays 10:00 ART
+  workflow_dispatch:        # manual trigger from Actions tab
 
 concurrency:
   group: discord-sync
@@ -15,24 +18,16 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
 
       - name: Run Discord sync
         env:
-          DISCORD_BOT_TOKEN:       ${{ secrets.DISCORD_BOT_TOKEN }}
-          BACKEND_URL:             ${{ secrets.BACKEND_URL }}
-          API_KEY:                 ${{ secrets.API_KEY }}
-          DISCORD_CH_NINJAS:       ${{ secrets.DISCORD_CH_NINJAS }}
-          DISCORD_CH_ESPIRITUS:    ${{ secrets.DISCORD_CH_ESPIRITUS }}
-          DISCORD_CH_MODAS:        ${{ secrets.DISCORD_CH_MODAS }}
+          DISCORD_BOT_TOKEN:    ${{ secrets.DISCORD_BOT_TOKEN }}
+          BACKEND_URL:          ${{ secrets.BACKEND_URL }}
+          API_KEY:              ${{ secrets.API_KEY }}
+          DISCORD_CH_NINJAS:    ${{ secrets.DISCORD_CH_NINJAS }}
+          DISCORD_CH_ESPIRITUS: ${{ secrets.DISCORD_CH_ESPIRITUS }}
+          DISCORD_CH_MODAS:     ${{ secrets.DISCORD_CH_MODAS }}
         run: node scripts/sync-discord.mjs
-
-      - name: Run Forum sync (Eventos Semanales)
-        if: always()  # run even if Discord step had partial errors
-        env:
-          BACKEND_URL: ${{ secrets.BACKEND_URL }}
-          API_KEY:     ${{ secrets.API_KEY }}
-        run: node scripts/sync-forum.mjs

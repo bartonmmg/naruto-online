@@ -43,7 +43,10 @@ export const newsService = {
         ...(type     ? { type }     : {}),
         ...(category ? { category } : {}),
       },
-      include: { author: { select: { username: true, role: true } } },
+      include: {
+        author: { select: { username: true, role: true } },
+        _count: { select: { comments: true } },
+      },
       orderBy: [{ pinned: 'desc' }, { publishedAt: 'desc' }],
       take: limit,
       skip: offset,
@@ -63,6 +66,92 @@ export const newsService = {
     return prisma.newsPost.findUnique({
       where: { id },
       include: { author: { select: { username: true, role: true } } },
+    })
+  },
+
+  async incrementViews(id: string) {
+    try {
+      await prisma.newsPost.update({ where: { id }, data: { views: { increment: 1 } } })
+    } catch {}
+  },
+
+  // ── Comments ──────────────────────────────────────────────────────────────
+  async listComments(newsPostId: string) {
+    return prisma.newsComment.findMany({
+      where: { newsPostId },
+      include: { author: { select: { username: true, role: true } } },
+      orderBy: { createdAt: 'asc' },
+    })
+  },
+
+  async createComment(newsPostId: string, authorId: string, content: string) {
+    return prisma.newsComment.create({
+      data: { newsPostId, authorId, content: content.slice(0, 2000) },
+      include: { author: { select: { username: true, role: true } } },
+    })
+  },
+
+  async deleteComment(commentId: string) {
+    return prisma.newsComment.delete({ where: { id: commentId } })
+  },
+
+  async getCommentById(commentId: string) {
+    return prisma.newsComment.findUnique({ where: { id: commentId } })
+  },
+
+  // ── Suggestions ───────────────────────────────────────────────────────────
+  async createSuggestion(data: {
+    title: string
+    content: string
+    category: string
+    type: string
+    suggestedById: string
+  }) {
+    return prisma.newsSuggestion.create({
+      data,
+      include: { suggestedBy: { select: { username: true, role: true } } },
+    })
+  },
+
+  async listSuggestions(status?: string) {
+    return prisma.newsSuggestion.findMany({
+      where: status ? { status } : {},
+      include: { suggestedBy: { select: { username: true, role: true } } },
+      orderBy: { createdAt: 'desc' },
+    })
+  },
+
+  async approveSuggestion(suggestionId: string, reviewerNote?: string) {
+    const s = await prisma.newsSuggestion.findUnique({ where: { id: suggestionId } })
+    if (!s) throw new Error('Sugerencia no encontrada')
+    if (s.status !== 'PENDING') throw new Error('Sugerencia ya revisada')
+
+    // Create the actual NewsPost from the suggestion
+    const post = await prisma.newsPost.create({
+      data: {
+        title: s.title,
+        content: s.content,
+        type: s.type,
+        category: s.category,
+        imageUrls: '[]',
+        authorId: s.suggestedById,
+      },
+      include: { author: { select: { username: true, role: true } } },
+    })
+
+    await prisma.newsSuggestion.update({
+      where: { id: suggestionId },
+      data: { status: 'APPROVED', reviewedAt: new Date(), reviewerNote: reviewerNote ?? null },
+    })
+
+    return post
+  },
+
+  async rejectSuggestion(suggestionId: string, reviewerNote?: string) {
+    return prisma.newsSuggestion.update({
+      where: { id: suggestionId },
+      data: { status: 'REJECTED', reviewedAt: new Date(), reviewerNote: reviewerNote ?? null },
+      include: { suggestedBy: { select: { username: true, role: true } } },
     })
   },
 

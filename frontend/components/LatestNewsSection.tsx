@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
-import { ArrowRight, Pin, Sparkles } from 'lucide-react'
+import { ArrowRight, Pin, Sparkles, Bell, X } from 'lucide-react'
 import { useReadNews } from '@/lib/hooks/useReadNews'
 import api from '@/lib/api'
 
@@ -59,6 +59,7 @@ function heroImage(post: NewsPost): string | null {
 export default function LatestNewsSection() {
   const [posts, setPosts] = useState<NewsPost[]>([])
   const [loading, setLoading] = useState(true)
+  const [toastDismissed, setToastDismissed] = useState(false)
   const { isNew } = useReadNews()
 
   useEffect(() => {
@@ -66,11 +67,54 @@ export default function LatestNewsSection() {
       .then(r => setPosts(r.data.items ?? []))
       .catch(() => {})
       .finally(() => setLoading(false))
+    // Toast auto-dismissed once per session
+    if (typeof window !== 'undefined') {
+      setToastDismissed(sessionStorage.getItem('home-news-toast-dismissed') === '1')
+    }
   }, [])
+
+  const newCount = useMemo(
+    () => posts.filter(p => isNew(p.id, p.publishedAt)).length,
+    [posts, isNew],
+  )
+
+  const dismissToast = () => {
+    setToastDismissed(true)
+    try { sessionStorage.setItem('home-news-toast-dismissed', '1') } catch {}
+  }
 
   if (!loading && posts.length === 0) return null
 
   return (
+    <>
+      {/* Floating toast — bottom-right */}
+      {newCount > 0 && !toastDismissed && (
+        <div className="fixed bottom-6 right-6 z-50 max-w-sm bg-bg-card border border-accent-orange/40 rounded-2xl shadow-2xl p-4 flex items-start gap-3 animate-in fade-in slide-in-from-bottom-3">
+          <div className="w-10 h-10 rounded-xl bg-accent-orange/15 flex items-center justify-center shrink-0">
+            <Bell className="w-5 h-5 text-accent-orange" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-cinzel font-bold text-sm text-text-primary mb-0.5">
+              {newCount === 1 ? '¡Hay una novedad nueva!' : `¡Hay ${newCount} novedades nuevas!`}
+            </p>
+            <Link
+              href="/novedades"
+              onClick={dismissToast}
+              className="text-xs text-accent-orange font-montserrat font-semibold hover:underline"
+            >
+              Ver ahora →
+            </Link>
+          </div>
+          <button
+            onClick={dismissToast}
+            className="text-white/30 hover:text-white/70"
+            aria-label="Cerrar"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
     <section className="relative py-16 px-6 md:px-12 z-10">
       <div className="max-w-6xl mx-auto">
         <div className="flex items-end justify-between mb-8">
@@ -137,5 +181,6 @@ export default function LatestNewsSection() {
         </div>
       </div>
     </section>
+    </>
   )
 }

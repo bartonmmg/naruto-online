@@ -15,6 +15,7 @@ import {
 import Navbar from '@/components/Navbar'
 import FloatingParticles from '@/components/animations/FloatingParticles'
 import LatestNewsSection from '@/components/LatestNewsSection'
+import WeeklySummary from '@/components/WeeklySummary'
 
 const FEATURES = [
   {
@@ -176,6 +177,9 @@ export default function Home() {
 
         </div>
       </section>
+
+      {/* ── WEEKLY SUMMARY POPUP ─────────────────────── */}
+      <WeeklySummary />
 
       {/* ── LATEST NEWS ──────────────────────────────── */}
       <LatestNewsSection />

@@ -2,11 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ChevronLeft, Pencil, Trash2, Loader2, Calendar, User, Pin, PinOff, X } from 'lucide-react'
+import { ChevronLeft, Pencil, Trash2, Loader2, Calendar, User, Pin, PinOff, X, Eye } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import Navbar from '@/components/Navbar'
 import ShareButtons from '@/components/ShareButtons'
+import NewsComments from '@/components/NewsComments'
 import { useAuth } from '@/lib/hooks/useAuth'
 import { useReadNews } from '@/lib/hooks/useReadNews'
 import api from '@/lib/api'
@@ -22,6 +23,7 @@ interface NewsPost {
   discordAuthor: string | null
   pinned: boolean
   reactions?: Record<string, number>
+  views?: number
   publishedAt: string
 }
 
@@ -101,6 +103,7 @@ export default function NovedadDetailPage() {
   const [pinning, setPinning] = useState(false)
   const [lightbox, setLightbox] = useState<string | null>(null)
   const [related, setRelated]   = useState<NewsPost[]>([])
+  const [progress, setProgress] = useState(0)
   const [myReactions, setMyReactions] = useState<Set<string>>(new Set())
 
   // Load my saved reactions from localStorage on mount
@@ -134,6 +137,19 @@ export default function NovedadDetailPage() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [lightbox])
+
+  // Reading progress bar — track scroll position
+  useEffect(() => {
+    const onScroll = () => {
+      const h = document.documentElement
+      const total = h.scrollHeight - h.clientHeight
+      const pct = total > 0 ? Math.min(100, Math.max(0, (h.scrollTop / total) * 100)) : 0
+      setProgress(pct)
+    }
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
 
   useEffect(() => {
     api.get(`/news/${id}`)
@@ -179,6 +195,14 @@ export default function NovedadDetailPage() {
 
   return (
     <div className="min-h-screen bg-bg-primary">
+      {/* Reading progress bar */}
+      <div className="fixed top-0 left-0 right-0 h-0.5 z-40 pointer-events-none">
+        <div
+          className="h-full bg-accent-orange transition-[width] duration-150"
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+
       <Navbar />
       <div className="max-w-3xl mx-auto px-6 pt-28 pb-16">
 
@@ -209,6 +233,12 @@ export default function NovedadDetailPage() {
                 <User className="w-3 h-3" />
                 {authorLabel(post)}
               </span>
+              {typeof post.views === 'number' && post.views > 0 && (
+                <span className="flex items-center gap-1 text-xs text-white/30 font-montserrat">
+                  <Eye className="w-3 h-3" />
+                  {post.views}
+                </span>
+              )}
             </div>
           </div>
 
@@ -398,6 +428,9 @@ export default function NovedadDetailPage() {
             </div>
           </div>
         )}
+
+        {/* Comments */}
+        <NewsComments newsPostId={post.id} />
       </div>
 
       {/* Lightbox modal */}

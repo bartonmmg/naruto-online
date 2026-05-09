@@ -40,6 +40,7 @@ export const newsController = {
     try {
       const post = await newsService.getNewsById(req.params.id)
       if (!post) return res.status(404).json({ error: 'Novedad no encontrada' })
+      newsService.incrementViews(req.params.id).catch(() => {})
       res.json(formatPost(post))
     } catch (e: any) {
       res.status(500).json({ error: e.message })
@@ -254,5 +255,78 @@ ${itemsXml}
     } catch (e: any) {
       res.status(500).json({ error: e.message })
     }
+  },
+
+  // ── Comments ──────────────────────────────────────────────────────────────
+  async listComments(req: Request, res: Response) {
+    try {
+      const items = await newsService.listComments(req.params.id)
+      res.json({ items })
+    } catch (e: any) { res.status(500).json({ error: e.message }) }
+  },
+
+  async createComment(req: AuthRequest, res: Response) {
+    try {
+      if (!req.userId) return res.status(401).json({ error: 'Auth required' })
+      const content = String(req.body?.content || '').trim()
+      if (content.length < 1) return res.status(400).json({ error: 'Comentario vacío' })
+      if (content.length > 2000) return res.status(400).json({ error: 'Comentario demasiado largo' })
+      const comment = await newsService.createComment(req.params.id, req.userId, content)
+      res.status(201).json(comment)
+    } catch (e: any) { res.status(400).json({ error: e.message }) }
+  },
+
+  async deleteComment(req: AuthRequest, res: Response) {
+    try {
+      if (!req.userId) return res.status(401).json({ error: 'Auth required' })
+      const c = await newsService.getCommentById(req.params.commentId)
+      if (!c) return res.status(404).json({ error: 'Comentario no encontrado' })
+      const isOwner = c.authorId === req.userId
+      const isStaff = req.role === 'ADMIN' || req.role === 'MODERATOR'
+      if (!isOwner && !isStaff) return res.status(403).json({ error: 'No autorizado' })
+      await newsService.deleteComment(req.params.commentId)
+      res.json({ ok: true })
+    } catch (e: any) { res.status(400).json({ error: e.message }) }
+  },
+
+  // ── Suggestions ───────────────────────────────────────────────────────────
+  async createSuggestion(req: AuthRequest, res: Response) {
+    try {
+      if (!req.userId) return res.status(401).json({ error: 'Auth required' })
+      const { title, content, category, type } = req.body as any
+      if (!title || !content || !category) {
+        return res.status(400).json({ error: 'Faltan campos: title, content, category' })
+      }
+      const s = await newsService.createSuggestion({
+        title: String(title).slice(0, 200),
+        content: String(content).slice(0, 5000),
+        category: String(category).slice(0, 100),
+        type: ['CHINA','TENTATIVE','EVENT','GENERAL'].includes(String(type)) ? String(type) : 'GENERAL',
+        suggestedById: req.userId,
+      })
+      res.status(201).json(s)
+    } catch (e: any) { res.status(400).json({ error: e.message }) }
+  },
+
+  async listSuggestions(req: AuthRequest, res: Response) {
+    try {
+      const status = req.query.status as string | undefined
+      const items = await newsService.listSuggestions(status)
+      res.json({ items })
+    } catch (e: any) { res.status(500).json({ error: e.message }) }
+  },
+
+  async approveSuggestion(req: AuthRequest, res: Response) {
+    try {
+      const post = await newsService.approveSuggestion(req.params.id, req.body?.note)
+      res.json(formatPost(post))
+    } catch (e: any) { res.status(400).json({ error: e.message }) }
+  },
+
+  async rejectSuggestion(req: AuthRequest, res: Response) {
+    try {
+      const s = await newsService.rejectSuggestion(req.params.id, req.body?.note)
+      res.json(s)
+    } catch (e: any) { res.status(400).json({ error: e.message }) }
   },
 }

@@ -1,0 +1,32 @@
+name: Forum Sync (Eventos Semanales)
+
+# Forum posts the weekly update every Wednesday. We sync at midday and again
+# at night in case the post is delayed.
+# Times in UTC; Argentina is UTC-3.
+#   Wednesday 12:00 ART = 15:00 UTC
+#   Wednesday 22:00 ART = 01:00 UTC Thursday
+on:
+  schedule:
+    - cron: '0 15 * * 3'   # Wednesdays 12:00 ART
+    - cron: '0 1 * * 4'    # Wednesdays 22:00 ART (= Thu 01:00 UTC)
+  workflow_dispatch:        # manual trigger from Actions tab
+
+concurrency:
+  group: forum-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run Forum sync
+        env:
+          BACKEND_URL: ${{ secrets.BACKEND_URL }}
+          API_KEY:     ${{ secrets.API_KEY }}
+        run: node scripts/sync-forum.mjs

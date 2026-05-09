@@ -5,27 +5,41 @@ import { authorize } from '../middleware/authorize.middleware.js'
 
 const router = Router()
 
-// Public
+// Order matters: literal paths and `/suggestions` must come BEFORE `/:id`,
+// otherwise Express matches them as IDs.
+
+// Public list / static endpoints
 router.get('/',              newsController.getAll)
 router.get('/rss',           newsController.getRss)
 router.get('/categories',    newsController.getCategories)
-router.get('/:id',           newsController.getById)
-router.get('/:id/related',   newsController.getRelated)
-router.post('/:id/react',    newsController.react)
 
-// MOD/ADMIN — create, edit, delete via site
-router.post('/',                 authMiddleware, authorize(['ADMIN', 'MODERATOR']), newsController.create)
-router.put('/:id',               authMiddleware, authorize(['ADMIN', 'MODERATOR']), newsController.update)
-router.delete('/:id',            authMiddleware, authorize(['ADMIN', 'MODERATOR']), newsController.delete)
-router.post('/bulk-delete',      authMiddleware, authorize(['ADMIN', 'MODERATOR']), newsController.bulkDelete)
-router.put('/:id/pin',           authMiddleware, authorize(['ADMIN', 'MODERATOR']), newsController.togglePinned)
+// Suggestions (literal path — must come before /:id)
+router.post('/suggestions',              authMiddleware,                                            newsController.createSuggestion)
+router.get('/suggestions',               authMiddleware, authorize(['ADMIN', 'MODERATOR']),         newsController.listSuggestions)
+router.post('/suggestions/:id/approve',  authMiddleware, authorize(['ADMIN', 'MODERATOR']),         newsController.approveSuggestion)
+router.post('/suggestions/:id/reject',   authMiddleware, authorize(['ADMIN', 'MODERATOR']),         newsController.rejectSuggestion)
 
-// ADMIN — get current sync state (last sync per channel)
-router.post('/sync',       authMiddleware, authorize(['ADMIN']), newsController.triggerSync)
-router.get('/sync/state',  authMiddleware, authorize(['ADMIN']), newsController.getSyncState)
+// Bulk + sync (literal — before /:id)
+router.post('/bulk-delete',  authMiddleware, authorize(['ADMIN', 'MODERATOR']), newsController.bulkDelete)
+router.post('/sync',         authMiddleware, authorize(['ADMIN']),               newsController.triggerSync)
+router.get('/sync/state',    authMiddleware, authorize(['ADMIN']),               newsController.getSyncState)
 
 // Server-to-server — called by GitHub Actions cron (auth via x-api-key)
 router.post('/ingest',       newsController.ingest)
 router.post('/ingest-forum', newsController.ingestForum)
+
+// MOD/ADMIN — create
+router.post('/',  authMiddleware, authorize(['ADMIN', 'MODERATOR']), newsController.create)
+
+// Detail and per-id sub-routes
+router.get('/:id',                          newsController.getById)
+router.get('/:id/related',                  newsController.getRelated)
+router.post('/:id/react',                   newsController.react)
+router.get('/:id/comments',                 newsController.listComments)
+router.post('/:id/comments',                authMiddleware,                                       newsController.createComment)
+router.delete('/:id/comments/:commentId',   authMiddleware,                                       newsController.deleteComment)
+router.put('/:id',                          authMiddleware, authorize(['ADMIN', 'MODERATOR']),   newsController.update)
+router.delete('/:id',                       authMiddleware, authorize(['ADMIN', 'MODERATOR']),   newsController.delete)
+router.put('/:id/pin',                      authMiddleware, authorize(['ADMIN', 'MODERATOR']),   newsController.togglePinned)
 
 export default router
