@@ -80,8 +80,14 @@ function excerpt(content: string, max = 160) {
   return clean.length > max ? clean.slice(0, max) + '…' : clean
 }
 
-// Get hero image: prefer post.imageUrls[0]; otherwise pull first markdown image from content
+// Get hero image:
+// - EVENT type uses a static banner (forum images are too noisy for cards)
+// - Otherwise prefer post.imageUrls[0]
+// - Fallback: first markdown image embedded in content
 function heroImage(post: NewsPost): string | null {
+  if (post.type === 'EVENT' || post.category === 'Eventos Semanales') {
+    return '/images/novedades/eventos.png'
+  }
   if (post.imageUrls?.[0]) return post.imageUrls[0]
   const m = post.content.match(/!\[[^\]]*\]\(([^)]+)\)/)
   return m ? m[1] : null

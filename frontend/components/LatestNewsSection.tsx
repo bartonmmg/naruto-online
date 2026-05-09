@@ -48,6 +48,9 @@ function cleanTitle(s: string): string {
 }
 
 function heroImage(post: NewsPost): string | null {
+  if (post.type === 'EVENT' || post.category === 'Eventos Semanales') {
+    return '/images/novedades/eventos.png'
+  }
   if (post.imageUrls?.[0]) return post.imageUrls[0]
   const m = post.content.match(/!\[[^\]]*\]\(([^)]+)\)/)
   return m ? m[1] : null

@@ -81,15 +81,50 @@ function htmlToMarkdown(html) {
   s = s.replace(/<script[\s\S]*?<\/script>/gi, '')
   s = s.replace(/<style[\s\S]*?<\/style>/gi, '')
 
-  // Strip decorative images: when a <p> has BOTH images and meaningful text,
-  // the images are decorative separators (penguin emojis, dividers, etc).
-  // Keep only <p> blocks that contain ONLY images, or ONLY text.
+  // Pass 1: count how often each image URL appears. URLs that appear >= 2 times
+  // are decorative (penguin emojis, separators, dividers).
+  const urlCount = new Map()
+  for (const m of s.matchAll(/<img[^>]*src=["']([^"']+)["']/gi)) {
+    urlCount.set(m[1], (urlCount.get(m[1]) || 0) + 1)
+  }
+  const decorativeUrls = new Set(
+    [...urlCount.entries()].filter(([, c]) => c >= 2).map(([u]) => u),
+  )
+
+  // Pass 2: remove all <img> whose src is in the decorative set
+  if (decorativeUrls.size > 0) {
+    s = s.replace(/<img[^>]+>/gi, (img) => {
+      const m = img.match(/src=["']([^"']+)["']/i)
+      return m && decorativeUrls.has(m[1]) ? '' : img
+    })
+  }
+
+  // Pass 2.5: detect images with short numeric alt that repeats (penguin
+  // separators have alt="39" or "50" appearing in pairs throughout the post).
+  const altCount = new Map()
+  for (const m of s.matchAll(/<img[^>]*\balt=["']([^"']*)["'][^>]*>/gi)) {
+    const alt = m[1].trim()
+    if (alt && alt.length <= 3 && /^\d+$/.test(alt)) {
+      altCount.set(alt, (altCount.get(alt) || 0) + 1)
+    }
+  }
+  const decorativeAlts = new Set(
+    [...altCount.entries()].filter(([, c]) => c >= 2).map(([a]) => a),
+  )
+  if (decorativeAlts.size > 0) {
+    s = s.replace(/<img[^>]+>/gi, (img) => {
+      const m = img.match(/\balt=["']([^"']*)["']/i)
+      return m && decorativeAlts.has(m[1].trim()) ? '' : img
+    })
+  }
+
+  // Pass 3: when a <p> has BOTH images and meaningful text, drop the images.
+  // (penguins flanking a heading like "<p><img>title<img></p>")
   s = s.replace(/<p\b[^>]*>([\s\S]*?)<\/p>/gi, (full, inner) => {
     const hasImg = /<img\b/i.test(inner)
     if (!hasImg) return full
     const textOnly = inner.replace(/<img[^>]*>/gi, '').replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim()
     if (textOnly.length > 3) {
-      // Mixed → drop the images, keep the text
       return full.replace(/<img[^>]*>/gi, '')
     }
     return full
