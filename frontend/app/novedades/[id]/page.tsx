@@ -299,15 +299,19 @@ export default function NovedadDetailPage() {
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
                 components={{
-                  img: ({ src, alt }) => src ? (
-                    <img
-                      src={src}
-                      alt={alt ?? ''}
-                      loading="lazy"
-                      onClick={() => setLightbox(src)}
-                      className="cursor-zoom-in transition-opacity hover:opacity-90"
-                    />
-                  ) : null,
+                  img: ({ src, alt }) => {
+                    const url = typeof src === 'string' ? src : null
+                    if (!url) return null
+                    return (
+                      <img
+                        src={url}
+                        alt={alt ?? ''}
+                        loading="lazy"
+                        onClick={() => setLightbox(url)}
+                        className="cursor-zoom-in transition-opacity hover:opacity-90"
+                      />
+                    )
+                  },
                   h1: ({ children }) => <h1 id={slugify(String(children))}>{children}</h1>,
                   h2: ({ children }) => <h2 id={slugify(String(children))}>{children}</h2>,
                   h3: ({ children }) => <h3 id={slugify(String(children))}>{children}</h3>,
