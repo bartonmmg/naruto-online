@@ -3,9 +3,10 @@
 import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Plus, Search, Pin } from 'lucide-react'
+import { Plus, Search, Pin, Sparkles } from 'lucide-react'
 import Navbar from '@/components/Navbar'
 import { useAuth } from '@/lib/hooks/useAuth'
+import { useReadNews } from '@/lib/hooks/useReadNews'
 import api from '@/lib/api'
 
 interface NewsPost {
@@ -63,24 +64,33 @@ function timeAgo(dateStr: string) {
 function excerpt(content: string, max = 160) {
   // strip markdown for cleaner preview
   const clean = content
-    .replace(/^#{1,6}\s+/gm, '')          // headings
-    .replace(/\*\*(.+?)\*\*/g, '$1')      // bold
-    .replace(/\*(.+?)\*/g, '$1')          // italic
-    .replace(/__(.+?)__/g, '$1')          // bold alt
-    .replace(/_(.+?)_/g, '$1')            // italic alt
-    .replace(/~~(.+?)~~/g, '$1')          // strikethrough
-    .replace(/`(.+?)`/g, '$1')            // inline code
+    .replace(/!\[[^\]]*\]\([^)]+\)/g, '')   // markdown images → remove
+    .replace(/^#{1,6}\s+/gm, '')            // headings
+    .replace(/\*\*(.+?)\*\*/g, '$1')        // bold
+    .replace(/\*(.+?)\*/g, '$1')            // italic
+    .replace(/__(.+?)__/g, '$1')            // bold alt
+    .replace(/_(.+?)_/g, '$1')              // italic alt
+    .replace(/~~(.+?)~~/g, '$1')            // strikethrough
+    .replace(/`(.+?)`/g, '$1')              // inline code
     .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // links
-    .replace(/^>\s+/gm, '')               // blockquotes
-    .replace(/^[-*+]\s+/gm, '')           // list bullets
-    .replace(/\n+/g, ' ')                 // newlines → spaces
+    .replace(/^>\s+/gm, '')                 // blockquotes
+    .replace(/^[-*+]\s+/gm, '')             // list bullets
+    .replace(/\s+/g, ' ')                   // collapse whitespace
     .trim()
   return clean.length > max ? clean.slice(0, max) + '…' : clean
+}
+
+// Get hero image: prefer post.imageUrls[0]; otherwise pull first markdown image from content
+function heroImage(post: NewsPost): string | null {
+  if (post.imageUrls?.[0]) return post.imageUrls[0]
+  const m = post.content.match(/!\[[^\]]*\]\(([^)]+)\)/)
+  return m ? m[1] : null
 }
 
 export default function NovedadesPage() {
   const router = useRouter()
   const { hasRole } = useAuth()
+  const { isNew } = useReadNews()
   const [posts, setPosts]       = useState<NewsPost[]>([])
   const [categories, setCategories] = useState<string[]>([])
   const [loading, setLoading]   = useState(true)
@@ -117,6 +127,14 @@ export default function NovedadesPage() {
       <div className="pt-28 pb-10 px-6 text-center border-b border-border/30">
         <h1 className="font-cinzel font-bold text-4xl text-text-primary mb-2">Novedades</h1>
         <p className="text-white/50 font-montserrat text-sm">Actualizaciones del servidor de China y próximos cambios</p>
+        <a
+          href={`${process.env.NEXT_PUBLIC_API_URL || 'https://naruto-online.onrender.com'}/news/rss`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 text-[10px] text-white/30 font-montserrat mt-2 hover:text-accent-orange transition-colors"
+        >
+          📡 Suscribirse vía RSS
+        </a>
       </div>
 
       <div className="max-w-5xl mx-auto px-6 py-8 space-y-6">
@@ -210,17 +228,25 @@ export default function NovedadesPage() {
                     onClick={() => router.push(`/novedades/${hero.id}`)}
                     className="relative bg-bg-card border border-accent-orange/30 rounded-2xl overflow-hidden hover:border-accent-orange/60 transition-all cursor-pointer group"
                   >
-                    {hero.imageUrls[0] && (
-                      <div className="absolute inset-0 opacity-20 group-hover:opacity-30 transition-opacity">
-                        <img src={hero.imageUrls[0]} alt="" className="w-full h-full object-cover" />
-                        <div className="absolute inset-0 bg-gradient-to-t from-bg-card via-bg-card/95 to-transparent" />
-                      </div>
-                    )}
+                    {(() => {
+                      const hImg = heroImage(hero)
+                      return hImg ? (
+                        <div className="absolute inset-0 opacity-20 group-hover:opacity-30 transition-opacity">
+                          <img src={hImg} alt="" loading="lazy" className="w-full h-full object-cover" />
+                          <div className="absolute inset-0 bg-gradient-to-t from-bg-card via-bg-card/95 to-transparent" />
+                        </div>
+                      ) : null
+                    })()}
                     <div className="relative p-7 md:p-10">
                       <div className="flex items-center gap-2 mb-4 flex-wrap">
                         {hero.pinned && (
                           <span className="text-[10px] font-montserrat font-bold px-2 py-0.5 rounded-full border bg-accent-orange/15 text-accent-orange border-accent-orange/30 flex items-center gap-1">
                             <Pin className="w-2.5 h-2.5" /> DESTACADA
+                          </span>
+                        )}
+                        {isNew(hero.id, hero.publishedAt) && (
+                          <span className="text-[10px] font-montserrat font-bold px-2 py-0.5 rounded-full bg-accent-orange text-bg-primary flex items-center gap-1">
+                            <Sparkles className="w-2.5 h-2.5" /> NUEVO
                           </span>
                         )}
                         <span className={`text-[10px] font-montserrat font-bold px-2 py-0.5 rounded-full border ${heroMeta.bg} ${heroMeta.color} ${heroMeta.border}`}>
@@ -261,13 +287,19 @@ export default function NovedadesPage() {
                                 : 'border-border/50 hover:border-border/80 hover:bg-bg-elevated/30'
                             }`}
                           >
-                            {post.imageUrls[0] && (
-                              <img src={post.imageUrls[0]} alt={post.title} className="w-full h-40 object-cover" />
-                            )}
+                            {(() => {
+                              const img = heroImage(post)
+                              return img ? <img src={img} alt={post.title} loading="lazy" className="w-full h-40 object-cover" /> : null
+                            })()}
                             <div className="p-5">
                               <div className="flex items-center gap-2 mb-3 flex-wrap">
                                 {post.pinned && (
                                   <Pin className="w-3 h-3 text-accent-orange" />
+                                )}
+                                {isNew(post.id, post.publishedAt) && (
+                                  <span className="text-[10px] font-montserrat font-bold px-2 py-0.5 rounded-full bg-accent-orange text-bg-primary flex items-center gap-1">
+                                    <Sparkles className="w-2.5 h-2.5" /> NUEVO
+                                  </span>
                                 )}
                                 <span className={`text-[10px] font-montserrat font-bold px-2 py-0.5 rounded-full border ${meta.bg} ${meta.color} ${meta.border}`}>
                                   {meta.icon} {meta.label}

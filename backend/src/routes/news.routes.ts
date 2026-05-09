@@ -6,9 +6,12 @@ import { authorize } from '../middleware/authorize.middleware.js'
 const router = Router()
 
 // Public
-router.get('/',           newsController.getAll)
-router.get('/categories', newsController.getCategories)
-router.get('/:id',        newsController.getById)
+router.get('/',              newsController.getAll)
+router.get('/rss',           newsController.getRss)
+router.get('/categories',    newsController.getCategories)
+router.get('/:id',           newsController.getById)
+router.get('/:id/related',   newsController.getRelated)
+router.post('/:id/react',    newsController.react)
 
 // MOD/ADMIN — create, edit, delete via site
 router.post('/',                 authMiddleware, authorize(['ADMIN', 'MODERATOR']), newsController.create)

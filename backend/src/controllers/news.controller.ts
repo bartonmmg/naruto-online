@@ -2,12 +2,16 @@ import { Request, Response } from 'express'
 import { newsService, createNewsSchema, updateNewsSchema } from '../services/news.service.js'
 import { AuthRequest } from '../middleware/auth.middleware.js'
 
-function parseImageUrls(raw: string): string[] {
-  try { return JSON.parse(raw) } catch { return [] }
+function parseJSON<T>(raw: string, fallback: T): T {
+  try { return JSON.parse(raw) } catch { return fallback }
 }
 
 function formatPost(post: any) {
-  return { ...post, imageUrls: parseImageUrls(post.imageUrls) }
+  return {
+    ...post,
+    imageUrls: parseJSON<string[]>(post.imageUrls, []),
+    reactions: parseJSON<Record<string, number>>(post.reactions ?? '{}', {}),
+  }
 }
 
 export const newsController = {
@@ -37,6 +41,15 @@ export const newsController = {
       const post = await newsService.getNewsById(req.params.id)
       if (!post) return res.status(404).json({ error: 'Novedad no encontrada' })
       res.json(formatPost(post))
+    } catch (e: any) {
+      res.status(500).json({ error: e.message })
+    }
+  },
+
+  async getRelated(req: Request, res: Response) {
+    try {
+      const items = await newsService.getRelated(req.params.id, 3)
+      res.json({ items: items.map(formatPost) })
     } catch (e: any) {
       res.status(500).json({ error: e.message })
     }
@@ -97,10 +110,71 @@ export const newsController = {
     }
   },
 
+  async react(req: Request, res: Response) {
+    try {
+      const emoji = String(req.body?.emoji || '')
+      const delta = req.body?.delta === -1 ? -1 : 1
+      // Whitelist allowed emojis to prevent abuse
+      const allowed = ['👍', '❤️', '🔥']
+      if (!allowed.includes(emoji)) {
+        return res.status(400).json({ error: 'Emoji no permitido' })
+      }
+      const counts = await newsService.addReaction(req.params.id, emoji, delta)
+      res.json({ reactions: counts })
+    } catch (e: any) {
+      res.status(400).json({ error: e.message })
+    }
+  },
+
   async getCategories(req: Request, res: Response) {
     try {
       const categories = await newsService.getCategories()
       res.json(categories)
+    } catch (e: any) {
+      res.status(500).json({ error: e.message })
+    }
+  },
+
+  async getRss(req: Request, res: Response) {
+    try {
+      const items = await newsService.listNews({ limit: 30, offset: 0 })
+      const siteUrl = process.env.FRONTEND_URL || 'https://naruto-online.netlify.app'
+      const escape = (s: string) => s
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&apos;')
+
+      const itemsXml = items.map((p: any) => {
+        const title = escape(String(p.title).replace(/\*\*|__|\*|_|`|#{1,6}\s/g, ''))
+        const url   = `${siteUrl}/novedades/${p.id}`
+        const desc  = escape((p.content || '').replace(/!\[[^\]]*\]\([^)]+\)/g, '').replace(/<[^>]+>/g, '').slice(0, 500))
+        const pub   = new Date(p.publishedAt).toUTCString()
+        return `<item>
+  <title>${title}</title>
+  <link>${url}</link>
+  <guid isPermaLink="true">${url}</guid>
+  <pubDate>${pub}</pubDate>
+  <category>${escape(p.category)}</category>
+  <description>${desc}</description>
+</item>`
+      }).join('\n')
+
+      const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+<channel>
+  <title>HDRV — Novedades Naruto Online</title>
+  <link>${siteUrl}/novedades</link>
+  <description>Actualizaciones del servidor de China, eventos y novedades del juego</description>
+  <language>es-AR</language>
+  <lastBuildDate>${new Date().toUTCString()}</lastBuildDate>
+${itemsXml}
+</channel>
+</rss>`
+
+      res.set('Content-Type', 'application/rss+xml; charset=utf-8')
+      res.send(xml)
     } catch (e: any) {
       res.status(500).json({ error: e.message })
     }

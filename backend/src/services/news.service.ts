@@ -66,6 +66,20 @@ export const newsService = {
     })
   },
 
+  async getRelated(id: string, limit = 3) {
+    const post = await prisma.newsPost.findUnique({
+      where: { id },
+      select: { category: true, type: true },
+    })
+    if (!post) return []
+    return prisma.newsPost.findMany({
+      where: { id: { not: id }, category: post.category },
+      include: { author: { select: { username: true, role: true } } },
+      orderBy: [{ pinned: 'desc' }, { publishedAt: 'desc' }],
+      take: limit,
+    })
+  },
+
   async createNews(data: z.infer<typeof createNewsSchema>, authorId?: string) {
     return prisma.newsPost.create({
       data: {
@@ -109,6 +123,22 @@ export const newsService = {
       data: { pinned },
       include: { author: { select: { username: true, role: true } } },
     })
+  },
+
+  async addReaction(id: string, emoji: string, delta: 1 | -1 = 1) {
+    const post = await prisma.newsPost.findUnique({ where: { id }, select: { reactions: true } })
+    if (!post) throw new Error('Novedad no encontrada')
+
+    let counts: Record<string, number> = {}
+    try { counts = JSON.parse(post.reactions || '{}') } catch {}
+    counts[emoji] = Math.max(0, (counts[emoji] || 0) + delta)
+    if (counts[emoji] === 0) delete counts[emoji]
+
+    await prisma.newsPost.update({
+      where: { id },
+      data: { reactions: JSON.stringify(counts) },
+    })
+    return counts
   },
 
   async getCategories() {

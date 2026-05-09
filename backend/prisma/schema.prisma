@@ -191,6 +191,7 @@ model NewsPost {
   discordMessageId String?  @unique               // prevents duplicates on re-sync
   discordAuthor    String?                        // username of discord poster, "BOT" for bots
   pinned           Boolean  @default(false)       // pinned posts show first
+  reactions        String   @default("{}")        // JSON: { "👍": 12, "❤️": 5, "🔥": 8 }
   publishedAt      DateTime @default(now())
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt

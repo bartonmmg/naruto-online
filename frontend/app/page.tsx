@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import Navbar from '@/components/Navbar'
 import FloatingParticles from '@/components/animations/FloatingParticles'
+import LatestNewsSection from '@/components/LatestNewsSection'
 
 const FEATURES = [
   {
@@ -175,6 +176,9 @@ export default function Home() {
 
         </div>
       </section>
+
+      {/* ── LATEST NEWS ──────────────────────────────── */}
+      <LatestNewsSection />
 
       {/* ── FEATURES ─────────────────────────────────── */}
       <section id="features" className="py-32 px-6 relative">
