@@ -21,7 +21,6 @@ jobs:
           node-version: '20'
 
       - name: Run Discord sync
-        working-directory: naruto-app
         env:
           DISCORD_BOT_TOKEN:       ${{ secrets.DISCORD_BOT_TOKEN }}
           BACKEND_URL:             ${{ secrets.BACKEND_URL }}
