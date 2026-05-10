@@ -66,19 +66,22 @@ cd backend && npx prisma generate
 naruto-app/
 ├── backend/
 │   ├── src/
-│   │   ├── index.ts                  # Express app, routes, health check, seedDefaults on startup
+│   │   ├── index.ts                  # Express app, body limit 10mb, routes, health check, seedDefaults on startup
 │   │   ├── controllers/
 │   │   │   ├── admin.controller.ts   # XP config, level config, users, roles
 │   │   │   ├── guides.controller.ts  # Guides CRUD, views, ratings, comments, badges
+│   │   │   ├── news.controller.ts    # Novedades CRUD, ingest endpoints, comments, suggestions, reactions, RSS
 │   │   │   ├── auth.controller.ts
 │   │   │   └── leaderboard.controller.ts
 │   │   ├── services/
 │   │   │   ├── xp.service.ts         # XP award, level calc, achievements, seedDefaults, reseedDefaults
 │   │   │   ├── guides.service.ts     # Guide business logic, ratings, comments, reactions, views
+│   │   │   ├── news.service.ts       # Novedades business logic, DISCORD_CHANNELS, ingest, suggestions
 │   │   │   └── auth.service.ts       # Register, login, daily login XP trigger
 │   │   ├── routes/
 │   │   │   ├── admin.routes.ts       # All require ADMIN role
 │   │   │   ├── guides.routes.ts      # Mixed public/auth/admin+mod
+│   │   │   ├── news.routes.ts        # Mixed public/auth/admin+mod (literal paths before /:id)
 │   │   │   ├── leaderboard.routes.ts
 │   │   │   └── notifications.routes.ts
 │   │   └── middleware/
@@ -99,7 +102,9 @@ naruto-app/
 │   │   │   ├── layout.tsx            # Admin shell: auth guard (ADMIN only) + sidebar
 │   │   │   ├── page.tsx              # Redirects → /admin/xp
 │   │   │   ├── xp/page.tsx           # XP actions, levels/ranks, achievements editor
-│   │   │   └── roles/page.tsx        # Role reference + user table with role changer
+│   │   │   ├── roles/page.tsx        # Role reference + user table with role changer
+│   │   │   ├── novedades/page.tsx    # Novedades table: bulk delete, pin, edit
+│   │   │   └── sugerencias/page.tsx  # Suggestions queue: approve/reject
 │   │   ├── auth/                     # /auth/login, /auth/register
 │   │   ├── dashboard/page.tsx        # User profile, XP bar, achievements, guides
 │   │   ├── guides/
@@ -113,6 +118,13 @@ naruto-app/
 │   │   ├── rankings/
 │   │   │   ├── page.tsx              # Power rankings with global/regional views
 │   │   │   └── stats/page.tsx        # Region comparator with charts
+│   │   ├── novedades/
+│   │   │   ├── page.tsx              # Listing: 5 tabs, sort, search, hero card, timeline view for Eventos
+│   │   │   ├── [id]/page.tsx         # Detail: markdown, TOC, lightbox, reactions, comments, related, share
+│   │   │   ├── [id]/edit/page.tsx    # Edit (ADMIN/MOD or author)
+│   │   │   ├── [id]/layout.tsx       # Server component with generateMetadata for SEO
+│   │   │   ├── create/page.tsx       # Create (ADMIN/MOD)
+│   │   │   └── sugerir/page.tsx      # User suggestion form
 │   │   ├── tools/
 │   │   │   ├── page.tsx
 │   │   │   └── coupons/page.tsx
@@ -124,14 +136,28 @@ naruto-app/
 │   │   │   ├── GuideVoting.tsx       # Útil/No útil voting
 │   │   │   ├── GuideComments.tsx     # Comment list + form
 │   │   │   └── TableOfContents.tsx   # Auto-generated from headings
+│   │   ├── NewsComments.tsx          # Comments thread for /novedades/[id]
+│   │   ├── ShareButtons.tsx          # Copy / WhatsApp / Telegram / Twitter
+│   │   ├── LatestNewsSection.tsx     # Home page: 3 latest + floating new-news toast
+│   │   ├── WeeklySummary.tsx         # Home modal once per ISO week
 │   │   ├── NotificationBell.tsx      # Polling bell with localReadIds ref
 │   │   └── LoadingSpinner.tsx        # Shuriken spinner with glow
 │   ├── lib/
 │   │   ├── api.ts                    # Axios instance with JWT + x-api-key interceptors
 │   │   ├── types.ts                  # Shared TypeScript types
 │   │   ├── hooks/useAuth.ts          # Auth context + hasRole()
+│   │   ├── hooks/useReadNews.ts      # localStorage-backed read tracking + isNew()
 │   │   └── guideTemplates.ts         # Static guide template content
 │   └── next.config.mjs               # images.unoptimized: true
+│
+├── scripts/
+│   ├── sync-discord.mjs              # GitHub Actions: fetches Discord, POSTs to /news/ingest
+│   ├── sync-forum.mjs                # GitHub Actions: scrapes forum, POSTs to /news/ingest-forum
+│   └── test-discord.mjs              # Local-only sanity check for Discord token + permissions
+│
+├── .github/workflows/                # (Note: lives at repo root, NOT inside naruto-app/)
+│   ├── discord-sync.yml              # Cron: Tue/Fri 10:00 ART
+│   └── forum-sync.yml                # Cron: Wed 12:00 + 22:00 ART
 │
 └── netlify.toml                      # Build config + @netlify/plugin-nextjs
 ```
@@ -169,6 +195,11 @@ Via Back Office: `/admin/roles` → dropdown per user row → select new role.
 Via SQL (direct): `UPDATE "User" SET role = 'ADMIN' WHERE username = 'x';`
 
 **Backend enforcement:** `authorize.middleware.ts` checks `req.role` against allowed roles array, returns 403 if not authorized.
+
+### Suggestions Workflow
+USERs can submit news suggestions via `/novedades/sugerir`. They land in `NewsSuggestion` table with `status=PENDING`. MOD/ADMIN review them at `/admin/sugerencias` and either:
+- **Approve** → creates a real `NewsPost` with the suggestion content (authorId = original suggester) and marks suggestion `APPROVED`
+- **Reject** → marks suggestion `REJECTED`, optionally with a reviewer note
 
 ## Admin Back Office (`/admin`)
 
@@ -300,6 +331,189 @@ if (token) {
 ```
 This is required because these routes sit before `apiKeyMiddleware` in the auth chain.
 
+## Novedades System (`/novedades`)
+
+The Novedades section aggregates content from three sources: official Discord channels (auto-synced), the official Naruto Online forum (auto-synced for weekly events), and manual posts/suggestions from MOD/ADMIN/users on the site.
+
+### Content sources
+
+| Source | Categories | Sync frequency | How |
+|--------|-----------|----------------|-----|
+| Discord channels | Ninjas, Espíritus Animales, Modas | Tue/Fri 10:00 ART | GitHub Actions cron |
+| Forum threads | Eventos Semanales | Wed 12:00 + 22:00 ART | GitHub Actions cron |
+| Manual (site) | Any | On demand | MOD/ADMIN form, or USER suggestion → MOD/ADMIN approval |
+
+### Why GitHub Actions instead of a backend cron
+Render's free-tier shared IPs are blocked by Cloudflare for Discord API/Gateway requests (`429 Too Many Requests` with HTML challenge body). GitHub-hosted runner IPs are not blocked. The cron runs the sync scripts there, then POSTs results to the backend `/news/ingest*` endpoints (auth via `x-api-key`).
+
+### Channel mapping (`backend/src/services/news.service.ts`)
+```typescript
+DISCORD_CHANNELS = [
+  { envKey: 'DISCORD_CH_NINJAS',     category: 'Ninjas',             type: 'CHINA',  acceptBots: false },
+  { envKey: 'DISCORD_CH_ESPIRITUS',  category: 'Espíritus Animales', type: 'CHINA',  acceptBots: false },
+  { envKey: 'DISCORD_CH_MODAS',      category: 'Modas',              type: 'CHINA',  acceptBots: false },
+  // Eventos Semanales come from the forum (sync-forum.mjs)
+]
+```
+`acceptBots: true` means bot-authored Discord messages are kept (used for channels where a Discord bot posts the actual content).
+
+### Forum scraping (`scripts/sync-forum.mjs`)
+- Fetches https://forum-narutoes.narutowebgame.com/page/show-thread-1-1.html (index)
+- Extracts up to 8 most recent threads matching `aria-label="ACTUALIZACIONES DD/MM/YYYY"`
+- For each thread, parses `<div class="forum_detail_content_mian">` (forum's own typo, not ours) until the next reply/footer section
+- Strips the "Último post Autor X Edición YYYY-MM-DD" footer that the forum injects
+- Detects decorative images (penguin separators) via two heuristics:
+  - URLs that appear ≥2 times in the page (most common decorative pattern)
+  - `<img alt="N">` where N is a short number (≤3 chars) and the alt repeats ≥2 times
+  - Also strips `<img>` tags inside `<p>` blocks that have BOTH images and meaningful text
+- Converts cleaned HTML → markdown (custom mini-converter, no deps)
+- POSTs to `/news/ingest-forum` with `category: 'Eventos Semanales'`, `type: 'EVENT'`, `sourceLabel: '🌐 Foro Oficial'`
+
+### Discord scraping (`scripts/sync-discord.mjs`)
+- Paginates Discord REST `/channels/:id/messages` with `before` to fetch up to 1000 msgs/channel
+- Sends in batches of 50 to backend (Express body limit is 10mb but batching is safer)
+- Backend deduplicates via `discordMessageId @unique` on insert
+
+### Schema — main models
+
+```prisma
+model NewsPost {
+  id               String   @id @default(cuid())
+  title            String
+  content          String
+  type             String   @default("GENERAL")  // CHINA | TENTATIVE | EVENT | GENERAL
+  category         String   @default("General")
+  imageUrls        String   @default("[]")       // JSON array
+  authorId         String?                        // null = auto-synced
+  author           User?    @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  discordMessageId String?  @unique               // dedup key (forum posts use "forum:post-NNN")
+  discordAuthor    String?                        // username, "BOT" if bot, "🌐 Foro Oficial" for forum
+  pinned           Boolean  @default(false)
+  reactions        String   @default("{}")        // JSON: { "👍": 12, "❤️": 5, "🔥": 8 }
+  views            Int      @default(0)
+  comments         NewsComment[]
+  publishedAt      DateTime @default(now())
+  // ... timestamps + indexes
+}
+
+model NewsComment    { id, newsPostId, authorId, content, createdAt, updatedAt }
+model NewsSuggestion { id, title, content, category, type, status, suggestedById, reviewerNote, createdAt, reviewedAt }
+model SyncLog        { channelId @unique, lastSyncAt, lastMessageId }
+```
+
+### Backend endpoints (`/news/...` — registered BEFORE `apiKeyMiddleware`, so public reads work without API key; writes use JWT or `x-api-key` for server-to-server)
+
+```
+# Public reads
+GET    /news                           → list (filters: type, category, limit, offset; sorted pinned DESC, publishedAt DESC; includes _count.comments)
+GET    /news/rss                       → RSS XML feed (last 30 posts)
+GET    /news/categories                → distinct list
+GET    /news/:id                       → detail (also increments views)
+GET    /news/:id/related               → 3 most recent in same category
+GET    /news/:id/comments              → list comments
+POST   /news/:id/react                 → { emoji, delta } — whitelisted emojis only
+# Auth (JWT)
+POST   /news/:id/comments              → add comment
+DELETE /news/:id/comments/:commentId   → owner or ADMIN/MOD can delete
+POST   /news/suggestions               → user submits suggestion
+# MOD/ADMIN
+POST   /news                           → create
+PUT    /news/:id                       → update
+DELETE /news/:id                       → delete
+POST   /news/bulk-delete               → { ids: [] }
+PUT    /news/:id/pin                   → { pinned }
+GET    /news/suggestions?status=...    → list (PENDING by default)
+POST   /news/suggestions/:id/approve   → creates a NewsPost from the suggestion
+POST   /news/suggestions/:id/reject    → marks REJECTED
+# ADMIN
+POST   /news/sync                      → returns sync state info (no longer triggers anything)
+GET    /news/sync/state                → last sync per channel
+# Server-to-server (x-api-key, called by GitHub Actions)
+POST   /news/ingest                    → { channelId, messages: [] }  → dedups, returns { saved, duplicates }
+POST   /news/ingest-forum              → { category, type, sourceLabel?, items: [] }
+```
+
+**Route order matters** — literal paths (`/suggestions`, `/bulk-delete`, `/sync`, `/ingest*`) are declared BEFORE `/:id`, otherwise Express matches them as IDs.
+
+### Frontend
+
+#### `/novedades` (public listing)
+- 5 static tabs: **Todas · Ninjas · Animales · Modas · Eventos** (badge with NUEVO count per tab if user has unread recent posts)
+- 3 sort modes: **Más recientes** (publishedAt desc), **Más populares** (`views + reactions×5 + comments×10`), **Más comentadas**
+- Search (in title/content)
+- View toggle visible only on Eventos tab: **Grilla** vs **Cronología** (timeline grouped by month, with vertical date dots)
+- Hero card on top (largest, with `border-2 border-accent-orange/30` and shadow), grid of remaining cards below
+- Cards include: pinned indicator, NUEVO badge, type badge, category, age, image, title (cleaned of markdown), excerpt (markdown stripped), author label, view/reaction/comment counters with humanized tooltips
+- Image hero per card: `imageUrls[0]` if present; otherwise first markdown image in content; for EVENT type, always uses `/images/novedades/eventos.png`
+- Skeleton loaders during load, hover lift + image zoom (5% scale 500ms) on cards
+- Keyboard shortcuts: `1-5` → switch tabs, `/` → focus search, `Esc` (in search) → clear
+
+#### `/novedades/[id]` (detail)
+- SEO meta tags via `layout.tsx` server component (`generateMetadata` → og:title, og:description, og:image)
+- Reading progress bar pinned at top (scroll listener updates a CSS-width div)
+- Type/category badges, date, author, view count
+- Pinned indicator + DESTACADA badge if pinned
+- Action row: `<ShareButtons />` (Copy link, WhatsApp, Telegram, Twitter), and for MOD/ADMIN: Pin toggle, Edit, Delete
+- Image grid suppressed when content already embeds images via markdown (avoids duplicates)
+- Content rendered with `react-markdown` + `remark-gfm`. `normalizeDiscordContent()` pre-processes: `<@123>` → `@usuario`, `<#456>` → `#canal`, `<:emoji:id>` → `:emoji:`, bare URLs → markdown links
+- Custom `img` component opens lightbox on click (also wired for `imageUrls` grid)
+- Lightbox: full-screen overlay, ESC or backdrop click closes
+- Sticky **TOC** to the right (desktop) / collapsible at top (mobile) when content has ≥3 headings; uses `slugify()` for anchor IDs
+- **Reactions** (👍 ❤️ 🔥): localStorage tracks the user's clicks per post (anti-double-click, `news-reactions:{id}` key)
+- **Related posts**: 3 most recent in the same category at the bottom
+- **Comments**: `<NewsComments />` — auth required to post, owner or staff can delete
+
+#### `/novedades/create` and `/novedades/[id]/edit`
+- MOD/ADMIN only — full markdown editor with metadata fields
+
+#### `/novedades/sugerir`
+- Auth required — title, type, category, content (markdown). Submits to `/news/suggestions`.
+- On success shows a confirmation card with "Enviar otra" / "Ver novedades" buttons.
+
+#### `/admin/novedades`
+- Table with checkbox per row + "select all", **bulk delete** action bar appears when items selected
+- Per-row actions: Pin toggle, Edit, Delete
+- "Estado de sync" button shows last sync per channel (no longer triggers anything — sync is GitHub Actions)
+- Pinned posts have a Pin icon next to the title
+
+#### `/admin/sugerencias`
+- Filter chips: Pendientes / Aprobadas / Rechazadas / Todas (with counts)
+- Per-item: Aprobar (creates NewsPost) / Rechazar (with optional reviewer note)
+- Empty state with `Inbox` icon
+
+### Home (`/`)
+- `<WeeklySummary />` — modal pop-up shown once per ISO week (`2026-W18` key in localStorage). Lists posts from last 7 days. Skips if no recent posts. Auto-fires ~800ms after page load.
+- `<LatestNewsSection />` — 3 most recent posts as cards. Includes a floating "Hay X novedades nuevas" toast (bottom-right, dismiss-once-per-session via `sessionStorage`).
+
+### Read tracking — `useReadNews` hook (`frontend/lib/hooks/useReadNews.ts`)
+- Stores read post IDs in `localStorage` (`news-read-ids` key as JSON array)
+- `markRead(id)` called when a user opens a detail page
+- `isNew(id, publishedAt)` returns `true` only if post is < 7 days old AND not in read set
+- Used by listing badges, hero, LatestNewsSection, and tab counters
+
+### Markdown styling
+`globals.css` has a `.news-markdown` scope that styles `h1-h3`, `p`, `strong`, `em`, `a`, `ul/ol`, `blockquote`, `code`, `pre`, `hr`, `img`, `table` to match the project's dark Tailwind theme. Used in detail content and elsewhere markdown is rendered.
+
+### GitHub Actions workflows
+
+`.github/workflows/discord-sync.yml`:
+- Schedules: `0 13 * * 2` (Tue 10:00 ART), `0 13 * * 5` (Fri 10:00 ART), plus `workflow_dispatch`
+- Runs `node scripts/sync-discord.mjs`
+
+`.github/workflows/forum-sync.yml`:
+- Schedules: `0 15 * * 3` (Wed 12:00 ART), `0 1 * * 4` (Wed 22:00 ART = Thu 01:00 UTC), plus `workflow_dispatch`
+- Runs `node scripts/sync-forum.mjs`
+
+**GitHub repository secrets required:**
+- `DISCORD_BOT_TOKEN`, `BACKEND_URL`, `API_KEY`
+- `DISCORD_CH_NINJAS`, `DISCORD_CH_ESPIRITUS`, `DISCORD_CH_MODAS`
+- (Forum sync needs only `BACKEND_URL` + `API_KEY`)
+
+**Cost estimate:** ~16 minutes/month (well under GitHub free tier of 2000 min/month).
+
+### Body-size limit
+`express.json({ limit: '10mb' })` in `index.ts` — needed because forum posts can be large (~20kB each, batches of 50 messages can exceed default 100kB).
+
 ## Netlify Deployment
 
 ### Current Configuration (`netlify.toml`)
@@ -346,6 +560,8 @@ Build:  cd backend && npm install && npm run build
 Start:  npm start --workspace=backend
 ```
 
+⚠️ **Do NOT include `prisma db push` in the Render build command.** Neon free tier suspends the DB after 5 min idle and the build will fail trying to reach it. Apply schema changes via Neon SQL Editor or from a local terminal with the prod `DATABASE_URL` env var set.
+
 ### What `npm run build` does
 1. `prisma generate --schema=prisma/schema.prod.prisma` — generates PostgreSQL client
 2. `tsc` — compiles TypeScript to `dist/`
@@ -359,6 +575,9 @@ Start:  npm start --workspace=backend
 | `Couldn't convert data to UTF-8` on XpConfig | Corrupt data in DB | Go to `/admin/xp` → click "Restablecer configuración" |
 | `Invalid prisma.xpConfig` on startup | Tables empty after schema push | Restart service — seedDefaults runs again |
 | SQLite provider error with PostgreSQL URL | Wrong schema used | Ensure build uses `schema.prod.prisma` |
+| Discord API `429` with HTML body or Gateway login timeout | Render's free-tier shared IPs are on Cloudflare's blocklist | Don't try to fetch Discord from the backend. Use GitHub Actions (`scripts/sync-discord.mjs`) which runs on GitHub IPs that are not blocked. |
+| Render build fails with `Can't reach database server` (Neon) | Neon free tier auto-suspends after 5 min idle; build's `prisma db push` blocks if DB is paused | Build command must NOT include `prisma db push`. Apply schema changes manually via Neon SQL Editor or temporarily run `npx prisma db push` from local with prod `DATABASE_URL`. |
+| `Payload Too Large` (413) when ingesting Discord/forum batches | Express default 100kb limit | Body parser is configured with `limit: '10mb'` in `index.ts`. Sync script also batches 50 messages at a time. |
 
 ## Known Constraints & Decisions
 
@@ -426,9 +645,16 @@ Start:  npm start --workspace=backend
 | `/rankings/stats` | Public | Region comparator with charts |
 | `/tools/coupons` | Auth | Coupon calculator |
 | `/faq` | Public | Collapsible FAQ sections |
+| `/novedades` | Public | News feed: 5 tabs, sort modes, search, hero card, stats |
+| `/novedades/[id]` | Public | News detail with markdown, TOC, reactions, comments, related, lightbox |
+| `/novedades/[id]/edit` | ADMIN/MOD | Edit news post |
+| `/novedades/create` | ADMIN/MOD | Create news post |
+| `/novedades/sugerir` | Auth | Submit a news suggestion (USER+) |
 | `/admin` | ADMIN | Redirects → /admin/xp |
 | `/admin/xp` | ADMIN | XP actions, levels, achievements config |
 | `/admin/roles` | ADMIN | Role reference + user role management |
+| `/admin/novedades` | ADMIN | News table: bulk delete, pin, edit, last-sync status |
+| `/admin/sugerencias` | ADMIN/MOD | Approve/reject user-submitted suggestions |
 
 ## Assets
 
@@ -441,13 +667,36 @@ Start:  npm start --workspace=backend
 **Achievements** (`frontend/public/images/guides/logros/`):
 `logro-primera-guia.png`, `logro-5-guias.png`, `logro-10-guias.png`, `logro-100-vistas.png`, `logro-1000-vistas.png`, `logro-votos.png`, `logro-badge-oficial.png`, `logro-leyenda.png`
 
+**Novedades** (`frontend/public/images/novedades/`):
+`eventos.png` — static hero used for all EVENT-type posts (since forum images are decorative-heavy)
+
 **Rankings** (`frontend/public/images/power-ranking/`):
 `hashiizq.webp`, `madaraderecha.webp`, `top1.png`, `top2.png`, `top3.png`, `top1-titulo.png`, `top2-titulo.png`
 
 ## Last Updated
-2026-05-03
+2026-05-09
 
-### Changes in this session (2026-05-03)
+### Changes in this session (2026-05-09) — Novedades section
+- ✅ **Novedades section** end-to-end: schema (`NewsPost`, `NewsComment`, `NewsSuggestion`, `SyncLog`), backend services + routes, public listing, detail page, create/edit, suggest form, admin queue
+- ✅ **Discord sync via GitHub Actions** — `scripts/sync-discord.mjs` (Tue/Fri 10:00 ART) + `scripts/sync-forum.mjs` (Wed 12:00 + 22:00 ART). Bypasses Render's blocked-IP issue with Cloudflare/Discord.
+- ✅ **Forum scraping** for weekly events: extracts threads, strips footer + decorative penguin images (URL-repeat + alt-repeat heuristic), HTML→markdown conversion, paginates Discord up to 1000 msgs/channel in batches of 50
+- ✅ **Detail page UX**: markdown rendering, sticky TOC (≥3 headings), lightbox on images, reading progress bar, ESC keyboard handlers, SEO meta tags via `generateMetadata` in `layout.tsx`
+- ✅ **Reactions** (👍 ❤️ 🔥) with localStorage anti-double-click, **Comments** (auth required, owner+staff can delete), **Related posts** (3 same-category)
+- ✅ **Share buttons** component — Copy link / WhatsApp / Telegram / Twitter
+- ✅ **Listing UX**: 5 static tabs (Todas/Ninjas/Animales/Modas/Eventos) with NUEVO badge counts, 3 sort modes (recientes/populares/comentadas), search, skeleton loaders, hero card, hover image zoom + lift, keyboard shortcuts (1-5, /, Esc), animations on tab change, **timeline view** for Eventos (grouped by month with vertical date dots)
+- ✅ **Pin/featured** posts with `pinned` field — sorted first in listing, badge "DESTACADA" in detail
+- ✅ **Bulk delete** + select all in `/admin/novedades`
+- ✅ **Suggestions workflow**: USERs submit at `/novedades/sugerir` → MOD/ADMIN approve/reject at `/admin/sugerencias`. Approve creates a real `NewsPost` with the suggester as author.
+- ✅ **Read tracking** via `useReadNews` hook (localStorage `news-read-ids`) — drives NUEVO badge, tab counts, weekly summary
+- ✅ **WeeklySummary** popup on home — shows once per ISO week (`2026-W18` key), lists last 7 days of posts
+- ✅ **LatestNewsSection** on home — 3 most recent posts + floating toast for unread (sessionStorage dismiss)
+- ✅ **Static hero image** for EVENT-type posts (`/images/novedades/eventos.png`) since forum images are decorative-heavy
+- ✅ **Body size limit** raised to `10mb` in Express to handle batched ingest payloads
+- ✅ **Discord normalization**: `<@123>` → `@usuario`, `<#456>` → `#canal`, `<:emoji:id>` → `:emoji:`
+- ✅ **Title cleaning**: strips markdown (`**`, `##`, etc.) from titles before saving + safety pass in frontend
+- ✅ **Author display**: `🤖 BotName` for bots, `@username` for humans (strips `#NNNN` discriminator)
+
+### Changes in previous session (2026-05-03)
 - ✅ **Admin back office** (`/admin`) with extensible sidebar — XP & Niveles tab + Roles tab
 - ✅ **XP/level/achievement editor** with rank images by level number, add/delete levels, reseed defaults button
 - ✅ **Reseed endpoint** (`POST /admin/reseed`) to fix UTF-8 corrupted data in XpConfig table

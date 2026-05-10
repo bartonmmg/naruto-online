@@ -587,6 +587,15 @@ export const guidesService = {
         xp: true,
         role: true,
         createdAt: true,
+        avatarSlug: true,
+        bannerSlug: true,
+        frameSlug: true,
+        bio: true,
+        customTitle: true,
+        nameColor: true,
+        pinnedAchievements: true,
+        gameServer: true,
+        socialLinks: true,
         guides: {
           where: { status: 'PUBLISHED' },
           select: {

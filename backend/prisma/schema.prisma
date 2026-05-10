@@ -13,6 +13,16 @@ model User {
   email         String    @unique
   passwordHash  String
   avatarUrl     String?
+  // Profile customization
+  avatarSlug          String?
+  bannerSlug          String?
+  frameSlug           String?
+  bio                 String?
+  customTitle         String?
+  nameColor           String?
+  pinnedAchievements  String   @default("[]")
+  gameServer          String?
+  socialLinks         String?
   role          String    @default("USER")
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt

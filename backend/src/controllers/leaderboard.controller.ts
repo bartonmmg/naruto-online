@@ -42,7 +42,11 @@ export const leaderboardController = {
       const { prisma } = await import('../lib/prisma.js')
       const user = await prisma.user.findUnique({
         where: { id: req.userId },
-        select: { id: true, username: true, email: true, xp: true, level: true, role: true, createdAt: true },
+        select: {
+          id: true, username: true, email: true, xp: true, level: true, role: true, createdAt: true,
+          avatarSlug: true, bannerSlug: true, frameSlug: true, bio: true, customTitle: true,
+          nameColor: true, pinnedAchievements: true, gameServer: true, socialLinks: true,
+        },
       })
       if (!user) return res.status(404).json({ error: 'Usuario no encontrado' })
 

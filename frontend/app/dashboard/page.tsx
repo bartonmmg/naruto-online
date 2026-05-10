@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import { CATEGORY_LABELS, DIFFICULTY_LABELS } from '@/lib/types'
 import GuideBadges from '@/components/guides/GuideBadges'
+import AvatarFrame from '@/components/profile/AvatarFrame'
 import api from '@/lib/api'
 
 interface Achievement {
@@ -165,28 +166,39 @@ export default function DashboardPage() {
       <div className="max-w-5xl mx-auto px-6 py-10 relative z-10">
 
         {/* ── Hero: Avatar + nombre + rango ── */}
-        <div className="flex items-center gap-6 mb-10">
-          {/* Rank image as avatar background */}
-          <div className="relative flex-shrink-0">
-            <img src={rank.img} alt={rank.name} className="w-20 h-20 object-contain" />
-          </div>
-          <div>
-            <div className="flex items-center gap-3 flex-wrap mb-1">
-              <h1 className="text-3xl font-cinzel font-black text-text-primary">{profile.username}</h1>
-              {profile.role !== 'USER' && (
-                <span className={`text-xs px-2 py-1 rounded border font-montserrat font-semibold ${
-                  profile.role === 'ADMIN' ? 'text-power-red bg-power-red/10 border-power-red/30' : 'text-accent-orange bg-accent-orange/10 border-accent-orange/30'
-                }`}>
-                  {profile.role === 'ADMIN' ? 'Admin' : 'Moderador'}
-                </span>
+        <div className="flex items-center justify-between gap-6 mb-10 flex-wrap">
+          <div className="flex items-center gap-6">
+            <AvatarFrame avatarSlug={(profile as any).avatarSlug} frameSlug={(profile as any).frameSlug} size={80} />
+            <div>
+              <div className="flex items-center gap-3 flex-wrap mb-1">
+                <h1 className="text-3xl font-cinzel font-black text-text-primary" style={{ color: (profile as any).nameColor || undefined }}>
+                  {profile.username}
+                </h1>
+                {profile.role !== 'USER' && (
+                  <span className={`text-xs px-2 py-1 rounded border font-montserrat font-semibold ${
+                    profile.role === 'ADMIN' ? 'text-power-red bg-power-red/10 border-power-red/30' : 'text-accent-orange bg-accent-orange/10 border-accent-orange/30'
+                  }`}>
+                    {profile.role === 'ADMIN' ? 'Admin' : 'Moderador'}
+                  </span>
+                )}
+              </div>
+              {(profile as any).customTitle && (
+                <p className="text-xs font-cinzel font-bold text-accent-orange mb-1">{(profile as any).customTitle}</p>
               )}
-            </div>
-            <div className="flex items-center gap-3 text-sm text-white/50 flex-wrap">
-              <span className={`font-cinzel font-bold ${rank.color}`}>{rank.name}</span>
-              <span>Nivel {profile.level}</span>
-              <span>{profile.xp.toLocaleString()} XP</span>
+              <div className="flex items-center gap-3 text-sm text-white/50 flex-wrap">
+                <img src={rank.img} alt={rank.name} className="w-5 h-5 object-contain" />
+                <span className={`font-cinzel font-bold ${rank.color}`}>{rank.name}</span>
+                <span>Nivel {profile.level}</span>
+                <span>{profile.xp.toLocaleString()} XP</span>
+              </div>
             </div>
           </div>
+          <Link
+            href="/profile/edit"
+            className="flex items-center gap-1.5 px-3 h-9 rounded-lg text-xs font-montserrat font-semibold bg-white/5 text-white/70 border border-border hover:text-white hover:bg-white/10 transition-all"
+          >
+            <Settings className="w-3.5 h-3.5" /> Editar perfil
+          </Link>
         </div>
 
         {/* ── XP bar + nivel ── */}

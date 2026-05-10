@@ -3,11 +3,14 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
-import { ChevronLeft, Eye, MessageSquare, ThumbsUp, Heart, BookOpen, Star, Calendar, TrendingUp, Loader2 } from 'lucide-react'
-import { CATEGORY_LABELS, DIFFICULTY_LABELS } from '@/lib/types'
+import { ChevronLeft, Eye, MessageSquare, ThumbsUp, Heart, BookOpen, Star, Calendar, TrendingUp, Loader2, Settings, Pin, MapPin } from 'lucide-react'
+import { CATEGORY_LABELS, DIFFICULTY_LABELS, parsePinnedAchievements, parseSocialLinks } from '@/lib/types'
 import GuideBadges from '@/components/guides/GuideBadges'
 import UserAchievements from '@/components/guides/UserAchievements'
 import Navbar from '@/components/Navbar'
+import ProfileBanner from '@/components/profile/ProfileBanner'
+import SocialLinks from '@/components/profile/SocialLinks'
+import { useAuth } from '@/lib/hooks/useAuth'
 import api from '@/lib/api'
 
 interface UserAchievementItem {
@@ -23,6 +26,15 @@ interface UserProfile {
   xp: number
   role: string
   createdAt: string
+  avatarSlug?: string | null
+  bannerSlug?: string | null
+  frameSlug?: string | null
+  bio?: string | null
+  customTitle?: string | null
+  nameColor?: string | null
+  pinnedAchievements?: string | null
+  gameServer?: string | null
+  socialLinks?: string | null
   guides: {
     id: string
     title: string
@@ -66,6 +78,7 @@ const getRoleLabel = (role: string) => {
 export default function UserProfilePage() {
   const params = useParams()
   const username = params?.username as string
+  const { user: me } = useAuth()
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
@@ -107,6 +120,10 @@ export default function UserProfilePage() {
   const { label: rankLabel, color: rankColor, img: rankImg } = getRankLabel(profile.level)
   const roleInfo = getRoleLabel(profile.role)
   const joinedYear = new Date(profile.createdAt).getFullYear()
+  const isOwner = me?.username === profile.username
+  const pinnedIds = parsePinnedAchievements(profile.pinnedAchievements)
+  const pinnedAchievements = (profile.achievements ?? []).filter(a => pinnedIds.includes((a as any).achievementId ?? a.id))
+  const socials = parseSocialLinks(profile.socialLinks)
 
   return (
     <main className="min-h-screen bg-bg-primary overflow-x-hidden">
@@ -115,38 +132,89 @@ export default function UserProfilePage() {
       }} />
       <Navbar />
 
-      {/* Header */}
-      <section className="relative py-12 px-6 border-b border-border/50">
-        <div className="max-w-4xl mx-auto relative z-10">
-          <Link href="/guides/leaderboard" className="inline-flex items-center gap-2 text-sm text-white/60 hover:text-white/90 transition-colors mb-8">
-            <ChevronLeft className="w-4 h-4" />
-            Leaderboard
-          </Link>
+      {/* Profile banner with avatar */}
+      <div className="relative pt-16">
+        <ProfileBanner
+          bannerSlug={profile.bannerSlug}
+          avatarSlug={profile.avatarSlug}
+          frameSlug={profile.frameSlug}
+          height={220}
+        />
+      </div>
 
-          <div className="flex items-start gap-6 flex-wrap">
-            {/* Rank image */}
-            <img src={rankImg} alt={rankLabel} className="w-20 h-20 object-contain flex-shrink-0" />
-
-            {/* Info */}
-            <div className="flex-1">
+      {/* Header info */}
+      <section className="relative px-6 pt-20 pb-6 border-b border-border/30">
+        <div className="max-w-4xl mx-auto">
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <div className="flex-1 min-w-0">
               <div className="flex items-center gap-3 flex-wrap mb-2">
-                <h1 className="text-3xl font-cinzel font-black text-text-primary">@{profile.username}</h1>
+                <h1
+                  className="text-3xl font-cinzel font-black"
+                  style={{ color: profile.nameColor || undefined }}
+                >
+                  @{profile.username}
+                </h1>
                 {roleInfo && (
                   <span className={`text-xs px-2 py-1 rounded border font-montserrat font-semibold ${roleInfo.color}`}>
                     {roleInfo.label}
                   </span>
                 )}
               </div>
-              <div className="flex items-center gap-4 text-sm text-white/50 flex-wrap">
+              {profile.customTitle && (
+                <p className="text-sm font-cinzel font-bold text-accent-orange mb-2">{profile.customTitle}</p>
+              )}
+              <div className="flex items-center gap-3 text-sm text-white/50 flex-wrap">
+                <img src={rankImg} alt={rankLabel} className="w-6 h-6 object-contain" />
                 <span className={`font-cinzel font-bold ${rankColor}`}>{rankLabel}</span>
                 <span>Nivel {profile.level}</span>
                 <span>{profile.xp.toLocaleString()} XP</span>
                 <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />Desde {joinedYear}</span>
+                {profile.gameServer && (
+                  <span className="flex items-center gap-1 text-white/40"><MapPin className="w-3 h-3" />{profile.gameServer}</span>
+                )}
               </div>
+              {profile.bio && (
+                <p className="text-sm text-white/70 font-montserrat mt-3 max-w-2xl">{profile.bio}</p>
+              )}
+              {Object.keys(socials).length > 0 && (
+                <div className="mt-3"><SocialLinks links={socials} /></div>
+              )}
             </div>
+            {isOwner && (
+              <Link
+                href="/profile/edit"
+                className="flex items-center gap-1.5 px-3 h-9 rounded-lg text-xs font-montserrat font-semibold bg-white/5 text-white/70 border border-border hover:text-white hover:bg-white/10 transition-all"
+              >
+                <Settings className="w-3.5 h-3.5" /> Editar perfil
+              </Link>
+            )}
           </div>
         </div>
       </section>
+
+      {/* Pinned achievements */}
+      {pinnedAchievements.length > 0 && (
+        <section className="px-6 py-6 border-b border-border/30">
+          <div className="max-w-4xl mx-auto">
+            <div className="flex items-center gap-2 mb-3">
+              <Pin className="w-4 h-4 text-accent-orange" />
+              <h2 className="font-cinzel font-bold text-sm text-text-primary uppercase tracking-wider">Logros destacados</h2>
+            </div>
+            <div className="grid grid-cols-3 gap-3 max-w-md">
+              {pinnedAchievements.map(a => (
+                <div key={a.id} className="bg-bg-card border border-accent-orange/30 rounded-xl p-3 text-center">
+                  {a.achievement?.imageFile && (
+                    <img src={`/images/guides/logros/${a.achievement.imageFile}`} alt="" className="w-12 h-12 mx-auto mb-1 object-contain" />
+                  )}
+                  <p className="text-[10px] font-montserrat font-semibold text-text-primary line-clamp-1">
+                    {a.achievement?.title}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Stats bar */}
       <section className="px-6 py-6 border-b border-border/30">
