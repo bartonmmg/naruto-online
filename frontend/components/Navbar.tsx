@@ -9,12 +9,10 @@ import { useAuth } from '@/lib/hooks/useAuth'
 import NotificationBell from './NotificationBell'
 
 const navLinks = [
-  { href: '/#features',  label: 'Características' },
-  { href: '/#community', label: 'Comunidad' },
   { href: '/novedades',  label: 'Novedades' },
-  { href: '/events',     label: 'Eventos' },
   { href: '/rankings',   label: 'Rankings' },
   { href: '/tools',      label: 'Herramientas' },
+  { href: '/events',     label: 'Eventos' },
   { href: '/guides',     label: 'Guías' },
   { href: '/faq',        label: 'FAQ' },
 ]

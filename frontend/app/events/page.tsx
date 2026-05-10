@@ -114,7 +114,7 @@ export default function EventsPage() {
     <main className="min-h-screen bg-bg-primary">
       <Navbar />
 
-      <div className="max-w-6xl mx-auto px-6 py-10">
+      <div className="max-w-6xl mx-auto px-6 pt-28 pb-16">
         <div className="flex items-center gap-3 mb-3">
           <Calendar className="w-6 h-6 text-accent-orange" />
           <h1 className="font-cinzel font-black text-3xl text-text-primary">Calendario de eventos</h1>
@@ -182,7 +182,7 @@ export default function EventsPage() {
                       key={i}
                       onClick={() => events.length > 0 && setOpenDay(cell)}
                       disabled={events.length === 0}
-                      className={`aspect-square p-1.5 rounded-lg border text-left transition-colors ${
+                      className={`min-h-[60px] sm:min-h-[72px] p-2 rounded-lg border text-left transition-colors ${
                         isToday
                           ? 'border-accent-orange/60 bg-accent-orange/10'
                           : events.length > 0

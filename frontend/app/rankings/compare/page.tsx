@@ -43,7 +43,7 @@ export default function CompareRankingsPage() {
     <main className="min-h-screen bg-bg-primary">
       <Navbar />
 
-      <div className="max-w-6xl mx-auto px-6 py-10">
+      <div className="max-w-6xl mx-auto px-6 pt-28 pb-16">
         <Link href="/rankings" className="inline-flex items-center gap-2 text-xs text-white/50 hover:text-white/80 font-montserrat mb-6">
           <ArrowLeft className="w-4 h-4" />
           Volver a Rankings
