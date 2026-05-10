@@ -25,8 +25,10 @@ router.post('/sync',         authMiddleware, authorize(['ADMIN']),              
 router.get('/sync/state',    authMiddleware, authorize(['ADMIN']),               newsController.getSyncState)
 
 // Server-to-server — called by GitHub Actions cron (auth via x-api-key)
-router.post('/ingest',       newsController.ingest)
-router.post('/ingest-forum', newsController.ingestForum)
+router.post('/ingest',                newsController.ingest)
+router.post('/ingest-forum',          newsController.ingestForum)
+router.get('/admin/discord-urls',     newsController.listDiscordUrls)
+router.post('/admin/refresh-urls',    newsController.refreshDiscordUrls)
 
 // MOD/ADMIN — create
 router.post('/',  authMiddleware, authorize(['ADMIN', 'MODERATOR']), newsController.create)

@@ -224,6 +224,37 @@ ${itemsXml}
     }
   },
 
+  // Called by GitHub Actions (refresh-discord-urls cron) — auth via x-api-key
+  async listDiscordUrls(req: Request, res: Response) {
+    try {
+      const apiKey = req.headers['x-api-key']
+      if (!apiKey || apiKey !== process.env.API_KEY) {
+        return res.status(401).json({ error: 'Invalid API key' })
+      }
+      const urls = await newsService.listDiscordImageUrls()
+      res.json({ urls })
+    } catch (e: any) {
+      res.status(500).json({ error: e.message })
+    }
+  },
+
+  async refreshDiscordUrls(req: Request, res: Response) {
+    try {
+      const apiKey = req.headers['x-api-key']
+      if (!apiKey || apiKey !== process.env.API_KEY) {
+        return res.status(401).json({ error: 'Invalid API key' })
+      }
+      const { map } = req.body as { map?: Record<string, string> }
+      if (!map || typeof map !== 'object') {
+        return res.status(400).json({ error: 'Body requires { map: { originalUrl: refreshedUrl } }' })
+      }
+      const result = await newsService.applyRefreshedImageUrls(map)
+      res.json({ ok: true, ...result })
+    } catch (e: any) {
+      res.status(500).json({ error: e.message })
+    }
+  },
+
   // Called by GitHub Actions — auth via x-api-key header (server-to-server)
   async ingest(req: Request, res: Response) {
     try {

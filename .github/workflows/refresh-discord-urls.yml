@@ -1,0 +1,22 @@
+name: Refresh Discord URLs
+
+on:
+  schedule:
+    # Cada 12 horas — Discord CDN URLs expiran a las 24h
+    - cron: '0 */12 * * *'
+  workflow_dispatch:
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Refresh Discord image URLs
+        env:
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          BACKEND_URL:       ${{ secrets.BACKEND_URL }}
+          API_KEY:           ${{ secrets.API_KEY }}
+        run: node scripts/refresh-discord-urls.mjs

@@ -37,7 +37,60 @@ function stripMarkdown(s: string): string {
     .trim()
 }
 
+const DISCORD_CDN_RE = /^https?:\/\/(cdn|media)\.discordapp\.(com|net)\//
+
+function safeParseArray(raw: string): string[] {
+  try {
+    const v = JSON.parse(raw)
+    return Array.isArray(v) ? v.filter(x => typeof x === 'string') : []
+  } catch {
+    return []
+  }
+}
+
 export const newsService = {
+  async listDiscordImageUrls(): Promise<string[]> {
+    const posts = await prisma.newsPost.findMany({
+      where: { imageUrls: { not: '[]' } },
+      select: { imageUrls: true },
+    })
+    const set = new Set<string>()
+    for (const p of posts) {
+      for (const u of safeParseArray(p.imageUrls)) {
+        if (DISCORD_CDN_RE.test(u)) set.add(u)
+      }
+    }
+    return Array.from(set)
+  },
+
+  async applyRefreshedImageUrls(map: Record<string, string>): Promise<{ updated: number }> {
+    const originals = Object.keys(map)
+    if (!originals.length) return { updated: 0 }
+    // Only fetch posts that contain at least one of the original URLs
+    const posts = await prisma.newsPost.findMany({
+      where: { OR: originals.map(u => ({ imageUrls: { contains: u } })) },
+      select: { id: true, imageUrls: true },
+    })
+    let updated = 0
+    for (const p of posts) {
+      const arr = safeParseArray(p.imageUrls)
+      let changed = false
+      const next = arr.map(u => {
+        const r = map[u]
+        if (r && r !== u) { changed = true; return r }
+        return u
+      })
+      if (changed) {
+        await prisma.newsPost.update({
+          where: { id: p.id },
+          data: { imageUrls: JSON.stringify(next) },
+        })
+        updated++
+      }
+    }
+    return { updated }
+  },
+
   async listNews(filters: { type?: string; category?: string; limit?: number; offset?: number }) {
     const { type, category, limit = 20, offset = 0 } = filters
     return prisma.newsPost.findMany({
