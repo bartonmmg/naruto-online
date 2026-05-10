@@ -71,17 +71,23 @@ naruto-app/
 │   │   │   ├── admin.controller.ts   # XP config, level config, users, roles
 │   │   │   ├── guides.controller.ts  # Guides CRUD, views, ratings, comments, badges
 │   │   │   ├── news.controller.ts    # Novedades CRUD, ingest endpoints, comments, suggestions, reactions, RSS
+│   │   │   ├── users.controller.ts   # Profile customization GET/PATCH /users/me/profile
 │   │   │   ├── auth.controller.ts
 │   │   │   └── leaderboard.controller.ts
 │   │   ├── services/
 │   │   │   ├── xp.service.ts         # XP award, level calc, achievements, seedDefaults, reseedDefaults
 │   │   │   ├── guides.service.ts     # Guide business logic, ratings, comments, reactions, views
 │   │   │   ├── news.service.ts       # Novedades business logic, DISCORD_CHANNELS, ingest, suggestions
+│   │   │   ├── users.service.ts      # Profile updates with catalog + Zod validation
 │   │   │   └── auth.service.ts       # Register, login, daily login XP trigger
+│   │   ├── lib/
+│   │   │   ├── prisma.ts             # Singleton Prisma client
+│   │   │   └── profile-catalog.ts    # Valid avatar/banner/frame/color slugs + frame minLevel
 │   │   ├── routes/
 │   │   │   ├── admin.routes.ts       # All require ADMIN role
 │   │   │   ├── guides.routes.ts      # Mixed public/auth/admin+mod
 │   │   │   ├── news.routes.ts        # Mixed public/auth/admin+mod (literal paths before /:id)
+│   │   │   ├── users.routes.ts       # /users/me/profile (GET/PATCH, auth)
 │   │   │   ├── leaderboard.routes.ts
 │   │   │   └── notifications.routes.ts
 │   │   └── middleware/
@@ -125,6 +131,8 @@ naruto-app/
 │   │   │   ├── [id]/layout.tsx       # Server component with generateMetadata for SEO
 │   │   │   ├── create/page.tsx       # Create (ADMIN/MOD)
 │   │   │   └── sugerir/page.tsx      # User suggestion form
+│   │   ├── profile/
+│   │   │   └── edit/page.tsx         # Edit own profile (auth required)
 │   │   ├── tools/
 │   │   │   ├── page.tsx
 │   │   │   └── coupons/page.tsx
@@ -140,11 +148,21 @@ naruto-app/
 │   │   ├── ShareButtons.tsx          # Copy / WhatsApp / Telegram / Twitter
 │   │   ├── LatestNewsSection.tsx     # Home page: 3 latest + floating new-news toast
 │   │   ├── WeeklySummary.tsx         # Home modal once per ISO week
+│   │   ├── profile/
+│   │   │   ├── AvatarFrame.tsx       # Avatar (full size) + frame (1.66x, overlapping)
+│   │   │   ├── ProfileBanner.tsx     # Banner + AvatarFrame floating bottom-left
+│   │   │   ├── AvatarPicker.tsx      # Modal: grid of available avatars
+│   │   │   ├── BannerPicker.tsx      # Modal: list of available banners
+│   │   │   ├── FramePicker.tsx       # Modal: frames with minLevel locks
+│   │   │   ├── ColorPicker.tsx       # Inline palette picker
+│   │   │   ├── PinnedAchievements.tsx # Pick max 3 from earned achievements
+│   │   │   └── SocialLinks.tsx       # Twitch / YouTube / Discord / in-game pills
 │   │   ├── NotificationBell.tsx      # Polling bell with localReadIds ref
 │   │   └── LoadingSpinner.tsx        # Shuriken spinner with glow
 │   ├── lib/
 │   │   ├── api.ts                    # Axios instance with JWT + x-api-key interceptors
-│   │   ├── types.ts                  # Shared TypeScript types
+│   │   ├── types.ts                  # Shared TypeScript types + parseSocialLinks/parsePinnedAchievements/avatarSrc/bannerSrc/frameSrc helpers
+│   │   ├── profile-assets.ts         # AVAILABLE_AVATARS, AVAILABLE_BANNERS, FRAMES, NAME_COLORS — only slugs that have files on disk
 │   │   ├── hooks/useAuth.ts          # Auth context + hasRole()
 │   │   ├── hooks/useReadNews.ts      # localStorage-backed read tracking + isNew()
 │   │   └── guideTemplates.ts         # Static guide template content
@@ -153,7 +171,8 @@ naruto-app/
 ├── scripts/
 │   ├── sync-discord.mjs              # GitHub Actions: fetches Discord, POSTs to /news/ingest
 │   ├── sync-forum.mjs                # GitHub Actions: scrapes forum, POSTs to /news/ingest-forum
-│   └── test-discord.mjs              # Local-only sanity check for Discord token + permissions
+│   ├── test-discord.mjs              # Local-only sanity check for Discord token + permissions
+│   └── optimize-profile-images.mjs   # Local: resize/compress avatars/frames/banners with sharp
 │
 ├── .github/workflows/                # (Note: lives at repo root, NOT inside naruto-app/)
 │   ├── discord-sync.yml              # Cron: Tue/Fri 10:00 ART
@@ -514,6 +533,90 @@ POST   /news/ingest-forum              → { category, type, sourceLabel?, items
 ### Body-size limit
 `express.json({ limit: '10mb' })` in `index.ts` — needed because forum posts can be large (~20kB each, batches of 50 messages can exceed default 100kB).
 
+## Profile Customization
+
+Each user can customize their public profile with avatar, banner, frame, bio, custom title, name color, social links, server, and pinned achievements. **No image uploads** — everything is selected from a predefined catalog of static assets in `/public/images/`. The DB stores only short strings (slugs/text/JSON), so storage overhead is negligible.
+
+### Schema additions to `User` (both schemas)
+```prisma
+avatarSlug          String?           // ej "naruto" → /images/avatars/naruto.png
+bannerSlug          String?           // ej "akatsuki-clouds" → /images/profile/banners/akatsuki-clouds.jpg
+frameSlug           String?           // ej "kage" — overrides auto-frame, but only if user has reached its minLevel
+bio                 String?           // max 160 chars
+customTitle         String?           // max 50 chars
+nameColor           String?           // hex from a fixed palette
+pinnedAchievements  String   @default("[]")   // JSON array of achievementIds (max 3)
+gameServer          String?           // ej "S102 - Konoha"
+socialLinks         String?           // JSON: { twitch?, youtube?, discord?, ingameName? }
+```
+
+### Catalogs (single source of truth)
+- **Backend** (`backend/src/lib/profile-catalog.ts`): validates incoming slugs and enforces frame `minLevel`. Has helpers `isValidAvatar`, `isValidBanner`, `isValidColor`, `isFrameUnlocked`.
+- **Frontend** (`frontend/lib/profile-assets.ts`): `AVAILABLE_AVATARS`, `AVAILABLE_BANNERS`, `FRAMES`, `NAME_COLORS`. **Only contains slugs that have a corresponding image file on disk** — anything not listed here doesn't appear in pickers.
+
+When you add a new asset:
+1. Drop the file in `/public/images/avatars/` (or `banners/`, `frames/`)
+2. Run `cd frontend && node ../scripts/optimize-profile-images.mjs` (auto-resizes, compresses, lowercases filenames)
+3. Add the slug to `frontend/lib/profile-assets.ts` AND `backend/src/lib/profile-catalog.ts`
+
+### Frame `minLevel` requirements
+- `genin` ≥ 1
+- `chunin` ≥ 4
+- `jonin` ≥ 7
+- `kage` ≥ 10
+- `akatsuki` ≥ 11
+
+Backend rejects with 400 if user tries to set a frame they haven't unlocked.
+
+### Backend endpoints
+```
+GET    /users/me/profile   (auth)  → fetch own profile
+PATCH  /users/me/profile   (auth)  → update with Zod validation + catalog checks
+```
+Routes registered in `index.ts` AFTER `apiKeyMiddleware` (private).
+
+### Frontend
+
+**`/profile/edit/page.tsx`** — single form with live preview at the top:
+- Avatar / Banner / Frame pickers (modals with grids)
+- Bio (160 chars), custom title (50 chars), name color (from `NAME_COLORS` palette)
+- Social links: Twitch, YouTube, Discord, in-game name
+- Game server text field
+- Pinned achievements: select up to 3 from user's earned achievements
+
+**`/users/[username]/page.tsx`** — public profile redesigned with:
+- `<ProfileBanner>` (banner full-width with avatar+frame floating bottom-left)
+- Username with `nameColor` applied via `style={{ color }}`
+- `customTitle` shown as a sub-heading in accent-orange
+- Bio text below stats
+- Server + social links inline
+- "Logros destacados" section with pinned achievements (orange-bordered cards)
+- "Editar perfil" button visible only if `me?.username === profile.username`
+
+**Shared components** (`frontend/components/profile/`):
+- `AvatarFrame.tsx` — composes avatar (100% size, rounded) + frame (overflowing around it). Tuning constants `FRAME_SCALE = 1.66`, `FRAME_Y_OFFSET = 0.045` are calibrated to the **genin.png** geometry (256×256 PNG with ~154px hole offset 7px upward). All frames must share this geometry, or values need adjusting per-frame.
+- `ProfileBanner.tsx` — banner image + AvatarFrame floating bottom-left
+- `AvatarPicker.tsx`, `BannerPicker.tsx`, `FramePicker.tsx`, `ColorPicker.tsx`, `PinnedAchievements.tsx`, `SocialLinks.tsx`
+
+### Asset format conventions
+- **Avatars**: 256×256 PNG with transparent background (head-and-shoulders portraits)
+- **Frames**: 256×256 PNG with transparent center hole (decorative ring around avatar). All frames should ideally share the same geometry as `genin.png` for `FRAME_SCALE` to work uniformly.
+- **Banners**: 1920×320 JPG (mozjpeg quality 78). Why JPG: photos compress 90%+ better than PNG.
+- All filenames must be **lowercase**. The optimization script lowercases automatically.
+
+### Image optimization
+`scripts/optimize-profile-images.mjs` uses `sharp` (already a frontend dep via Next.js). Run from `frontend/` directory:
+```bash
+cd frontend && node ../scripts/optimize-profile-images.mjs
+```
+- Resizes avatars/frames to 256×256, banners to 1920×320
+- PNGs use palette mode + adaptive filtering (quality 90, ~30 KB output)
+- Banners convert PNG → JPG (mozjpeg q78, ~80 KB output)
+- Lowercases filenames
+- Idempotent — safe to re-run
+
+Initial run reduced 30 MB of source images to 770 KB (-97%).
+
 ## Netlify Deployment
 
 ### Current Configuration (`netlify.toml`)
@@ -578,6 +681,7 @@ Start:  npm start --workspace=backend
 | Discord API `429` with HTML body or Gateway login timeout | Render's free-tier shared IPs are on Cloudflare's blocklist | Don't try to fetch Discord from the backend. Use GitHub Actions (`scripts/sync-discord.mjs`) which runs on GitHub IPs that are not blocked. |
 | Render build fails with `Can't reach database server` (Neon) | Neon free tier auto-suspends after 5 min idle; build's `prisma db push` blocks if DB is paused | Build command must NOT include `prisma db push`. Apply schema changes manually via Neon SQL Editor or temporarily run `npx prisma db push` from local with prod `DATABASE_URL`. |
 | `Payload Too Large` (413) when ingesting Discord/forum batches | Express default 100kb limit | Body parser is configured with `limit: '10mb'` in `index.ts`. Sync script also batches 50 messages at a time. |
+| CORS preflight error: `Method PATCH is not allowed` | CORS allowed methods missed PATCH | `index.ts` CORS config now includes `PATCH`. Add new methods there if introducing other verbs. |
 
 ## Known Constraints & Decisions
 
@@ -655,6 +759,7 @@ Start:  npm start --workspace=backend
 | `/admin/roles` | ADMIN | Role reference + user role management |
 | `/admin/novedades` | ADMIN | News table: bulk delete, pin, edit, last-sync status |
 | `/admin/sugerencias` | ADMIN/MOD | Approve/reject user-submitted suggestions |
+| `/profile/edit` | Auth | Edit own profile: avatar, banner, frame, bio, title, color, socials, pinned achievements |
 
 ## Assets
 
@@ -670,13 +775,33 @@ Start:  npm start --workspace=backend
 **Novedades** (`frontend/public/images/novedades/`):
 `eventos.png` — static hero used for all EVENT-type posts (since forum images are decorative-heavy)
 
+**Profile** (`frontend/public/images/`):
+- `avatars/*.png` — 256×256, lowercase filenames, transparent background
+- `profile/banners/*.jpg` — 1920×320, mozjpeg q78
+- `profile/frames/*.png` — 256×256, transparent center hole, geometry must match `genin.png` (~154px hole, offset 7px upward) for `FRAME_SCALE` constant in `AvatarFrame.tsx` to work uniformly
+
 **Rankings** (`frontend/public/images/power-ranking/`):
 `hashiizq.webp`, `madaraderecha.webp`, `top1.png`, `top2.png`, `top3.png`, `top1-titulo.png`, `top2-titulo.png`
 
 ## Last Updated
-2026-05-09
+2026-05-10
 
-### Changes in this session (2026-05-09) — Novedades section
+### Changes in this session (2026-05-10) — Profile customization
+- ✅ **Schema additions** to `User`: `avatarSlug`, `bannerSlug`, `frameSlug`, `bio`, `customTitle`, `nameColor`, `pinnedAchievements`, `gameServer`, `socialLinks`. All optional except `pinnedAchievements` which defaults to `'[]'`.
+- ✅ **Backend `users.service.ts` + `users.controller.ts` + `users.routes.ts`**: `GET/PATCH /users/me/profile` with Zod validation, slug whitelisting via `profile-catalog.ts`, frame `minLevel` enforcement, pinned-achievements ownership check.
+- ✅ **`leaderboard.service.ts` + `leaderboard.controller.ts`** updated to expose new profile fields in `getMe` and `getUserProfile`.
+- ✅ **CORS** updated in `index.ts` to allow `PATCH` (was blocking the profile update endpoint).
+- ✅ **Frontend `lib/types.ts`** extended with optional profile fields + helpers `parseSocialLinks`, `parsePinnedAchievements`, `avatarSrc`, `bannerSrc`, `frameSrc`.
+- ✅ **Frontend `lib/profile-assets.ts`** — single source of truth for available avatars/banners/frames/colors. Pickers only show entries listed here.
+- ✅ **Components** (`frontend/components/profile/`): `AvatarFrame`, `ProfileBanner`, `AvatarPicker`, `BannerPicker`, `FramePicker`, `ColorPicker`, `PinnedAchievements`, `SocialLinks`.
+- ✅ **`/profile/edit` page** with live preview at top, avatar/banner/frame pickers, bio (160), custom title (50), name color, server, social links, pinned achievements (max 3).
+- ✅ **`/users/[username]` redesigned** with `<ProfileBanner>` hero, name color, custom title, bio, social links, server, pinned achievements section, "Editar perfil" button only for owner.
+- ✅ **`/dashboard` updated** with `AvatarFrame` and "Editar perfil" button.
+- ✅ **Image optimization** via `scripts/optimize-profile-images.mjs` (sharp): 30 MB → 770 KB total.
+- ✅ **Banners served as JPG** (mozjpeg q78) instead of PNG — banners are photographs, JPG compresses ~95% better. `bannerSrc()` returns `.jpg` paths.
+- ✅ **Frame geometry calibrated**: `FRAME_SCALE = 1.66`, `FRAME_Y_OFFSET = 0.045` based on measuring `genin.png` (256×256 with ~154px transparent hole offset 7px upward). All frames must share this geometry or values need adjusting.
+
+### Changes in previous session (2026-05-09) — Novedades section
 - ✅ **Novedades section** end-to-end: schema (`NewsPost`, `NewsComment`, `NewsSuggestion`, `SyncLog`), backend services + routes, public listing, detail page, create/edit, suggest form, admin queue
 - ✅ **Discord sync via GitHub Actions** — `scripts/sync-discord.mjs` (Tue/Fri 10:00 ART) + `scripts/sync-forum.mjs` (Wed 12:00 + 22:00 ART). Bypasses Render's blocked-IP issue with Cloudflare/Discord.
 - ✅ **Forum scraping** for weekly events: extracts threads, strips footer + decorative penguin images (URL-repeat + alt-repeat heuristic), HTML→markdown conversion, paginates Discord up to 1000 msgs/channel in batches of 50
