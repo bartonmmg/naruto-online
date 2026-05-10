@@ -13,6 +13,9 @@ interface Player {
   power: number
   level: number
   server: string | null
+  firstAttack?: number | null
+  criticalHit?: number | null
+  criticalDamage?: number | null
 }
 
 const SLOTS = 3
@@ -202,11 +205,17 @@ function PlayerSlot({
 }
 
 function ComparisonTable({ players, reference }: { players: Player[]; reference: Player }) {
+  const fmtNum = (v: any) => (typeof v === 'number' ? v.toLocaleString() : '—')
+  const fmtPct = (v: any) => (typeof v === 'number' ? `${v}%` : '—')
+
   const rows: { label: string; key: keyof Player; format?: (v: any) => string; higherBetter: boolean }[] = [
-    { label: 'Posición global',  key: 'rank',  higherBetter: false, format: v => `#${v}` },
-    { label: 'Nivel',            key: 'level', higherBetter: true,  format: v => String(v) },
-    { label: 'Poder',            key: 'power', higherBetter: true,  format: v => v.toLocaleString() },
-    { label: 'Server',           key: 'server', higherBetter: true, format: v => v ?? '—' },
+    { label: 'Posición global',  key: 'rank',           higherBetter: false, format: v => `#${v}` },
+    { label: 'Nivel',            key: 'level',          higherBetter: true,  format: v => String(v) },
+    { label: 'Poder',            key: 'power',          higherBetter: true,  format: fmtNum },
+    { label: 'Primer ataque',    key: 'firstAttack',    higherBetter: true,  format: fmtNum },
+    { label: 'Golpe crítico',    key: 'criticalHit',    higherBetter: true,  format: fmtPct },
+    { label: 'Daño crítico',     key: 'criticalDamage', higherBetter: true,  format: fmtPct },
+    { label: 'Server',           key: 'server',         higherBetter: true,  format: v => v ?? '—' },
   ]
 
   return (
