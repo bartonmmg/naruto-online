@@ -440,7 +440,7 @@ export default function NovedadesPage() {
 
                   {/* Resto del feed */}
                   {rest.length > 0 && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5">
                       {rest.map(post => {
                         const meta = TYPE_META[post.type] ?? TYPE_META.GENERAL
                         return (
