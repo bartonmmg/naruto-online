@@ -2,14 +2,7 @@
 
 import { Lock, Check, X } from 'lucide-react'
 import { frameSrc } from '@/lib/types'
-
-const FRAMES = [
-  { slug: 'genin',    minLevel: 1,  label: 'Genin' },
-  { slug: 'chunin',   minLevel: 4,  label: 'Chūnin' },
-  { slug: 'jonin',    minLevel: 7,  label: 'Jōnin' },
-  { slug: 'kage',     minLevel: 10, label: 'Kage' },
-  { slug: 'akatsuki', minLevel: 11, label: 'Akatsuki' },
-]
+import { FRAMES } from '@/lib/profile-assets'
 
 interface Props {
   current?: string | null

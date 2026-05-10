@@ -2,11 +2,7 @@
 
 import { X, Check } from 'lucide-react'
 import { bannerSrc } from '@/lib/types'
-
-const BANNERS = [
-  'akatsuki-clouds', 'konoha-wall', 'chakra-blue', 'chakra-red', 'chakra-orange',
-  'battle-arena', 'sand-village', 'mist-village', 'rain-village', 'rock-village',
-]
+import { AVAILABLE_BANNERS } from '@/lib/profile-assets'
 
 interface Props {
   current?: string | null
@@ -33,7 +29,7 @@ export default function BannerPicker({ current, onSelect, onClose }: Props) {
             Sin banner
             {!current && <Check className="absolute top-2 right-2 w-4 h-4 text-accent-orange" />}
           </button>
-          {BANNERS.map(slug => (
+          {AVAILABLE_BANNERS.map(slug => (
             <button
               key={slug}
               onClick={() => { onSelect(slug); onClose() }}

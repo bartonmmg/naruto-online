@@ -2,15 +2,7 @@
 
 import { X } from 'lucide-react'
 import { avatarSrc } from '@/lib/types'
-
-const AVATARS = [
-  'naruto', 'sasuke', 'sakura', 'kakashi', 'itachi',
-  'madara', 'hashirama', 'tobirama', 'minato', 'jiraiya',
-  'tsunade', 'orochimaru', 'pain', 'konan', 'obito',
-  'gaara', 'rock-lee', 'neji', 'hinata', 'shikamaru',
-  'choji', 'ino', 'kiba', 'shino', 'tenten',
-  'kurenai', 'asuma', 'guy', 'kushina', 'default',
-]
+import { AVAILABLE_AVATARS } from '@/lib/profile-assets'
 
 interface Props {
   current?: string | null
@@ -27,7 +19,7 @@ export default function AvatarPicker({ current, onSelect, onClose }: Props) {
           <button onClick={onClose} className="text-white/40 hover:text-white"><X className="w-5 h-5" /></button>
         </div>
         <div className="overflow-y-auto p-4 grid grid-cols-5 sm:grid-cols-6 gap-3">
-          {AVATARS.map(slug => (
+          {AVAILABLE_AVATARS.map(slug => (
             <button
               key={slug}
               onClick={() => { onSelect(slug); onClose() }}

@@ -1,15 +1,6 @@
 'use client'
 
-const COLORS = [
-  '#FFFFFF',
-  '#FF6B00',
-  '#3B82F6',
-  '#10B981',
-  '#EF4444',
-  '#A855F7',
-  '#F59E0B',
-  '#EC4899',
-]
+import { NAME_COLORS as COLORS } from '@/lib/profile-assets'
 
 interface Props {
   current?: string | null
