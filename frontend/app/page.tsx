@@ -529,7 +529,7 @@ function LoggedInRow({ user }: { user: any }) {
           )}
         </div>
 
-        {/* Quick links */}
+        {/* Tu actividad */}
         <div className="game-card p-5 rounded-xl">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
@@ -538,19 +538,26 @@ function LoggedInRow({ user }: { user: any }) {
                 Tu actividad
               </h3>
             </div>
+            <Link href={`/users/${user.username}`} className="text-[10px] text-accent-orange hover:underline font-montserrat">
+              Mi perfil →
+            </Link>
           </div>
-          <div className="grid grid-cols-3 gap-2">
-            <Link href="/guides" className="text-center p-3 rounded-lg bg-bg-elevated/40 border border-border/30 hover:border-accent-orange/40 transition-colors">
+          <div className="grid grid-cols-2 gap-2">
+            <div className="text-center p-3 rounded-lg bg-bg-elevated/40 border border-border/30">
               <div className="text-lg font-cinzel font-bold text-text-primary">{user.level ?? 1}</div>
               <div className="text-[10px] text-white/50 font-montserrat mt-1">Nivel</div>
-            </Link>
-            <Link href="/rankings" className="text-center p-3 rounded-lg bg-bg-elevated/40 border border-border/30 hover:border-accent-orange/40 transition-colors">
+            </div>
+            <div className="text-center p-3 rounded-lg bg-bg-elevated/40 border border-border/30">
               <div className="text-lg font-cinzel font-bold text-text-primary">{user.xp ?? 0}</div>
               <div className="text-[10px] text-white/50 font-montserrat mt-1">XP total</div>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2 mt-2">
+            <Link href="/favorites" className="flex items-center justify-center gap-1.5 p-2.5 rounded-lg bg-bg-elevated/40 border border-border/30 hover:border-accent-orange/40 transition-colors text-xs font-montserrat text-white/70 hover:text-accent-orange">
+              Mis favoritos →
             </Link>
-            <Link href={`/users/${user.username}`} className="text-center p-3 rounded-lg bg-bg-elevated/40 border border-border/30 hover:border-accent-orange/40 transition-colors">
-              <div className="text-lg font-cinzel font-bold text-text-primary">→</div>
-              <div className="text-[10px] text-white/50 font-montserrat mt-1">Mi perfil</div>
+            <Link href="/profile/edit" className="flex items-center justify-center gap-1.5 p-2.5 rounded-lg bg-bg-elevated/40 border border-border/30 hover:border-accent-orange/40 transition-colors text-xs font-montserrat text-white/70 hover:text-accent-orange">
+              Editar perfil →
             </Link>
           </div>
         </div>

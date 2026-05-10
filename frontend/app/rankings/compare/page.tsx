@@ -23,13 +23,34 @@ export default function CompareRankingsPage() {
   const [selected, setSelected] = useState<(Player | null)[]>(Array(SLOTS).fill(null))
 
   useEffect(() => {
-    fetchRankingAPI('/api/rankings/consolidated-global')
-      .then((data: any) => {
-        const items: Player[] = data?.players ?? data?.items ?? data ?? []
+    const load = async () => {
+      try {
+        // 1. Obtener regiones disponibles
+        const regions: { id: string }[] = await fetchRankingAPI('/api/rankings/regions')
+        if (!Array.isArray(regions) || regions.length === 0) throw new Error('no regions')
+
+        // 2. Para alguna región, obtener clusters
+        const region = regions.find(r => r.id === 'ES')?.id ?? regions[0].id
+        const clusters: { id: number | null }[] = await fetchRankingAPI(`/api/rankings/clusters/${region}`)
+        const clusterId = clusters.find(c => c.id != null)?.id
+        if (clusterId == null) throw new Error('no clusters')
+
+        // 3. Obtener fechas disponibles, tomar la más reciente
+        const dates: string[] = await fetchRankingAPI(`/api/rankings/dates/${region}/${clusterId}`)
+        if (!Array.isArray(dates) || dates.length === 0) throw new Error('no dates')
+        const latestDate = dates[0]
+
+        // 4. Pedir el ranking global consolidado con esa fecha
+        const data: any = await fetchRankingAPI(`/api/rankings/consolidated-global?date=${latestDate}&limit=200`)
+        const items: Player[] = data?.players ?? data?.items ?? []
         setAllPlayers(Array.isArray(items) ? items : [])
-      })
-      .catch(() => setAllPlayers([]))
-      .finally(() => setLoading(false))
+      } catch {
+        setAllPlayers([])
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
   }, [])
 
   const setSlot = (idx: number, player: Player | null) => {
