@@ -760,6 +760,10 @@ Start:  npm start --workspace=backend
 | `/admin/novedades` | ADMIN | News table: bulk delete, pin, edit, last-sync status |
 | `/admin/sugerencias` | ADMIN/MOD | Approve/reject user-submitted suggestions |
 | `/profile/edit` | Auth | Edit own profile: avatar, banner, frame, bio, title, color, socials, pinned achievements |
+| `/notifications` | Auth | Notification center: list grouped by day, mark all read |
+| `/favorites` | Auth | User's saved guides / news / players (tabs) |
+| `/rankings/compare` | Public | Compare up to 3 players side-by-side with deltas |
+| `/events` | Public | Calendar view of EVENT-type news with countdown |
 
 ## Assets
 
@@ -785,6 +789,38 @@ Start:  npm start --workspace=backend
 
 ## Last Updated
 2026-05-10
+
+### Changes in this session (2026-05-10, later) — Engagement features
+- ✅ **Home dinámica para logueados** (`frontend/app/page.tsx`): hero personalizado con `AvatarFrame`, `nameColor`, rank badge, barra de XP con "X XP para subir" (thresholds hardcoded en `LEVEL_THRESHOLDS`), CTAs "Ir al dashboard" / "Editar perfil". Fila adicional debajo con notificaciones no leídas (top 3) y stats (Nivel/XP/Mi perfil). Anónimo ve el hero original sin cambios.
+- ✅ **Página `/notifications`** (`frontend/app/notifications/page.tsx`): lista paginada agrupada por día (Hoy / Ayer / Hace N días / fecha), botón "Marcar todo como leído", click marca leído, link a la guía. Reusa `markRead` con `id='all'` (ya existía como handler).
+- ✅ **NotificationBell** ya integrado en navbar — se le agregó footer "Ver todas →" que linkea a `/notifications`.
+- ✅ **Sistema de favoritos**:
+  - Schema nuevo `Favorite (id, userId, type, targetId, createdAt)` con `@@unique([userId, type, targetId])` en ambos schemas. Tipos: `GUIDE | NEWS | PLAYER`.
+  - Backend: `services/favorites.service.ts` (toggle / list / listEnriched / checkMany) + `controllers/favorites.controller.ts` + `routes/favorites.routes.ts`. Endpoints: `POST /favorites/toggle`, `GET /favorites?type=`, `GET /favorites/check?type=&ids=`. Auth requerido. Registrados en `index.ts` después de `apiKeyMiddleware`.
+  - Frontend: `components/FavoriteButton.tsx` (bookmark icon, optimistic toggle, hidden si no logueado) integrado en detail de guía y de novedad. Página `/favorites` con tabs Guías / Novedades / Jugadores. Link en navbar (icono bookmark).
+- ✅ **Comparador de jugadores** (`/rankings/compare/page.tsx`): hasta 3 slots con autocomplete sobre `/api/rankings/consolidated-global`, tabla lado a lado con rank/nivel/poder/server y deltas vs el primer jugador (verde si mejor, rojo si peor). Botón "Comparar" agregado en el header de `/rankings`.
+- ✅ **Calendario de eventos**:
+  - Schema: `eventStartAt`, `eventEndAt` (DateTime?) en `NewsPost` (ambos schemas).
+  - Backend `news.service.ts`: Zod schema acepta los dos campos (ISO datetime). `createNews`/`updateNews` los persisten.
+  - Admin form `/novedades/create`: si `type === 'EVENT'`, aparecen dos inputs `datetime-local`.
+  - Página `/events`: grid mensual lunes-primero, navegación por meses, día con eventos abre modal con la lista, panel lateral con filtros Activos / Próximos / Pasados / Todos y countdown live (refresca cada 60s). Si un evento no tiene `eventStartAt`, cae a `publishedAt` automáticamente.
+  - Link "Eventos" en navbar.
+
+**Migraciones SQL aplicadas en Neon en esta sesión:**
+```sql
+CREATE TABLE "Favorite" (
+  "id" TEXT PRIMARY KEY,
+  "userId" TEXT NOT NULL REFERENCES "User"("id") ON DELETE CASCADE,
+  "type" TEXT NOT NULL,
+  "targetId" TEXT NOT NULL,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "Favorite_userId_type_targetId_key" UNIQUE ("userId", "type", "targetId")
+);
+CREATE INDEX "Favorite_userId_type_idx" ON "Favorite"("userId", "type");
+
+ALTER TABLE "NewsPost" ADD COLUMN "eventStartAt" TIMESTAMP(3);
+ALTER TABLE "NewsPost" ADD COLUMN "eventEndAt"   TIMESTAMP(3);
+```
 
 ### Changes in this session (2026-05-10) — Profile customization
 - ✅ **Schema additions** to `User`: `avatarSlug`, `bannerSlug`, `frameSlug`, `bio`, `customTitle`, `nameColor`, `pinnedAchievements`, `gameServer`, `socialLinks`. All optional except `pinnedAchievements` which defaults to `'[]'`.

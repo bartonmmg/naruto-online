@@ -11,11 +11,17 @@ import {
   Shield,
   Trophy,
   Swords,
+  Bell,
+  Settings,
+  LayoutDashboard,
 } from 'lucide-react'
 import Navbar from '@/components/Navbar'
 import FloatingParticles from '@/components/animations/FloatingParticles'
 import LatestNewsSection from '@/components/LatestNewsSection'
 import WeeklySummary from '@/components/WeeklySummary'
+import AvatarFrame from '@/components/profile/AvatarFrame'
+import { useAuth } from '@/lib/hooks/useAuth'
+import api from '@/lib/api'
 
 const FEATURES = [
   {
@@ -57,6 +63,7 @@ const RANKS = [
 
 export default function Home() {
   const videoRef = useRef<HTMLVideoElement>(null)
+  const { user, isLoggedIn, isLoading: authLoading } = useAuth()
 
   useEffect(() => {
     const video = videoRef.current
@@ -123,60 +130,68 @@ export default function Home() {
         <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] orb-blue opacity-15 pointer-events-none z-5" />
 
         <div className="relative z-10 max-w-4xl mx-auto text-center">
-          {/* Status badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-power-red/30 bg-power-red/5 text-power-red text-xs font-cinzel tracking-widest mb-8 animate-fade-up">
-            <span className="w-1.5 h-1.5 rounded-full bg-power-red animate-pulse" />
-            BETA ABIERTA
-          </div>
+          {!authLoading && isLoggedIn && user ? (
+            <LoggedInHero user={user} />
+          ) : (
+            <>
+              {/* Status badge */}
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-power-red/30 bg-power-red/5 text-power-red text-xs font-cinzel tracking-widest mb-8 animate-fade-up">
+                <span className="w-1.5 h-1.5 rounded-full bg-power-red animate-pulse" />
+                BETA ABIERTA
+              </div>
 
-          {/* Main heading */}
-          <h1
-            className="text-5xl md:text-7xl font-cinzel font-black text-text-primary leading-tight tracking-tight mb-6 animate-fade-up"
-            style={{ animationDelay: '0.1s' }}
-          >
-            <span
-              className="text-power-red"
-              style={{ textShadow: '0 0 30px rgba(196,30,58,0.5), 0 0 60px rgba(196,30,58,0.2)' }}
-            >
-              HDRV
-            </span>
-            <br />
-            <span className="text-3xl md:text-4xl text-white/80 font-semibold tracking-widest">
-              Comunidad Naruto Online
-            </span>
-          </h1>
+              {/* Main heading */}
+              <h1
+                className="text-5xl md:text-7xl font-cinzel font-black text-text-primary leading-tight tracking-tight mb-6 animate-fade-up"
+                style={{ animationDelay: '0.1s' }}
+              >
+                <span
+                  className="text-power-red"
+                  style={{ textShadow: '0 0 30px rgba(196,30,58,0.5), 0 0 60px rgba(196,30,58,0.2)' }}
+                >
+                  HDRV
+                </span>
+                <br />
+                <span className="text-3xl md:text-4xl text-white/80 font-semibold tracking-widest">
+                  Comunidad Naruto Online
+                </span>
+              </h1>
 
-          {/* Subtitle */}
-          <p
-            className="text-lg md:text-xl text-white/70 max-w-2xl mx-auto mb-10 leading-relaxed animate-fade-up"
-            style={{ animationDelay: '0.2s' }}
-          >
-            Gana experiencia, sube de rango y construye tu leyenda. La comunidad más activa del
-            juego, con herramientas y misiones diarias.
-          </p>
+              {/* Subtitle */}
+              <p
+                className="text-lg md:text-xl text-white/70 max-w-2xl mx-auto mb-10 leading-relaxed animate-fade-up"
+                style={{ animationDelay: '0.2s' }}
+              >
+                Gana experiencia, sube de rango y construye tu leyenda. La comunidad más activa del
+                juego, con herramientas y misiones diarias.
+              </p>
 
-          {/* CTAs */}
-          <div
-            className="flex flex-col sm:flex-row items-center justify-center gap-5 animate-fade-up"
-            style={{ animationDelay: '0.3s' }}
-          >
-            <Link href="/auth/register" className="group px-8 py-3.5 text-lg font-montserrat font-bold text-white bg-gradient-to-r from-orange-600 to-orange-500 rounded-lg hover:shadow-lg hover:shadow-orange-500/30 transition-all duration-300 hover:scale-105 active:scale-95 flex items-center gap-2.5 relative overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-r from-orange-700 to-orange-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-              <Flame className="w-5 h-5 relative z-10" />
-              <span className="relative z-10">Comenzar tu camino ninja</span>
-            </Link>
-            <Link
-              href="/auth/login"
-              className="group px-8 py-3.5 text-lg font-montserrat font-bold text-white/90 border border-white/20 rounded-lg hover:border-white/40 hover:bg-white/5 transition-all duration-300 relative overflow-hidden flex items-center gap-2.5"
-            >
-              <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-              <span className="relative z-10">Ya eres ninja</span>
-              <ChevronRight className="w-5 h-5 relative z-10 group-hover:translate-x-1 transition-transform" />
-            </Link>
-          </div>
-
+              {/* CTAs */}
+              <div
+                className="flex flex-col sm:flex-row items-center justify-center gap-5 animate-fade-up"
+                style={{ animationDelay: '0.3s' }}
+              >
+                <Link href="/auth/register" className="group px-8 py-3.5 text-lg font-montserrat font-bold text-white bg-gradient-to-r from-orange-600 to-orange-500 rounded-lg hover:shadow-lg hover:shadow-orange-500/30 transition-all duration-300 hover:scale-105 active:scale-95 flex items-center gap-2.5 relative overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-to-r from-orange-700 to-orange-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  <Flame className="w-5 h-5 relative z-10" />
+                  <span className="relative z-10">Comenzar tu camino ninja</span>
+                </Link>
+                <Link
+                  href="/auth/login"
+                  className="group px-8 py-3.5 text-lg font-montserrat font-bold text-white/90 border border-white/20 rounded-lg hover:border-white/40 hover:bg-white/5 transition-all duration-300 relative overflow-hidden flex items-center gap-2.5"
+                >
+                  <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  <span className="relative z-10">Ya eres ninja</span>
+                  <ChevronRight className="w-5 h-5 relative z-10 group-hover:translate-x-1 transition-transform" />
+                </Link>
+              </div>
+            </>
+          )}
         </div>
       </section>
+
+      {/* ── LOGGED-IN ROW: notifications + ranking position ─── */}
+      {!authLoading && isLoggedIn && user && <LoggedInRow user={user} />}
 
       {/* ── WEEKLY SUMMARY POPUP ─────────────────────── */}
       <WeeklySummary />
@@ -386,6 +401,162 @@ function timeAgo(dateStr: string) {
   if (d === 1) return 'ayer'
   if (d < 7) return `hace ${d}d`
   return `hace ${Math.floor(d / 7)}sem`
+}
+
+const LEVEL_THRESHOLDS = [0, 100, 250, 500, 900, 1400, 2000, 3000, 4500, 6500, 9500]
+
+function getRankLabel(level: number) {
+  if (level >= 11) return { name: 'Akatsuki', img: '/images/rangos/akatsuki.png', cls: 'text-power-red' }
+  if (level >= 10) return { name: 'Kage',     img: '/images/rangos/kage.png',     cls: 'text-sage-gold' }
+  if (level >= 7)  return { name: 'Jōnin',   img: '/images/rangos/jonin.png',    cls: 'text-accent-orange' }
+  if (level >= 4)  return { name: 'Chūnin',  img: '/images/rangos/chunin.png',   cls: 'text-chakra-blue' }
+  return                  { name: 'Genin',    img: '/images/rangos/genin.png',    cls: 'text-nature-green' }
+}
+
+function LoggedInHero({ user }: { user: any }) {
+  const level = user.level ?? 1
+  const xp = user.xp ?? 0
+  const rank = getRankLabel(level)
+  const curThreshold = LEVEL_THRESHOLDS[Math.min(level - 1, LEVEL_THRESHOLDS.length - 1)] ?? 0
+  const nextThreshold = LEVEL_THRESHOLDS[Math.min(level, LEVEL_THRESHOLDS.length - 1)] ?? curThreshold
+  const xpInLevel = Math.max(0, xp - curThreshold)
+  const xpNeeded = Math.max(1, nextThreshold - curThreshold)
+  const xpToNext = Math.max(0, nextThreshold - xp)
+  const pct = Math.min(100, Math.round((xpInLevel / xpNeeded) * 100))
+  const isMaxed = level >= LEVEL_THRESHOLDS.length
+
+  return (
+    <div className="animate-fade-up">
+      <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-accent-orange/30 bg-accent-orange/5 text-accent-orange text-xs font-cinzel tracking-widest mb-6">
+        <span className="w-1.5 h-1.5 rounded-full bg-accent-orange animate-pulse" />
+        BIENVENIDO DE NUEVO
+      </div>
+
+      <div className="flex flex-col items-center gap-5 mb-6">
+        <AvatarFrame avatarSlug={user.avatarSlug} frameSlug={user.frameSlug} size={128} />
+        <div>
+          <h1
+            className="text-4xl md:text-5xl font-cinzel font-black leading-tight tracking-tight"
+            style={user.nameColor ? { color: user.nameColor } : undefined}
+          >
+            {user.username}
+          </h1>
+          <div className="flex items-center justify-center gap-3 mt-2">
+            <img src={rank.img} alt={rank.name} className="w-7 h-7 object-contain" />
+            <span className={`font-cinzel text-sm tracking-widest ${rank.cls}`}>{rank.name.toUpperCase()}</span>
+            <span className="text-white/40 text-sm">·</span>
+            <span className="font-montserrat font-bold text-sm text-white/80">Nivel {level}</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-md mx-auto mb-8">
+        <div className="flex items-center justify-between text-xs font-montserrat text-white/60 mb-2">
+          <span>{xp} XP</span>
+          <span>
+            {isMaxed ? 'Máximo nivel' : `${xpToNext} XP para subir`}
+          </span>
+        </div>
+        <div className="h-2 rounded-full bg-bg-elevated border border-border/40 overflow-hidden">
+          <div
+            className="h-full bg-gradient-to-r from-orange-600 to-orange-400 transition-all duration-500"
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+      </div>
+
+      <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+        <Link href="/dashboard" className="group px-7 py-3 text-base font-montserrat font-bold text-white bg-gradient-to-r from-orange-600 to-orange-500 rounded-lg hover:shadow-lg hover:shadow-orange-500/30 transition-all duration-300 hover:scale-105 active:scale-95 flex items-center gap-2">
+          <LayoutDashboard className="w-5 h-5" />
+          <span>Ir al dashboard</span>
+        </Link>
+        <Link href="/profile/edit" className="px-7 py-3 text-base font-montserrat font-bold text-white/90 border border-white/20 rounded-lg hover:border-white/40 hover:bg-white/5 transition-all duration-300 flex items-center gap-2">
+          <Settings className="w-4 h-4" />
+          <span>Editar perfil</span>
+        </Link>
+      </div>
+    </div>
+  )
+}
+
+function LoggedInRow({ user }: { user: any }) {
+  const [notifications, setNotifications] = useState<any[]>([])
+  const [unreadCount, setUnreadCount] = useState(0)
+
+  useEffect(() => {
+    api.get('/notifications')
+      .then(r => {
+        const items: any[] = r.data?.notifications ?? r.data?.items ?? r.data ?? []
+        const list = Array.isArray(items) ? items : []
+        setNotifications(list.filter(n => !n.read).slice(0, 3))
+        setUnreadCount(list.filter(n => !n.read).length)
+      })
+      .catch(() => {})
+  }, [])
+
+  return (
+    <section className="px-6 py-12 border-t border-border/30 bg-bg-secondary/10">
+      <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-5">
+        {/* Notifications */}
+        <div className="game-card p-5 rounded-xl">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Bell className="w-4 h-4 text-accent-orange" />
+              <h3 className="font-cinzel font-bold text-sm tracking-wider text-text-primary">
+                Notificaciones
+              </h3>
+              {unreadCount > 0 && (
+                <span className="text-[10px] font-montserrat font-bold px-2 py-0.5 rounded-full bg-accent-orange/20 text-accent-orange">
+                  {unreadCount} sin leer
+                </span>
+              )}
+            </div>
+            <Link href="/notifications" className="text-[10px] text-accent-orange hover:underline font-montserrat">
+              Ver todo →
+            </Link>
+          </div>
+
+          {notifications.length === 0 ? (
+            <p className="text-xs text-white/40 font-montserrat py-3">No tienes notificaciones nuevas.</p>
+          ) : (
+            <ul className="space-y-2">
+              {notifications.map(n => (
+                <li key={n.id} className="text-xs text-white/70 font-montserrat py-2 px-3 rounded-lg bg-bg-elevated/40 border border-border/30">
+                  <p className="line-clamp-2">{n.message}</p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        {/* Quick links */}
+        <div className="game-card p-5 rounded-xl">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Trophy className="w-4 h-4 text-sage-gold" />
+              <h3 className="font-cinzel font-bold text-sm tracking-wider text-text-primary">
+                Tu actividad
+              </h3>
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <Link href="/guides" className="text-center p-3 rounded-lg bg-bg-elevated/40 border border-border/30 hover:border-accent-orange/40 transition-colors">
+              <div className="text-lg font-cinzel font-bold text-text-primary">{user.level ?? 1}</div>
+              <div className="text-[10px] text-white/50 font-montserrat mt-1">Nivel</div>
+            </Link>
+            <Link href="/rankings" className="text-center p-3 rounded-lg bg-bg-elevated/40 border border-border/30 hover:border-accent-orange/40 transition-colors">
+              <div className="text-lg font-cinzel font-bold text-text-primary">{user.xp ?? 0}</div>
+              <div className="text-[10px] text-white/50 font-montserrat mt-1">XP total</div>
+            </Link>
+            <Link href={`/users/${user.username}`} className="text-center p-3 rounded-lg bg-bg-elevated/40 border border-border/30 hover:border-accent-orange/40 transition-colors">
+              <div className="text-lg font-cinzel font-bold text-text-primary">→</div>
+              <div className="text-[10px] text-white/50 font-montserrat mt-1">Mi perfil</div>
+            </Link>
+          </div>
+        </div>
+      </div>
+    </section>
+  )
 }
 
 function LatestNews() {

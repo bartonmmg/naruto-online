@@ -13,6 +13,7 @@ import GuideComments from '@/components/guides/GuideComments'
 import GuideReactions from '@/components/guides/GuideReactions'
 import GuideBadges from '@/components/guides/GuideBadges'
 import RelatedGuides from '@/components/guides/RelatedGuides'
+import FavoriteButton from '@/components/FavoriteButton'
 import Navbar from '@/components/Navbar'
 import Button from '@/components/ui/Button'
 import api from '@/lib/api'
@@ -151,9 +152,12 @@ export default function GuideDetailPage() {
           </Link>
 
           <div className="mb-6">
-            <h1 className="text-4xl md:text-5xl font-cinzel font-black text-text-primary mb-4">
-              {guide.title}
-            </h1>
+            <div className="flex items-start gap-3 mb-4">
+              <h1 className="flex-1 text-4xl md:text-5xl font-cinzel font-black text-text-primary">
+                {guide.title}
+              </h1>
+              <FavoriteButton type="GUIDE" targetId={guide.id} className="mt-2" />
+            </div>
             <div className="flex flex-wrap items-center gap-4 text-white/70 mb-4">
               <span className="text-sm">Por <Link href={`/users/${guide.author.username}`} className="text-white font-semibold hover:text-chakra-blue transition-colors">{guide.author.username}</Link></span>
               <span className="text-white/40">•</span>

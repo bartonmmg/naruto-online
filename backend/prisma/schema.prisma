@@ -42,6 +42,19 @@ model User {
   newsPosts        NewsPost[]
   newsComments     NewsComment[]
   newsSuggestions  NewsSuggestion[]
+  favorites        Favorite[]
+}
+
+model Favorite {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String   // "GUIDE" | "NEWS" | "PLAYER"
+  targetId  String
+  createdAt DateTime @default(now())
+
+  @@unique([userId, type, targetId])
+  @@index([userId, type])
 }
 
 // XP system config — managed by admin backoffice
@@ -205,6 +218,8 @@ model NewsPost {
   pinned           Boolean  @default(false)       // pinned posts show first
   reactions        String   @default("{}")        // JSON: { "👍": 12, "❤️": 5, "🔥": 8 }
   views            Int      @default(0)
+  eventStartAt     DateTime?                      // for type=EVENT — when the event starts
+  eventEndAt       DateTime?                      // for type=EVENT — when the event ends
   comments         NewsComment[]
   publishedAt      DateTime @default(now())
   createdAt        DateTime @default(now())

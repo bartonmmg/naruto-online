@@ -21,6 +21,7 @@ export default function CreateNovedadPage() {
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({
     title: '', content: '', type: 'CHINA', category: 'Ninjas', customCategory: '',
+    eventStartAt: '', eventEndAt: '',
   })
   const [imageUrls, setImageUrls] = useState<string[]>([])
   const [newUrl, setNewUrl] = useState('')
@@ -39,7 +40,12 @@ export default function CreateNovedadPage() {
     if (!category) return alert('Ingresá una categoría')
     setSaving(true)
     try {
-      await api.post('/news', { title: form.title, content: form.content, type: form.type, category, imageUrls })
+      const payload: any = { title: form.title, content: form.content, type: form.type, category, imageUrls }
+      if (form.type === 'EVENT') {
+        if (form.eventStartAt) payload.eventStartAt = new Date(form.eventStartAt).toISOString()
+        if (form.eventEndAt)   payload.eventEndAt   = new Date(form.eventEndAt).toISOString()
+      }
+      await api.post('/news', payload)
       router.push('/novedades')
     } catch (e: any) {
       alert(e.response?.data?.error || 'Error al publicar')
@@ -104,6 +110,29 @@ export default function CreateNovedadPage() {
               placeholder="Nombre de la categoría..."
               className="w-full h-10 px-4 text-sm bg-bg-card border border-border rounded-xl text-white placeholder-white/25 focus:outline-none focus:border-accent-orange font-montserrat"
             />
+          )}
+
+          {form.type === 'EVENT' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs text-white/40 font-montserrat uppercase tracking-wider mb-1.5 block">Inicio del evento</label>
+                <input
+                  type="datetime-local"
+                  value={form.eventStartAt}
+                  onChange={e => setForm(f => ({ ...f, eventStartAt: e.target.value }))}
+                  className="w-full h-10 px-4 text-sm bg-bg-card border border-border rounded-xl text-white focus:outline-none focus:border-accent-orange font-montserrat"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-white/40 font-montserrat uppercase tracking-wider mb-1.5 block">Fin del evento</label>
+                <input
+                  type="datetime-local"
+                  value={form.eventEndAt}
+                  onChange={e => setForm(f => ({ ...f, eventEndAt: e.target.value }))}
+                  className="w-full h-10 px-4 text-sm bg-bg-card border border-border rounded-xl text-white focus:outline-none focus:border-accent-orange font-montserrat"
+                />
+              </div>
+            </div>
           )}
 
           {/* Contenido */}

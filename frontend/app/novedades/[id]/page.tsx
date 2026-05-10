@@ -7,6 +7,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import Navbar from '@/components/Navbar'
 import ShareButtons from '@/components/ShareButtons'
+import FavoriteButton from '@/components/FavoriteButton'
 import NewsComments from '@/components/NewsComments'
 import { useAuth } from '@/lib/hooks/useAuth'
 import { useReadNews } from '@/lib/hooks/useReadNews'
@@ -253,7 +254,10 @@ export default function NovedadDetailPage() {
 
           {/* Actions */}
           <div className="space-y-3">
-            <ShareButtons title={cleanTitle(post.title)} url={typeof window !== 'undefined' ? window.location.href : ''} />
+            <div className="flex items-center gap-2 flex-wrap">
+              <ShareButtons title={cleanTitle(post.title)} url={typeof window !== 'undefined' ? window.location.href : ''} />
+              <FavoriteButton type="NEWS" targetId={post.id} />
+            </div>
 
             {hasRole(['ADMIN', 'MODERATOR']) && (
               <div className="flex gap-2 flex-wrap">

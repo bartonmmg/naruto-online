@@ -181,6 +181,15 @@ export default function NotificationBell() {
               ))
             )}
           </div>
+
+          {/* Footer */}
+          <Link
+            href="/notifications"
+            onClick={() => setOpen(false)}
+            className="block py-2.5 text-center text-xs text-accent-orange hover:bg-accent-orange/10 transition-colors font-montserrat font-semibold border-t border-border/40"
+          >
+            Ver todas →
+          </Link>
         </div>
       )}
     </div>

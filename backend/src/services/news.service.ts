@@ -14,6 +14,8 @@ export const createNewsSchema = z.object({
   type:      z.enum(['CHINA', 'TENTATIVE', 'EVENT', 'GENERAL']),
   category:  z.string().min(1).max(100),
   imageUrls: z.array(z.string()).optional().default([]),
+  eventStartAt: z.string().datetime().nullable().optional(),
+  eventEndAt:   z.string().datetime().nullable().optional(),
 })
 
 export const updateNewsSchema = createNewsSchema.partial()
@@ -177,6 +179,8 @@ export const newsService = {
         type:      data.type,
         category:  data.category,
         imageUrls: JSON.stringify(data.imageUrls ?? []),
+        ...(data.eventStartAt ? { eventStartAt: new Date(data.eventStartAt) } : {}),
+        ...(data.eventEndAt   ? { eventEndAt:   new Date(data.eventEndAt)   } : {}),
         ...(authorId ? { authorId } : {}),
       },
       include: { author: { select: { username: true, role: true } } },
@@ -192,6 +196,8 @@ export const newsService = {
         ...(data.type      !== undefined ? { type: data.type }                            : {}),
         ...(data.category  !== undefined ? { category: data.category }                    : {}),
         ...(data.imageUrls !== undefined ? { imageUrls: JSON.stringify(data.imageUrls) }  : {}),
+        ...(data.eventStartAt !== undefined ? { eventStartAt: data.eventStartAt ? new Date(data.eventStartAt) : null } : {}),
+        ...(data.eventEndAt   !== undefined ? { eventEndAt:   data.eventEndAt   ? new Date(data.eventEndAt)   : null } : {}),
       },
       include: { author: { select: { username: true, role: true } } },
     })

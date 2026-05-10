@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Menu, X, LogOut, Trophy } from 'lucide-react'
+import { Menu, X, LogOut, Trophy, Bookmark } from 'lucide-react'
 import Button from './ui/Button'
 import { useAuth } from '@/lib/hooks/useAuth'
 import NotificationBell from './NotificationBell'
@@ -12,6 +12,7 @@ const navLinks = [
   { href: '/#features',  label: 'Características' },
   { href: '/#community', label: 'Comunidad' },
   { href: '/novedades',  label: 'Novedades' },
+  { href: '/events',     label: 'Eventos' },
   { href: '/rankings',   label: 'Rankings' },
   { href: '/tools',      label: 'Herramientas' },
   { href: '/guides',     label: 'Guías' },
@@ -88,6 +89,13 @@ export default function Navbar() {
                 title="Leaderboard"
               >
                 <Trophy className="w-5 h-5" />
+              </Link>
+              <Link
+                href="/favorites"
+                className="p-2 rounded-lg hover:bg-white/10 transition-colors text-white/70 hover:text-white"
+                title="Mis favoritos"
+              >
+                <Bookmark className="w-5 h-5" />
               </Link>
               <NotificationBell />
               <Link href="/dashboard" className="text-sm font-montserrat font-semibold text-white/70 hover:text-power-red transition-colors px-2">

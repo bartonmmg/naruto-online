@@ -593,6 +593,13 @@ export default function RankingsPage() {
               <BarChart2 className="w-3.5 h-3.5" />
               <span>Estadísticas</span>
             </Link>
+            <Link
+              href="/rankings/compare"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-power-red/10 rounded-lg border border-power-red/25 text-xs font-cinzel text-power-red/80 hover:bg-power-red/20 hover:border-power-red/50 hover:text-power-red transition-all duration-200"
+            >
+              <Swords className="w-3.5 h-3.5" />
+              <span>Comparar</span>
+            </Link>
           </div>
         </div>
 
