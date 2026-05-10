@@ -49,7 +49,7 @@ export function avatarSrc(slug?: string | null): string {
   return slug ? `/images/avatars/${slug}.png` : '/images/avatars/default.png'
 }
 export function bannerSrc(slug?: string | null): string | null {
-  return slug ? `/images/profile/banners/${slug}.png` : null
+  return slug ? `/images/profile/banners/${slug}.jpg` : null
 }
 export function frameSrc(slug?: string | null): string | null {
   return slug ? `/images/profile/frames/${slug}.png` : null

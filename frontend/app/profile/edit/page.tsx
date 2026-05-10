@@ -167,7 +167,7 @@ export default function EditProfilePage() {
           </button>
           <button onClick={() => setShowBanner(true)} className="bg-bg-card border border-border/50 rounded-xl p-4 hover:border-accent-orange/40 transition-all flex flex-col items-center gap-2">
             <div className="w-full h-12 rounded-lg overflow-hidden bg-bg-elevated border border-border/40">
-              {bannerSlug && <img src={`/images/profile/banners/${bannerSlug}.png`} alt="" className="w-full h-full object-cover" onError={e => (e.currentTarget.style.display = 'none')} />}
+              {bannerSlug && <img src={`/images/profile/banners/${bannerSlug}.jpg`} alt="" className="w-full h-full object-cover" onError={e => (e.currentTarget.style.display = 'none')} />}
             </div>
             <span className="text-xs font-montserrat font-semibold text-white/70 flex items-center gap-1">
               <Layout className="w-3 h-3" /> Banner
