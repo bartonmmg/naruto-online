@@ -413,7 +413,25 @@ function getRankLabel(level: number) {
   return                  { name: 'Genin',    img: '/images/rangos/genin.png',    cls: 'text-nature-green' }
 }
 
-function LoggedInHero({ user }: { user: any }) {
+function LoggedInHero({ user: cached }: { user: any }) {
+  const [user, setUser] = useState<any>(cached)
+
+  useEffect(() => {
+    api.get('/leaderboard/me')
+      .then(r => {
+        const fresh = r.data
+        setUser(fresh)
+        try {
+          const stored = localStorage.getItem('user')
+          if (stored) {
+            const merged = { ...JSON.parse(stored), ...fresh }
+            localStorage.setItem('user', JSON.stringify(merged))
+          }
+        } catch {}
+      })
+      .catch(() => {})
+  }, [])
+
   const level = user.level ?? 1
   const xp = user.xp ?? 0
   const rank = getRankLabel(level)

@@ -104,6 +104,14 @@ export default function EditProfilePage() {
         socialLinks: Object.keys(socialLinks).length > 0 ? socialLinks : null,
       })
       setProfile(p => p ? { ...p, ...r.data } : p)
+      // Actualizar el cache de localStorage para que navbar/home reflejen los cambios sin re-login
+      try {
+        const stored = localStorage.getItem('user')
+        if (stored) {
+          const merged = { ...JSON.parse(stored), ...r.data }
+          localStorage.setItem('user', JSON.stringify(merged))
+        }
+      } catch {}
       setSavedFlag(true)
       setTimeout(() => setSavedFlag(false), 2000)
     } catch (e: any) {
