@@ -63,7 +63,8 @@ const RANKS = [
 
 export default function Home() {
   const videoRef = useRef<HTMLVideoElement>(null)
-  const { user, isLoggedIn, isLoading: authLoading } = useAuth()
+  const { user: cachedUser, isLoggedIn, isLoading: authLoading } = useAuth()
+  const [freshUser, setFreshUser] = useState<any>(null)
 
   useEffect(() => {
     const video = videoRef.current
@@ -71,6 +72,25 @@ export default function Home() {
       video.playbackRate = 0.5
     }
   }, [])
+
+  // Fetch fresh user data so home shows up-to-date XP/avatar/level after profile edits
+  useEffect(() => {
+    if (!isLoggedIn) return
+    api.get('/leaderboard/me')
+      .then(r => {
+        setFreshUser(r.data)
+        try {
+          const stored = localStorage.getItem('user')
+          if (stored) {
+            const merged = { ...JSON.parse(stored), ...r.data }
+            localStorage.setItem('user', JSON.stringify(merged))
+          }
+        } catch {}
+      })
+      .catch(() => {})
+  }, [isLoggedIn])
+
+  const user = freshUser ?? cachedUser
 
   return (
     <main className="min-h-screen bg-bg-primary overflow-x-hidden">
@@ -413,25 +433,7 @@ function getRankLabel(level: number) {
   return                  { name: 'Genin',    img: '/images/rangos/genin.png',    cls: 'text-nature-green' }
 }
 
-function LoggedInHero({ user: cached }: { user: any }) {
-  const [user, setUser] = useState<any>(cached)
-
-  useEffect(() => {
-    api.get('/leaderboard/me')
-      .then(r => {
-        const fresh = r.data
-        setUser(fresh)
-        try {
-          const stored = localStorage.getItem('user')
-          if (stored) {
-            const merged = { ...JSON.parse(stored), ...fresh }
-            localStorage.setItem('user', JSON.stringify(merged))
-          }
-        } catch {}
-      })
-      .catch(() => {})
-  }, [])
-
+function LoggedInHero({ user }: { user: any }) {
   const level = user.level ?? 1
   const xp = user.xp ?? 0
   const rank = getRankLabel(level)
