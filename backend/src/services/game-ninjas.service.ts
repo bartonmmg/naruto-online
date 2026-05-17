@@ -6,6 +6,7 @@
  * se parsean antes de devolver al cliente.
  */
 import { prisma } from '../lib/prisma.js'
+import { matchesSearch } from '../lib/search.js'
 
 const REGION = 'ES_LATAM'
 const DEFAULT_LIMIT = 24
@@ -109,50 +110,71 @@ export const gameNinjasService = {
     const offset = Math.max(filters.offset ?? 0, 0)
     const sortKey = filters.sort ?? 'name'
 
+    // Filtros que van directo al WHERE de la DB (rápidos con index)
     const where: any = { region: REGION, kind: filters.kind ?? 'NINJA' }
-    if (filters.search) {
-      const q = filters.search.trim()
-      if (q) {
-        where.OR = [
-          { name: { contains: q } },
-          { title: { contains: q } },
-        ]
-      }
-    }
     if (filters.property !== undefined) where.propertyCode = filters.property
     if (filters.career !== undefined) where.careerCode = filters.career
     if (filters.rareness !== undefined) where.rarenessCode = filters.rareness
 
-    // Para sort por stats, traemos un "ancho" mayor y ordenamos en memoria.
+    const searchQuery = filters.search?.trim() ?? ''
     const wantsStatSort = ['ninjaAttack', 'bodyAttack', 'life'].includes(sortKey)
-    const dbLimit = wantsStatSort ? limit + offset + 200 : limit
-    const dbOffset = wantsStatSort ? 0 : offset
 
+    // Con search activo: traemos TODOS los rows del WHERE (sin paginar) y
+    // filtramos en JS para soportar case/accent-insensitive y matching por id.
+    // Como hay ~408 ninjas total, esto es trivial en memoria.
+    // Idem cuando ordenamos por stat (necesita ver todos los stats para ranking).
+    const needsInMemoryPipeline = !!searchQuery || wantsStatSort
+
+    if (needsInMemoryPipeline) {
+      const rowsRaw = await prisma.gameNinja.findMany({
+        where,
+        orderBy: orderByFor(sortKey),
+      })
+      let rows = rowsRaw.map(summarize)
+
+      // Aplicar search en memoria
+      if (searchQuery) {
+        // Si es 100% numérico, también matchear por id / artisticId
+        const numQ = /^\d+$/.test(searchQuery) ? Number(searchQuery) : null
+        rows = rows.filter((n) => {
+          if (numQ !== null && (n.id === numQ || n.artisticId === numQ)) return true
+          return matchesSearch([n.name, n.title], searchQuery)
+        })
+      }
+
+      // Aplicar sort por stat
+      if (wantsStatSort) {
+        const key: 'baseNinjaAttack' | 'baseBodyAttack' | 'baseLife' =
+          sortKey === 'ninjaAttack'
+            ? 'baseNinjaAttack'
+            : sortKey === 'bodyAttack'
+            ? 'baseBodyAttack'
+            : 'baseLife'
+        rows.sort((a, b) => (b.stats[key] || 0) - (a.stats[key] || 0))
+      }
+
+      const total = rows.length
+      const items = rows.slice(offset, offset + limit)
+      return {
+        items,
+        pagination: { total, offset, limit, hasMore: offset + items.length < total },
+      }
+    }
+
+    // Sin search ni sort-por-stat: pipeline rápido de DB
     const [rowsRaw, total] = await Promise.all([
       prisma.gameNinja.findMany({
         where,
         orderBy: orderByFor(sortKey),
-        take: dbLimit,
-        skip: dbOffset,
+        take: limit,
+        skip: offset,
       }),
       prisma.gameNinja.count({ where }),
     ])
-
-    let rows = rowsRaw.map(summarize)
-    if (wantsStatSort) {
-      const key: 'baseNinjaAttack' | 'baseBodyAttack' | 'baseLife' =
-        sortKey === 'ninjaAttack'
-          ? 'baseNinjaAttack'
-          : sortKey === 'bodyAttack'
-          ? 'baseBodyAttack'
-          : 'baseLife'
-      rows.sort((a, b) => (b.stats[key] || 0) - (a.stats[key] || 0))
-      rows = rows.slice(offset, offset + limit)
-    }
-
+    const items = rowsRaw.map(summarize)
     return {
-      items: rows,
-      pagination: { total, offset, limit, hasMore: offset + rows.length < total },
+      items,
+      pagination: { total, offset, limit, hasMore: offset + items.length < total },
     }
   },
 

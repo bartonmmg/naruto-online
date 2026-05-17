@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Search, X } from 'lucide-react'
 import api from '@/lib/api'
@@ -10,22 +10,33 @@ import LoadingSpinner from '@/components/LoadingSpinner'
 
 export default function SpiritsPage() {
   const [items, setItems] = useState<GameSpirit[]>([])
+  const [total, setTotal] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [searchDebounced, setSearchDebounced] = useState('')
+
+  // Total nunca cambia: el primer fetch sin search nos dice cuántos hay
+  useEffect(() => {
+    const t = setTimeout(() => setSearchDebounced(search.trim()), 250)
+    return () => clearTimeout(t)
+  }, [search])
 
   useEffect(() => {
+    setLoading(true)
+    const params = searchDebounced ? { search: searchDebounced } : {}
     api
-      .get<SpiritListResponse>('/game/spirits')
-      .then((r) => setItems(r.data.items))
+      .get<SpiritListResponse>('/game/spirits', { params })
+      .then((r) => {
+        setItems(r.data.items)
+        // El total sin filtro lo guardamos solo cuando search está vacío
+        if (!searchDebounced) setTotal(r.data.total)
+      })
       .catch(console.error)
       .finally(() => setLoading(false))
-  }, [])
+  }, [searchDebounced])
 
-  const filtered = useMemo(() => {
-    if (!search.trim()) return items
-    const q = search.trim().toLowerCase()
-    return items.filter((s) => s.name.toLowerCase().includes(q))
-  }, [items, search])
+  const totalLabel = total ?? items.length
+  const filtered = items
 
   return (
     <>
@@ -50,7 +61,7 @@ export default function SpiritsPage() {
             </h1>
             <p className="text-text-muted max-w-xl">
               Compañeros invocables que potencian a tu equipo en combate.
-              {!loading && ` ${items.length} disponibles en la región España + Latinoamérica.`}
+              {total !== null && ` ${total} disponibles en la región España + Latinoamérica.`}
             </p>
           </div>
         </div>
@@ -87,9 +98,9 @@ export default function SpiritsPage() {
           ) : (
             <>
               <p className="text-sm text-text-muted mb-4">
-                {filtered.length === items.length
-                  ? `${items.length} espíritus`
-                  : `${filtered.length} de ${items.length}`}
+                {searchDebounced
+                  ? `${filtered.length} de ${totalLabel} espíritus`
+                  : `${totalLabel} espíritus`}
               </p>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
                 {filtered.map((s) => (

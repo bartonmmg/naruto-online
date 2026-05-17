@@ -3,6 +3,7 @@
  * Como hay solo 49 entries, list devuelve todos sin paginación.
  */
 import { prisma } from '../lib/prisma.js'
+import { matchesSearch } from '../lib/search.js'
 
 const REGION = 'ES_LATAM'
 
@@ -33,15 +34,24 @@ function decorate(s: any) {
 
 export const gameSpiritsService = {
   async list(filters: { search?: string } = {}) {
-    const where: any = { region: REGION }
-    if (filters.search?.trim()) {
-      where.name = { contains: filters.search.trim() }
-    }
-    const rows = await prisma.gameSpirit.findMany({
-      where,
+    // Trae los 49 sin paginar — siempre suficiente cargar todo
+    const rowsRaw = await prisma.gameSpirit.findMany({
+      where: { region: REGION },
       orderBy: { id: 'asc' },
     })
-    return { items: rows.map(decorate), total: rows.length }
+    let items = rowsRaw.map(decorate)
+
+    const q = filters.search?.trim()
+    if (q) {
+      // Si es 100% numérico, matchear también por id / artisticId / cardId
+      const numQ = /^\d+$/.test(q) ? Number(q) : null
+      items = items.filter((s) => {
+        if (numQ !== null && (s.id === numQ || s.artisticId === numQ || s.cardId === numQ)) return true
+        return matchesSearch([s.name, s.skillName, s.description], q)
+      })
+    }
+
+    return { items, total: items.length }
   },
 
   async getById(id: number) {
