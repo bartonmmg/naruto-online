@@ -878,6 +878,83 @@ model GameSkill {
 - **Mapeo `iconId`**: la mayoría de skills (~85%) son variantes que comparten asset — `SkillCFG.xml > iconId` apunta al skill "padre" con el icono real. El script `download-skill-icons.mjs` resuelve esto y baja **~5.946 iconos visibles** (~94% de los skills referenciados)
 - ~380 skills sin icono real en el CDN — caen al placeholder `<Sparkles>`
 
+### Workflow: actualizar el catálogo cuando cambia el juego
+
+El juego se actualiza periódicamente (nuevas cartas, rebalanceo de stats, fixes de descripción, etc.). El `tag` de versión en el CDN cambia (ej. `SP_NarutoAlpha9.20Build300` → `9.22Build301`). El pipeline está pensado para ser idempotente — re-correrlo sobre data nueva sólo actualiza diffs.
+
+⚠️ **Pre-requisitos**:
+- Tener `backend/.env.production` con `DATABASE_URL` apuntando a Neon (ya configurado)
+- Tener `backend/.env.local` con `GAME_USER` / `GAME_PASS` (cuenta scraper) para refrescar el manifest
+
+#### 1. Refrescar el dump del CDN (si la versión cambió)
+
+```bash
+cd naruto-app/backend
+
+# Verificar si el tag de versión cambió
+curl -sk --tls-max 1.2 https://naruto-online.oasgames.com/version.js | grep -o 'SP_NarutoAlpha[0-9.]*Build[0-9]*'
+
+# Si cambió, refrescar el manifest:
+npx tsx src/game-client/probe.ts     # login + endpoints
+npx tsx src/game-client/probe2.ts    # re-login + game URL
+# Bajar resource.cfg con el nuevo tag (ver curl command en CLAUDE-game-data-pipeline.md)
+npx tsx src/game-client/decode-resource-cfg.ts   # regenera tmp/versionMap.json
+```
+
+#### 2. Bajar los configs y rearmar el JSON canonical
+
+```bash
+# Solo los XML del catálogo (rapido):
+npx tsx src/game-client/download-config.ts \
+  config/user/NinjaInfoCFG.xml \
+  config/skill/SkillCFG.xml \
+  config/skill/NinjaSkillCFG.xml \
+  config/user/NinjaIntroduceCFG.xml \
+  config/skill/talentConfig.xml
+
+# Regenerar JSON canonical (aplica decoders, filtros, dedup):
+npx tsx src/game-client/ninja-catalog/build.ts
+```
+
+Output: `tmp/game-data/ninjas-canonical.json` actualizado.
+
+#### 3. Aplicar a prod (Neon + importer)
+
+```bash
+cd naruto-app/backend
+set -a && . ./.env.production && set +a
+
+# Si el schema cambió (raro): sincroniza Neon
+npx prisma db push --schema=prisma/schema.prod.prisma --skip-generate
+
+# Importer (siempre idempotente — upsert)
+npx tsx src/game-client/ninja-catalog/import-to-db.ts
+```
+
+⚠️ El importer tarda ~10 min sobre Neon desde Argentina (latencia de transacciones individuales). En dev local sobre SQLite es ~1s.
+
+#### 4. Refrescar imágenes (solo si artisticIds nuevos)
+
+```bash
+cd naruto-app
+node scripts/download-ninja-images.mjs --big --concurrency=8   # baja solo los faltantes (skip si existe)
+node scripts/download-skill-icons.mjs --concurrency=10
+cd frontend && node ../scripts/optimize-game-images.mjs        # PNG → WebP, borra los PNG
+```
+
+#### 5. Deploy
+
+```bash
+git add -A
+git commit -m "Actualizar catálogo de ninjas a versión X.Y"
+git push   # dispara deploy automático de Netlify
+```
+
+⚠️ **Nota sobre dev local después de tocar prod**: si corriste `prisma generate --schema=schema.prod.prisma` para hablar con Neon, el client local quedó apuntando a Postgres y rompe en dev. Restaurarlo con:
+```bash
+DATABASE_URL='file:./prisma/dev.db' npx prisma generate
+```
+
 ## Assets
 
 **Rank images** (`frontend/public/images/rangos/`):
