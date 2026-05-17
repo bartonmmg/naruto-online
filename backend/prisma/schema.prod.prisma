@@ -8,48 +8,48 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  username      String    @unique
-  email         String    @unique
-  passwordHash  String
-  avatarUrl     String?
+  id                 String   @id @default(cuid())
+  username           String   @unique
+  email              String   @unique
+  passwordHash       String
+  avatarUrl          String?
   // Profile customization
-  avatarSlug          String?
-  bannerSlug          String?
-  frameSlug           String?
-  bio                 String?
-  customTitle         String?
-  nameColor           String?
-  pinnedAchievements  String   @default("[]")  // JSON array of achievement IDs (max 3)
-  gameServer          String?
-  socialLinks         String?                  // JSON: { twitch?, youtube?, discord?, ingameName? }
-  role          String    @default("USER")
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  avatarSlug         String?
+  bannerSlug         String?
+  frameSlug          String?
+  bio                String?
+  customTitle        String?
+  nameColor          String?
+  pinnedAchievements String   @default("[]") // JSON array of achievement IDs (max 3)
+  gameServer         String?
+  socialLinks        String? // JSON: { twitch?, youtube?, discord?, ingameName? }
+  role               String   @default("USER")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
-  xp            Int       @default(0)
-  level         Int       @default(1)
+  xp             Int       @default(0)
+  level          Int       @default(1)
   lastDailyLogin DateTime?
 
-  xpLogs        XpLog[]
-  guides        Guide[]
-  guideRatings  GuideRating[]
-  guideComments GuideComment[]
-  guideViews    GuideView[]
-  guideReactions GuideReaction[]
-  notifications  Notification[]
-  achievements   UserAchievement[]
-  newsPosts        NewsPost[]
-  newsComments     NewsComment[]
-  newsSuggestions  NewsSuggestion[]
-  favorites        Favorite[]
+  xpLogs          XpLog[]
+  guides          Guide[]
+  guideRatings    GuideRating[]
+  guideComments   GuideComment[]
+  guideViews      GuideView[]
+  guideReactions  GuideReaction[]
+  notifications   Notification[]
+  achievements    UserAchievement[]
+  newsPosts       NewsPost[]
+  newsComments    NewsComment[]
+  newsSuggestions NewsSuggestion[]
+  favorites       Favorite[]
 }
 
 model Favorite {
   id        String   @id @default(cuid())
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  type      String   // "GUIDE" | "NEWS" | "PLAYER"
+  type      String // "GUIDE" | "NEWS" | "PLAYER"
   targetId  String
   createdAt DateTime @default(now())
 
@@ -59,29 +59,29 @@ model Favorite {
 
 // XP system config — managed by admin backoffice
 model XpConfig {
-  id       String @id @default(cuid())
-  action   String @unique  // GUIDE_PUBLISHED, COMMENT_POSTED, etc.
-  label    String          // display name
-  xpAmount Int
+  id        String   @id @default(cuid())
+  action    String   @unique // GUIDE_PUBLISHED, COMMENT_POSTED, etc.
+  label     String // display name
+  xpAmount  Int
   updatedAt DateTime @updatedAt
 }
 
 model LevelConfig {
-  id        String @id @default(cuid())
-  level     Int    @unique
+  id         String   @id @default(cuid())
+  level      Int      @unique
   xpRequired Int
-  label     String  // "Genin", "Chūnin", etc.
+  label      String // "Genin", "Chūnin", etc.
   updatedAt  DateTime @updatedAt
 }
 
 // Achievements definitions (hardcoded via seed, managed in backoffice)
 model Achievement {
-  id          String @id @default(cuid())
-  key         String @unique  // FIRST_GUIDE, VIEWS_100, etc.
+  id          String            @id @default(cuid())
+  key         String            @unique // FIRST_GUIDE, VIEWS_100, etc.
   title       String
   description String
-  imageFile   String          // filename in /images/guides/logros/
-  xpReward    Int    @default(0)
+  imageFile   String // filename in /images/guides/logros/
+  xpReward    Int               @default(0)
   users       UserAchievement[]
 }
 
@@ -98,21 +98,21 @@ model UserAchievement {
 }
 
 model Guide {
-  id          String    @id @default(cuid())
-  title       String
-  category    String
-  difficulty  String
-  content     String
-  imageUrls   String    @default("[]")
-  videoUrls   String    @default("[]")
-  coverImage  String?
-  status      String    @default("DRAFT")
-  authorId    String
-  author      User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  viewCount   Int       @default(0)
-  badges      String    @default("[]")
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id         String   @id @default(cuid())
+  title      String
+  category   String
+  difficulty String
+  content    String
+  imageUrls  String   @default("[]")
+  videoUrls  String   @default("[]")
+  coverImage String?
+  status     String   @default("DRAFT")
+  authorId   String
+  author     User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  viewCount  Int      @default(0)
+  badges     String   @default("[]")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   editHistory GuideEditHistory[]
   ratings     GuideRating[]
@@ -126,22 +126,22 @@ model Guide {
 }
 
 model GuideEditHistory {
-  id        String    @id @default(cuid())
-  guideId   String
-  guide     Guide     @relation(fields: [guideId], references: [id], onDelete: Cascade)
-  editedBy  String    // username
-  editedAt  DateTime  @default(now())
+  id       String   @id @default(cuid())
+  guideId  String
+  guide    Guide    @relation(fields: [guideId], references: [id], onDelete: Cascade)
+  editedBy String // username
+  editedAt DateTime @default(now())
 
   @@index([guideId])
 }
 
 model XpLog {
-  id        String    @id @default(cuid())
+  id        String   @id @default(cuid())
   userId    String
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  action    String    // DAILY_LOGIN, GUIDE_READ, TOOL_USED, COMMUNITY_POST
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action    String // DAILY_LOGIN, GUIDE_READ, TOOL_USED, COMMUNITY_POST
   amount    Int
-  createdAt DateTime  @default(now())
+  createdAt DateTime @default(now())
 
   @@index([userId])
 }
@@ -152,7 +152,7 @@ model GuideRating {
   guide     Guide    @relation(fields: [guideId], references: [id], onDelete: Cascade)
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  value     Int      // 1 = útil, -1 = no útil
+  value     Int // 1 = útil, -1 = no útil
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -179,13 +179,13 @@ model GuideView {
   id        String   @id @default(cuid())
   guideId   String
   guide     Guide    @relation(fields: [guideId], references: [id], onDelete: Cascade)
-  userId    String?  // null for anonymous
+  userId    String? // null for anonymous
   user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-  ipAddress String?  // used to deduplicate anonymous views
+  ipAddress String? // used to deduplicate anonymous views
   viewedAt  DateTime @default(now())
 
-  @@unique([guideId, userId])  // one view per authenticated user
-  @@unique([guideId, ipAddress])  // one view per IP (covers anonymous)
+  @@unique([guideId, userId]) // one view per authenticated user
+  @@unique([guideId, ipAddress]) // one view per IP (covers anonymous)
   @@index([guideId])
   @@index([userId])
 }
@@ -196,7 +196,7 @@ model GuideReaction {
   guide     Guide    @relation(fields: [guideId], references: [id], onDelete: Cascade)
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  emoji     String   // ❤️, 🔥, 👏, 😂, 🤔
+  emoji     String // ❤️, 🔥, 👏, 😂, 🤔
   createdAt DateTime @default(now())
 
   @@unique([guideId, userId, emoji])
@@ -205,25 +205,25 @@ model GuideReaction {
 }
 
 model NewsPost {
-  id               String   @id @default(cuid())
+  id               String        @id @default(cuid())
   title            String
   content          String
-  type             String   @default("GENERAL")  // CHINA | TENTATIVE | EVENT | GENERAL
-  category         String   @default("General")
-  imageUrls        String   @default("[]")       // JSON array
-  authorId         String?                        // null = auto-synced from Discord
-  author           User?    @relation(fields: [authorId], references: [id], onDelete: SetNull)
-  discordMessageId String?  @unique               // prevents duplicates on re-sync
-  discordAuthor    String?                        // username of discord poster, "BOT" for bots
-  pinned           Boolean  @default(false)       // pinned posts show first
-  reactions        String   @default("{}")        // JSON: { "👍": 12, "❤️": 5, "🔥": 8 }
-  views            Int      @default(0)           // total reads
-  eventStartAt     DateTime?                       // for type=EVENT — when the event starts
-  eventEndAt       DateTime?                       // for type=EVENT — when the event ends
+  type             String        @default("GENERAL") // CHINA | TENTATIVE | EVENT | GENERAL
+  category         String        @default("General")
+  imageUrls        String        @default("[]") // JSON array
+  authorId         String? // null = auto-synced from Discord
+  author           User?         @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  discordMessageId String?       @unique // prevents duplicates on re-sync
+  discordAuthor    String? // username of discord poster, "BOT" for bots
+  pinned           Boolean       @default(false) // pinned posts show first
+  reactions        String        @default("{}") // JSON: { "👍": 12, "❤️": 5, "🔥": 8 }
+  views            Int           @default(0) // total reads
+  eventStartAt     DateTime? // for type=EVENT — when the event starts
+  eventEndAt       DateTime? // for type=EVENT — when the event ends
   comments         NewsComment[]
-  publishedAt      DateTime @default(now())
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  publishedAt      DateTime      @default(now())
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
 
   @@index([type])
   @@index([category])
@@ -231,31 +231,31 @@ model NewsPost {
 }
 
 model NewsComment {
-  id          String   @id @default(cuid())
-  newsPostId  String
-  newsPost    NewsPost @relation(fields: [newsPostId], references: [id], onDelete: Cascade)
-  authorId    String
-  author      User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  content     String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id         String   @id @default(cuid())
+  newsPostId String
+  newsPost   NewsPost @relation(fields: [newsPostId], references: [id], onDelete: Cascade)
+  authorId   String
+  author     User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  content    String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   @@index([newsPostId])
   @@index([authorId])
 }
 
 model NewsSuggestion {
-  id          String   @id @default(cuid())
-  title       String
-  content     String
-  category    String
-  type        String   @default("GENERAL")
-  status      String   @default("PENDING")  // PENDING | APPROVED | REJECTED
+  id            String    @id @default(cuid())
+  title         String
+  content       String
+  category      String
+  type          String    @default("GENERAL")
+  status        String    @default("PENDING") // PENDING | APPROVED | REJECTED
   suggestedById String
-  suggestedBy User     @relation(fields: [suggestedById], references: [id], onDelete: Cascade)
-  reviewerNote String?
-  createdAt   DateTime @default(now())
-  reviewedAt  DateTime?
+  suggestedBy   User      @relation(fields: [suggestedById], references: [id], onDelete: Cascade)
+  reviewerNote  String?
+  createdAt     DateTime  @default(now())
+  reviewedAt    DateTime?
 
   @@index([status])
   @@index([suggestedById])
@@ -273,7 +273,7 @@ model Notification {
   id         String   @id @default(cuid())
   userId     String
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  type       String   // COMMENT, REACTION, BADGE, MILESTONE
+  type       String // COMMENT, REACTION, BADGE, MILESTONE
   message    String
   guideId    String?
   guideTitle String?
@@ -282,4 +282,60 @@ model Notification {
 
   @@index([userId])
   @@index([userId, read])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Game data: catálogo de ninjas (compartido entre las regiones de jugadores
+// España y Latinoamérica — el contenido del juego es idéntico para ambas).
+// Importado desde tmp/game-data/ninjas-canonical.json — ver
+// src/game-client/ninja-catalog/import-to-db.ts
+// ─────────────────────────────────────────────────────────────────────────────
+
+model GameNinja {
+  id              Int      @id // id de la variante (mayor star) en el juego
+  artisticId      Int // agrupa variantes (basename de imagen)
+  region          String   @default("ES_LATAM") // contenido compartido por las regiones España + Latinoamérica
+  kind            String   @default("NINJA") // "NINJA" (carta jugable) | "MAIN" (avatar del jugador, 5 totales)
+  name            String // nombre canónico ("Naruto")
+  title           String // epíteto/variante ("[Kurama]")
+  propertyCode    Int // 1=Agua 2=Fuego 3=Viento 4=Rayo 5=Tierra
+  propertyLabel   String
+  careerCode      Int // 1=Ataque 2=Defensa 3=Especialista 4=Asistencia 5=Control 6=Médico
+  careerLabel     String
+  rarenessCode    Int // 0..5
+  rarenessLabel   String
+  sexCode         Int
+  sexLabel        String
+  starLevel       Int
+  awakenSkillNum  Int
+  equipNum        Int
+  stats           String // JSON: NinjaStats
+  resists         String // JSON: NinjaResists
+  intro           String? // JSON: { desc: string[], words: string } | null
+  mainTalents     String? // JSON: solo para kind=MAIN (talentos por tipo/slot)
+  normalSkillIds  String // JSON: number[]
+  specialSkillIds String // JSON: number[]
+  skillIds        String // JSON: number[] (pasivos/jutsus)
+  assets          String // JSON: { bigImage, halfImage, portrait }
+  importedAt      DateTime @default(now())
+
+  @@unique([region, name, title])
+  @@index([region])
+  @@index([kind])
+  @@index([name])
+  @@index([propertyCode])
+  @@index([careerCode])
+  @@index([rarenessCode])
+}
+
+model GameSkill {
+  id          Int    @id
+  region      String @default("ES_LATAM")
+  name        String
+  chakra      Int
+  cooldown    Int
+  description String
+  iconPath    String
+
+  @@index([region])
 }

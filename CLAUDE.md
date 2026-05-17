@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Konohagakure Hub** — A Naruto Online community platform with user authentication, XP/leveling systems, dynamic ranking systems, guides, and interactive tools for community engagement. Built as a full-stack monorepo with modern tech stack.
 
+> **Para trabajo de extracción de datos del juego** (scraping de rankings, ninjas, modas, espíritus directamente desde los servidores de Oasis/Tencent), ver el archivo separado [`CLAUDE-game-data-pipeline.md`](./CLAUDE-game-data-pipeline.md). Toda la doc del pipeline de obtención de datos vive ahí para no contaminar este archivo.
+
 ### Tech Stack
 - **Frontend:** Next.js 16.2.2 (App Router) + React 19 + Tailwind CSS + Framer Motion v12
 - **Backend:** Node.js (ESM) + Express.js + TypeScript
@@ -764,6 +766,117 @@ Start:  npm start --workspace=backend
 | `/favorites` | Auth | User's saved guides / news / players (tabs) |
 | `/rankings/compare` | Public | Compare up to 3 players side-by-side with deltas |
 | `/events` | Public | Calendar view of EVENT-type news with countdown |
+| `/centro-de-datos` | Public | Landing of game data hub (cards for Ninjas, Main, future Modas/Espíritus) |
+| `/centro-de-datos/ninjas` | Public | Catálogo de ninjas — 403 cards, filtros por elemento/clase/rareza |
+| `/centro-de-datos/ninjas/[id]` | Public | Detalle de carta: hero + intro + skills + stats + resistencias |
+| `/centro-de-datos/main` | Public | Los 5 Mains del juego (avatares del jugador por elemento) |
+
+## Centro de Datos — Game Data Hub (`/centro-de-datos`)
+
+Sección que expone el catálogo del juego en la app. Datos extraídos del CDN de Oasis (ver `CLAUDE-game-data-pipeline.md`) y servidos vía endpoints `/game/ninjas/*` desde el backend.
+
+### Modelos Prisma
+```prisma
+model GameNinja {
+  id              Int      @id        // id de la variante final del juego
+  artisticId      Int                  // agrupa variantes (basename de imagen)
+  region          String   @default("ES_LATAM")  // contenido compartido España + LatAm
+  kind            String   @default("NINJA")     // "NINJA" | "MAIN" (avatar del jugador, 5)
+  name            String                          // "Naruto"
+  title           String                          // "[Kurama]" o "" para base
+  propertyCode    Int  // 1=Agua 2=Fuego 3=Viento 4=Rayo 5=Tierra
+  propertyLabel   String
+  careerCode      Int  // 1=Ataque 2=Defensa 3=Especialista 4=Asistencia 5=Control 6=Médico 7=Distancia
+  careerLabel     String
+  rarenessCode    Int  // 0..5
+  rarenessLabel   String
+  sexCode         Int
+  sexLabel        String
+  starLevel       Int
+  awakenSkillNum  Int
+  equipNum        Int
+  stats           String   // JSON: NinjaStats (HP/Atk/Def base + growth + Crit/Strike)
+  resists         String   // JSON: { fire, wind, thunder, soil, water }
+  intro           String?  // JSON: { desc: string[], words: string } | null
+  mainTalents     String?  // JSON: solo kind=MAIN — { esoterica, ataque, pasiva: TalentSlot[] }
+  normalSkillIds  String   // JSON: number[]
+  specialSkillIds String   // JSON: number[]
+  skillIds        String   // JSON: number[] (pasivos/jutsus)
+  assets          String   // JSON: { bigImage, halfImage, portrait }
+  importedAt      DateTime @default(now())
+  @@unique([region, name, title])
+  @@index([region, kind, name, propertyCode, careerCode, rarenessCode])
+}
+
+model GameSkill {
+  id          Int     @id
+  region      String  @default("ES_LATAM")
+  name        String
+  chakra      Int
+  cooldown    Int
+  description String  // HTML del juego con <font color="..."> embebido (Derribo, Flote bajo, etc.)
+  iconPath    String  // "assets/skill/40/<iconId>.png"
+  @@index([region])
+}
+```
+
+### Backend
+- `services/game-ninjas.service.ts` — `list / getById / getFilterFacets`. `getById` resuelve skill IDs (incluyendo los de `mainTalents`) en un solo `WHERE IN`. Default `kind=NINJA` para que el listado filtre los Mains.
+- `controllers/game-ninjas.controller.ts` — Zod schema valida `search/kind/property/career/rareness/sort/limit/offset`.
+- `routes/game-ninjas.routes.ts` — todas públicas, registradas ANTES de `apiKeyMiddleware`.
+- Endpoints:
+  - `GET /game/ninjas?kind=NINJA|MAIN&...` — paginado con filtros
+  - `GET /game/ninjas/filters` — counts por property/career/rareness (solo NINJA)
+  - `GET /game/ninjas/:id` — detalle con skills resueltos + mainTalents resueltos (solo si MAIN)
+
+### Frontend
+- `app/centro-de-datos/page.tsx` — landing con cards (Ninjas activa, Main activa, Modas/Espíritus "Próximamente")
+- `app/centro-de-datos/ninjas/page.tsx` — listado con sidebar filtros (con kanjis por elemento), search debounced 300ms, infinite scroll, sort por nombre/rareza/atk-ninja/atk-cuerpo/vida
+- `app/centro-de-datos/ninjas/[id]/page.tsx` — detalle en **layout 2 columnas** (`[minmax(340px,420px)_1fr]`):
+  - **Izquierda:** Hero compacto (imagen 3:4 + estrellas overlay + ♡ favorito + nombre/título/badges/frase) → StatPanel → ResistGrid
+  - **Derecha:** Intro "Sobre este ninja" → Habilidades (o Talentos timeline si es MAIN)
+- `app/centro-de-datos/main/page.tsx` — los 5 Mains como cards 1:1 con kanji decorativo gigante por elemento
+
+### Componentes compartidos (`frontend/components/ninjas/`)
+| Componente | Función |
+|---|---|
+| `Badges.tsx` | `ElementBadge` / `CareerBadge` / `RarenessBadge` / `StarLevel` |
+| `NinjaCard.tsx` | Card para el listado (kanji watermark + portrait + nombre + chips) |
+| `NinjaBreadcrumb.tsx` | Centro de Datos → Ninjas/Main → [nombre] |
+| `NinjaHero.tsx` | Hero vertical compacto: imagen + identidad + favorito + frase |
+| `StatPanel.tsx` | Stats con iconos lucide + chips secundarios + Combatividad pinneada al pie |
+| `ResistGrid.tsx` | Grilla 5 kanjis con bordes verde/rojo según fortaleza/debilidad |
+| `NinjaSkillsList.tsx` | Habilidades en orden Esotérica → Ataque → Combo → Pasivas N (con badges numerados) |
+| `MainTalentsTimeline.tsx` | Para Mains: timeline vertical ordenada por nivel del jugador, tabs internas para pasivas con 3 opciones |
+| `NinjaPrevNext.tsx` | Navegación entre cartas del mismo kind, cacheada en `sessionStorage` |
+| `SkillCard.tsx` | Card de habilidad con icono + descripción **inline siempre visible** (no hover tooltip), ribbon vertical de color por tipo |
+| `SkillIcon.tsx` | Icono cuadrado de skill con borde por tipo + fallback Sparkles |
+| `StatBar.tsx` | Barra de stat con icono opcional (`LucideIcon`) |
+
+### Sistema visual nuevo (en `lib/types.ts`)
+- `PROPERTY_KANJI`: `1=水 2=火 3=風 4=雷 5=土` — uno por elemento
+- `PROPERTY_COLORS` / `PROPERTY_GLOW`: Tailwind classes por elemento
+- `RARENESS_COLORS`: por código de rareza
+- `ninjaCombatividad(stats)`: helper que estima poder de combate al lvl 100 (`vida×1.2 + atks×4 + defs×3`)
+- `ninjaPortraitSrc` / `ninjaBigImageSrc` / `ninjaThumbnailSrc`: URL helpers con fallback
+
+### Sistema de Favoritos extendido
+- `FavoriteType` extendido de `GUIDE | NEWS | PLAYER` a incluir `NINJA`
+- `favoritesService.listEnriched(userId, 'NINJA')` devuelve datos suficientes (id, artisticId, name, title, kind, property, career, rareness, starLevel, assets)
+- `FavoriteButton` integrado en `NinjaHero` (esquina superior derecha del hero)
+- Anónimo no ve el botón (componente devuelve `null`)
+
+### Mains — talentos
+- 5 Mains únicos (`kind=MAIN`): Colmillo Añil (Agua) · Pupila Carmesí (Fuego) · Bailarina Vendaval (Viento) · Filo Nocturno (Rayo) · Puño Escarlata (Tierra)
+- Cada uno con **9 talentos** (3 Esotéricas + 3 Ataques Normales + 3 Pasivas)
+- Pasivas tienen 3 opciones elegibles por slot (el jugador elige una en el juego)
+- Talentos parseados desde `tmp/game-data/talentConfig.xml` del CDN
+- UI: timeline vertical ordenada por nivel del jugador (lvl 1, 5, 15, 25, 35, 45, 50, 55), tabs internas para seleccionar entre las 3 opciones de pasivas
+
+### Iconos de skills
+- 1.518 iconos totales en el CDN (en `assets/skill/40/<id>.png`)
+- **Mapeo `iconId`**: la mayoría de skills (~85%) son variantes que comparten asset — `SkillCFG.xml > iconId` apunta al skill "padre" con el icono real. El script `download-skill-icons.mjs` resuelve esto y baja **~5.946 iconos visibles** (~94% de los skills referenciados)
+- ~380 skills sin icono real en el CDN — caen al placeholder `<Sparkles>`
 
 ## Assets
 
@@ -787,8 +900,82 @@ Start:  npm start --workspace=backend
 **Rankings** (`frontend/public/images/power-ranking/`):
 `hashiizq.webp`, `madaraderecha.webp`, `top1.png`, `top2.png`, `top3.png`, `top1-titulo.png`, `top2-titulo.png`
 
+**Game data** (`frontend/public/images/game/`):
+- `ninjas/big/<artisticId>.png` — imagen completa (376 archivos, baja del CDN con `scripts/download-ninja-images.mjs --big`)
+- `ninjas/<artisticId>.png` — thumbnail H120 del CDN (fallback)
+- `skills/<skillId>.png` — iconos de habilidades (~5.946 archivos, baja con `scripts/download-skill-icons.mjs`)
+
 ## Last Updated
-2026-05-10
+2026-05-17
+
+### Changes in this session (2026-05-17) — Centro de Datos (catálogo de ninjas)
+
+Implementación completa del catálogo del juego desde el CDN de Oasis. Todo el detalle del pipeline de extracción de datos vive en [`CLAUDE-game-data-pipeline.md`](./CLAUDE-game-data-pipeline.md); este resumen cubre lo expuesto en la app.
+
+- ✅ **Schema Prisma** (`backend/prisma/schema.prisma` + `schema.prod.prisma`): nuevos modelos `GameNinja` (408 entries: 403 ninjas + 5 mains) y `GameSkill` (~3.000 skills). JSON serializado como `String` (SQLite no tiene `Json` nativo). Unique `(region, name, title)`. Campo `kind: 'NINJA' | 'MAIN'`.
+- ✅ **Mapeo de elementos verificado** contra las resistencias del XML: `1=Agua, 2=Fuego, 3=Viento, 4=Rayo, 5=Tierra`. Cada ninja tiene `-20%` al elemento que lo debilita siguiendo la cadena de NO (Fuego>Viento>Rayo>Tierra>Agua>Fuego).
+- ✅ **Mains (5)** — Colmillo Añil (Agua), Pupila Carmesí (Fuego), Bailarina Vendaval (Viento), Filo Nocturno (Rayo), Puño Escarlata (Tierra). Importados con sus 9 talentos cada uno (3 Esotéricas + 3 Ataques + 3 Pasivas con 3 opciones por slot) desde `talentConfig.xml`.
+- ✅ **Backend `/game/ninjas/*`** — 3 endpoints públicos (registrados antes de `apiKeyMiddleware`). Filtros + sort + paginación. `getById` resuelve skills y talentos.
+- ✅ **Frontend** — sección completa en `/centro-de-datos`:
+  - Landing con cards (Ninjas / Main activas, Modas / Espíritus / Próximamente)
+  - `/ninjas` listado con sidebar filtros (kanjis por elemento), infinite scroll, search debounced
+  - `/ninjas/[id]` detalle rediseñado **layout 2 columnas** (UI/UX senior): izquierda Hero+Stats+Resistencias, derecha Intro+Habilidades
+  - `/main` cards 1:1 con kanji decorativo gigante por elemento
+- ✅ **Sistema visual ninja** (en `lib/types.ts`): `PROPERTY_KANJI` (火水風雷土), `PROPERTY_COLORS`, `PROPERTY_GLOW`, `RARENESS_COLORS`, `ninjaCombatividad(stats)` helper.
+- ✅ **Componentes nuevos** (12 archivos) en `frontend/components/ninjas/`:
+  - Card del listado: `NinjaCard` con kanji watermark
+  - Detalle: `NinjaBreadcrumb`, `NinjaHero` (vertical compacto), `StatPanel`, `ResistGrid` (5 kanjis con bordes verde/rojo), `NinjaSkillsList`, `MainTalentsTimeline` (vertical por nivel del jugador), `NinjaPrevNext`
+  - Shared: `SkillCard` (descripción inline siempre visible, ribbon vertical por tipo), `SkillIcon`, `StatBar` (con prop icon)
+  - `Badges` (Element/Career/Rareness/StarLevel)
+- ✅ **Favoritos** extendidos a `NINJA`: `FavoriteType` updated en `backend/src/services/favorites.service.ts` y `frontend/components/FavoriteButton.tsx`. `listEnriched` agrega caso `NINJA`.
+- ✅ **Navbar dropdown**: "Centro de Datos" ahora tiene dropdown on-hover con sub-rutas (Ninjas activa, Main activa, Modas / Espíritus Animales como "Próximamente"). En mobile se renderizan indentados.
+- ✅ **Scripts de descarga** (idempotentes, con cache `skip`):
+  - `scripts/download-ninja-images.mjs --big` — 746 imágenes (376 big + 370 thumbnails)
+  - `scripts/download-skill-icons.mjs` — 5.946 iconos resueltos via mapping `iconId` (la mayoría de skills son variantes que comparten icono)
+- ✅ **Iconos de habilidades** con descripción inline visible (sin hover tooltip — accesible en mobile). Cada `SkillCard` tiene ribbon vertical del color por tipo (naranja Esotérica, azul Ataque, púrpura Combo, gris Pasivas).
+- ✅ **`.gitignore`** agregado `tmp/` para no commitear los assets descargados del CDN (~65 MB regenerables).
+
+**Filtros aplicados al importer** (importante para entender por qué bajamos de 11.041 rows a 408 finales):
+- Solo `id LIKE '11%'` (cartas jugables; los `13xx-19xx` son NPCs / versiones de batalla)
+- `title === ''` o `title.startsWith('[')` (descarta clones/placeholders con texto libre)
+- Tiene imagen en CDN (descarta invocaciones como marionetas/summons)
+- Nombre no arranca con `Clon|Pseudo|Mecha-Naruto`
+- Para Mains: `id LIKE '10%'` + título entre corchetes
+- Dedup por `(name, title)` quedándose con mayor `starLevel`
+
+**Migraciones SQL aplicadas en dev (SQLite vía `prisma db push`); pendiente aplicar en prod:**
+```sql
+CREATE TABLE "GameNinja" ( ... );  -- columnas + indexes según schema
+CREATE TABLE "GameSkill" ( ... );
+CREATE UNIQUE INDEX "GameNinja_region_name_title_key" ON "GameNinja"(region, name, title);
+CREATE INDEX "GameNinja_kind_idx" ON "GameNinja"(kind);
+-- + indexes property/career/rareness/region/name
+```
+
+### Changes in this session (2026-05-10, later still) — Discord URL refresh, navbar cleanup, UX polish
+
+- ✅ **Refresh automático de URLs de Discord** — Discord CDN URLs (`cdn.discordapp.com` / `media.discordapp.net`) están firmadas desde 2023 y expiran a las 24h, rompiendo imágenes en novedades viejas.
+  - `backend/src/services/news.service.ts`: nuevos `listDiscordImageUrls()` (lista todas las URLs de Discord en `NewsPost.imageUrls`) y `applyRefreshedImageUrls(map)` (reemplaza por las refrescadas, **solo toca `imageUrls`** — comentarios, reacciones, views, pinned, contenido, autor, fechas quedan intactos).
+  - Nuevos endpoints en `news.controller.ts` + `news.routes.ts` (registrados antes de `/:id`):
+    - `GET  /news/admin/discord-urls`  → `{ urls: string[] }`  (x-api-key inline)
+    - `POST /news/admin/refresh-urls`  → body: `{ map: Record<string,string> }` → `{ updated: number }`
+  - Nuevo script `scripts/refresh-discord-urls.mjs`: pide URLs al backend, llama a `POST https://discord.com/api/v10/attachments/refresh-urls` en batches de 50 con el bot token, envía el mapa de vuelta al backend.
+  - Nuevo workflow `.github/workflows/refresh-discord-urls.yml`: cron `0 */12 * * *` + `workflow_dispatch`. Reusa los secrets existentes `DISCORD_BOT_TOKEN`, `BACKEND_URL`, `API_KEY`.
+  - **No se borra ningún post.** URLs ya vencidas hace meses (Discord garbage-collectó el attachment) devuelven error en el endpoint de refresh y el script las saltea — el post sigue con su contenido pero sin imagen.
+
+- ✅ **Navbar simplificado**: removidos los anchors "Características" y "Comunidad" (apuntaban a `/#features` y `/#community`, que ya no aportaban). Orden final: Novedades · Rankings · Herramientas · Eventos · Guías · FAQ.
+
+- ✅ **Padding de páginas nuevas**: `/events`, `/notifications`, `/favorites`, `/rankings/compare` pasaron de `py-10` a `pt-28 pb-16` para no quedar tapados por el navbar fijo (`h-20`).
+
+- ✅ **Calendario `/events` con celdas razonables**: las cells del grid mensual eran `aspect-square` y se hacían gigantes en desktop. Ahora `min-h-[60px] sm:min-h-[72px]`.
+
+- ✅ **Comparador `/rankings/compare` arreglado**: el endpoint `/api/rankings/consolidated-global` **requiere** `?date=...`. Ahora el flujo es regions → clusters → dates → ranking con la fecha más reciente (mismo patrón que `/rankings`). Sumadas filas Primer ataque, Golpe crítico y Daño crítico al comparador, todas con separador de miles (`toLocaleString`).
+
+- ✅ **Cache stale de usuario en la home**: `useAuth` lee de `localStorage` (snapshot del login), así que tras editar el perfil el avatar/XP/level mostrados en la home quedaban viejos.
+  - `frontend/app/profile/edit/page.tsx`: tras `PATCH /users/me/profile`, mergea la respuesta en `localStorage.user`.
+  - `frontend/app/page.tsx`: el componente `Home` ahora hace `GET /leaderboard/me` al montar (si hay sesión) y pasa el resultado fresco como prop a `LoggedInHero` y `LoggedInRow`. Cache de localStorage también se actualiza.
+
+- ✅ **Home "Tu actividad"**: los cards de Nivel y XP ya no son links (llevaban a `/guides` y `/rankings`, no tenía sentido). Ahora son stats puros. Link "Mi perfil →" arriba a la derecha, y dos CTAs reales abajo: Mis favoritos y Editar perfil.
 
 ### Changes in this session (2026-05-10, later) — Engagement features
 - ✅ **Home dinámica para logueados** (`frontend/app/page.tsx`): hero personalizado con `AvatarFrame`, `nameColor`, rank badge, barra de XP con "X XP para subir" (thresholds hardcoded en `LEVEL_THRESHOLDS`), CTAs "Ir al dashboard" / "Editar perfil". Fila adicional debajo con notificaciones no leídas (top 3) y stats (Nivel/XP/Mi perfil). Anónimo ve el hero original sin cambios.

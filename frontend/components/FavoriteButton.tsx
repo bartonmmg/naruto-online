@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { Bookmark } from 'lucide-react'
 import api from '@/lib/api'
 
-type FavoriteType = 'GUIDE' | 'NEWS' | 'PLAYER'
+type FavoriteType = 'GUIDE' | 'NEWS' | 'PLAYER' | 'NINJA'
 
 interface Props {
   type: FavoriteType

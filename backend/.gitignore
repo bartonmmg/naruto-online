@@ -39,3 +39,6 @@ Thumbs.db
 # generated
 prisma/dev.db
 prisma/dev.db-journal
+
+# game data pipeline (regenerable, descargado del CDN de Oasis)
+tmp/

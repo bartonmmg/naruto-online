@@ -10,6 +10,7 @@ import notificationsRoutes from './routes/notifications.routes.js'
 import adminRoutes from './routes/admin.routes.js'
 import usersRoutes from './routes/users.routes.js'
 import favoritesRoutes from './routes/favorites.routes.js'
+import gameNinjasRoutes from './routes/game-ninjas.routes.js'
 import { apiKeyMiddleware } from './middleware/apiKey.js'
 import { xpService } from './services/xp.service.js'
 
@@ -41,6 +42,9 @@ app.use('/auth', authRouter)
 
 // News — public read, protected write (before apiKeyMiddleware)
 app.use('/news', newsRoutes)
+
+// Game data: catalogo de ninjas (publico, sin auth)
+app.use('/game/ninjas', gameNinjasRoutes)
 
 // Protected endpoints (API key required)
 app.use(apiKeyMiddleware)

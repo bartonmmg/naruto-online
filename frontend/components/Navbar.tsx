@@ -3,18 +3,34 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Menu, X, LogOut, Trophy, Bookmark } from 'lucide-react'
+import { Menu, X, LogOut, Trophy, Bookmark, ChevronDown } from 'lucide-react'
 import Button from './ui/Button'
 import { useAuth } from '@/lib/hooks/useAuth'
 import NotificationBell from './NotificationBell'
 
-const navLinks = [
-  { href: '/novedades',  label: 'Novedades' },
-  { href: '/rankings',   label: 'Rankings' },
-  { href: '/tools',      label: 'Herramientas' },
-  { href: '/events',     label: 'Eventos' },
-  { href: '/guides',     label: 'Guías' },
-  { href: '/faq',        label: 'FAQ' },
+type NavLink = {
+  href: string
+  label: string
+  children?: { href: string; label: string; disabled?: boolean }[]
+}
+
+const navLinks: NavLink[] = [
+  { href: '/novedades', label: 'Novedades' },
+  { href: '/rankings',  label: 'Rankings' },
+  {
+    href: '/centro-de-datos',
+    label: 'Centro de Datos',
+    children: [
+      { href: '/centro-de-datos/ninjas', label: 'Ninjas' },
+      { href: '/centro-de-datos/modas',     label: 'Modas',              disabled: true },
+      { href: '/centro-de-datos/espiritus', label: 'Espíritus Animales', disabled: true },
+      { href: '/centro-de-datos/main',      label: 'Main' },
+    ],
+  },
+  { href: '/tools',     label: 'Herramientas' },
+  { href: '/events',    label: 'Eventos' },
+  { href: '/guides',    label: 'Guías' },
+  { href: '/faq',       label: 'FAQ' },
 ]
 
 export default function Navbar() {
@@ -56,24 +72,8 @@ export default function Navbar() {
 
         {/* Desktop links */}
         <div className="hidden md:flex items-center gap-10">
-          {navLinks.map(({ href, label }) => (
-            href.startsWith('#') ? (
-              <a
-                key={href}
-                href={href}
-                className="text-sm font-montserrat font-semibold text-white/70 hover:text-power-red transition-colors duration-200 relative after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-power-red after:transition-all after:duration-300 hover:after:w-full"
-              >
-                {label}
-              </a>
-            ) : (
-              <Link
-                key={href}
-                href={href}
-                className="text-sm font-montserrat font-semibold text-white/70 hover:text-power-red transition-colors duration-200 relative after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-power-red after:transition-all after:duration-300 hover:after:w-full"
-              >
-                {label}
-              </Link>
-            )
+          {navLinks.map((link) => (
+            <DesktopNavItem key={link.href} link={link} />
           ))}
         </div>
 
@@ -132,26 +132,36 @@ export default function Navbar() {
       {/* Mobile menu */}
       {menuOpen && (
         <div className="md:hidden bg-bg-primary/98 backdrop-blur-xl border-b border-power-red/20 px-6 py-6 flex flex-col gap-4 animate-fade-up">
-          {navLinks.map(({ href, label }) => (
-            href.startsWith('#') ? (
-              <a
-                key={href}
-                href={href}
-                className="font-montserrat text-sm font-semibold text-white/70 hover:text-power-red transition-colors"
-                onClick={() => setMenuOpen(false)}
-              >
-                {label}
-              </a>
-            ) : (
+          {navLinks.map((link) => (
+            <div key={link.href} className="flex flex-col gap-2">
               <Link
-                key={href}
-                href={href}
+                href={link.href}
                 className="font-montserrat text-sm font-semibold text-white/70 hover:text-power-red transition-colors"
                 onClick={() => setMenuOpen(false)}
               >
-                {label}
+                {link.label}
               </Link>
-            )
+              {link.children && (
+                <div className="flex flex-col gap-1.5 pl-4 border-l border-white/10">
+                  {link.children.map((c) =>
+                    c.disabled ? (
+                      <span key={c.href} className="font-montserrat text-xs text-white/30 cursor-not-allowed">
+                        {c.label} <span className="opacity-60">(Próximamente)</span>
+                      </span>
+                    ) : (
+                      <Link
+                        key={c.href}
+                        href={c.href}
+                        className="font-montserrat text-xs font-medium text-white/60 hover:text-power-red transition-colors"
+                        onClick={() => setMenuOpen(false)}
+                      >
+                        {c.label}
+                      </Link>
+                    )
+                  )}
+                </div>
+              )}
+            </div>
           ))}
           <div className="h-px bg-gradient-to-r from-transparent via-white/20 to-transparent my-2" />
           <div className="flex flex-col gap-3 pt-2">
@@ -183,5 +193,61 @@ export default function Navbar() {
         </div>
       )}
     </nav>
+  )
+}
+
+/** Item del navbar desktop. Si tiene `children`, abre dropdown on hover. */
+function DesktopNavItem({ link }: { link: NavLink }) {
+  const [open, setOpen] = useState(false)
+
+  const linkClasses =
+    'text-sm font-montserrat font-semibold text-white/70 hover:text-power-red transition-colors duration-200 relative after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-power-red after:transition-all after:duration-300 hover:after:w-full'
+
+  if (!link.children) {
+    return (
+      <Link href={link.href} className={linkClasses}>
+        {link.label}
+      </Link>
+    )
+  }
+
+  return (
+    <div
+      className="relative"
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+    >
+      <Link href={link.href} className={`${linkClasses} flex items-center gap-1`}>
+        {link.label}
+        <ChevronDown
+          className={`w-3.5 h-3.5 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+        />
+      </Link>
+      {open && (
+        <div className="absolute left-1/2 -translate-x-1/2 top-full pt-3 w-56 z-50">
+          <div className="bg-bg-primary/98 backdrop-blur-xl border border-white/10 rounded-lg shadow-xl shadow-black/40 overflow-hidden">
+            {link.children.map((c) =>
+              c.disabled ? (
+                <div
+                  key={c.href}
+                  className="px-4 py-2.5 text-xs font-montserrat text-white/30 cursor-not-allowed flex items-center justify-between"
+                >
+                  <span>{c.label}</span>
+                  <span className="text-[9px] uppercase tracking-wider opacity-60">Próx.</span>
+                </div>
+              ) : (
+                <Link
+                  key={c.href}
+                  href={c.href}
+                  className="block px-4 py-2.5 text-xs font-montserrat font-semibold text-white/70 hover:text-power-red hover:bg-white/5 transition-colors"
+                >
+                  {c.label}
+                </Link>
+              )
+            )}
+          </div>
+        </div>
+      )}
+    </div>
   )
 }

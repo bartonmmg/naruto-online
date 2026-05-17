@@ -1,8 +1,8 @@
 import { prisma } from '../lib/prisma.js'
 
-export type FavoriteType = 'GUIDE' | 'NEWS' | 'PLAYER'
+export type FavoriteType = 'GUIDE' | 'NEWS' | 'PLAYER' | 'NINJA'
 
-const VALID_TYPES: FavoriteType[] = ['GUIDE', 'NEWS', 'PLAYER']
+const VALID_TYPES: FavoriteType[] = ['GUIDE', 'NEWS', 'PLAYER', 'NINJA']
 
 export const favoritesService = {
   isValidType(type: string): type is FavoriteType {
@@ -57,6 +57,26 @@ export const favoritesService = {
         },
       })
       return favs.map(f => ({ ...f, target: news.find(n => n.id === f.targetId) ?? null }))
+    }
+
+    if (type === 'NINJA') {
+      const numIds = ids.map((id) => Number(id)).filter((n) => Number.isFinite(n))
+      const ninjas = numIds.length
+        ? await prisma.gameNinja.findMany({
+            where: { id: { in: numIds } },
+            select: {
+              id: true, artisticId: true, name: true, title: true, kind: true,
+              propertyCode: true, propertyLabel: true,
+              careerCode: true, careerLabel: true,
+              rarenessCode: true, rarenessLabel: true,
+              starLevel: true, assets: true,
+            },
+          })
+        : []
+      return favs.map(f => ({
+        ...f,
+        target: ninjas.find(n => String(n.id) === f.targetId) ?? null,
+      }))
     }
 
     // PLAYER — targetId is a free-form player identifier; just return as-is

@@ -168,3 +168,9 @@ local-*.bat
 
 # Optional output
 out
+
+# ==================== GAME DATA PIPELINE ====================
+# Internal docs and artifacts of the game-data scraping pipeline
+CLAUDE-game-data-pipeline.md
+backend/tmp/
+backend/src/game-client/
