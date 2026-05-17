@@ -248,6 +248,37 @@ export function ninjaThumbnailSrc(artisticId: number): string {
   return `/images/game/ninjas/${artisticId}.webp`
 }
 
+// ─── Espíritus Animales (Summon Beasts) ─────────────────────────────────────
+
+export interface GameSpiritStats {
+  baseLife: number
+  baseAttack: number
+  baseDefense: number
+  baseNinjaAttack: number
+  baseResist: number
+}
+
+export interface GameSpirit {
+  id: number
+  artisticId: number
+  cardId: number
+  name: string
+  type: number
+  stats: GameSpiritStats
+  skillName: string
+  description: string
+  majorSkillIds: number[]
+}
+
+export interface SpiritListResponse {
+  items: GameSpirit[]
+  total: number
+}
+
+export function spiritImageSrc(spiritId: number): string {
+  return `/images/game/spirits/${spiritId}.webp`
+}
+
 /**
  * Combatividad estimada al nivel 100 (formula simplificada).
  * El poder real en el juego depende de equipo + breakthrough + assists, pero

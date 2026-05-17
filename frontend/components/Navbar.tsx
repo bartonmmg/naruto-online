@@ -23,7 +23,7 @@ const navLinks: NavLink[] = [
     children: [
       { href: '/centro-de-datos/ninjas', label: 'Ninjas' },
       { href: '/centro-de-datos/modas',     label: 'Modas',              disabled: true },
-      { href: '/centro-de-datos/espiritus', label: 'Espíritus Animales', disabled: true },
+      { href: '/centro-de-datos/espiritus', label: 'Espíritus Animales' },
       { href: '/centro-de-datos/main',      label: 'Main' },
     ],
   },

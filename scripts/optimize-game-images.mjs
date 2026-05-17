@@ -26,6 +26,7 @@ const TARGETS = [
   { dir: join(ROOT, 'ninjas/big'), w: 400, h: 533, fit: 'cover',    quality: 82, label: 'ninjas-big'  },
   { dir: join(ROOT, 'ninjas'),     w: 256, h: 256, fit: 'cover',    quality: 82, label: 'ninjas-thumb', subdirs: false },
   { dir: join(ROOT, 'skills'),     w: 80,  h: 80,  fit: 'cover',    quality: 85, label: 'skills'      },
+  { dir: join(ROOT, 'spirits'),    w: 128, h: 128, fit: 'cover',    quality: 85, label: 'spirits'     },
 ]
 
 let totalBefore = 0

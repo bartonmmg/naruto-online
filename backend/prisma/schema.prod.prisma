@@ -339,3 +339,26 @@ model GameSkill {
 
   @@index([region])
 }
+
+// Espíritus animales (Summon Beasts) — 49 entries en LatAm/ES
+// Importado desde tmp/game-data/SummonMonsterCFG.xml
+model GameSpirit {
+  id              Int      @id
+  region          String   @default("ES_LATAM")
+  artisticId      Int
+  cardId          Int
+  name            String
+  type            Int
+  baseLife        Int
+  baseAttack      Int
+  baseDefense     Int
+  baseNinjaAttack Int
+  baseResist      Int
+  skillName       String
+  description     String
+  majorSkillIds   String   @default("[]")
+  importedAt      DateTime @default(now())
+
+  @@index([region])
+  @@index([name])
+}

@@ -41,11 +41,11 @@ export default function CentroDeDatosPage() {
       count: null,
     },
     {
-      href: null,
+      href: '/centro-de-datos/espiritus',
       icon: Cat,
       title: 'Espíritus Animales',
-      description: 'Summons y bestias invocables.',
-      count: null,
+      description: 'Compañeros invocables que potencian a tu equipo.',
+      count: 49,
     },
     {
       href: '/centro-de-datos/main',

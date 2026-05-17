@@ -339,3 +339,26 @@ model GameSkill {
 
   @@index([region])
 }
+
+// Espíritus animales (Summon Beasts) — 49 entries en LatAm/ES
+// Importado desde tmp/game-data/SummonMonsterCFG.xml
+model GameSpirit {
+  id              Int      @id // id del juego (ej. 20000001 Tonton)
+  region          String   @default("ES_LATAM")
+  artisticId      Int // id del icono de skill (assets/skill/40/<artisticId>.png)
+  cardId          Int // aquireCardId — fragmento del bag (assets/bag/item/<cardId>.png)
+  name            String // "Tonton", "Rey águila", etc.
+  type            Int // tipo / familia (1, 2...)
+  baseLife        Int
+  baseAttack      Int
+  baseDefense     Int
+  baseNinjaAttack Int
+  baseResist      Int
+  skillName       String // "Espíritu animal - Tonton"
+  description     String // descripción del efecto
+  majorSkillIds   String   @default("[]") // JSON: number[] — skills por nivel del espíritu
+  importedAt      DateTime @default(now())
+
+  @@index([region])
+  @@index([name])
+}
