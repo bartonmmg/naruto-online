@@ -268,6 +268,15 @@ export interface GameSpirit {
   skillName: string
   description: string
   majorSkillIds: number[]
+  openLevel: number
+  cardCost: number
+  triggerKeywords: string[]
+  applyKeywords: string[]
+}
+
+export interface GameSpiritDetail extends GameSpirit {
+  kathaSkillRefs: { lv1: number[]; lv2: number[]; lv3: number[] }
+  katha: { lv1: GameSkill[]; lv2: GameSkill[]; lv3: GameSkill[] }
 }
 
 export interface SpiritListResponse {
@@ -275,8 +284,20 @@ export interface SpiritListResponse {
   total: number
 }
 
+export interface SpiritFiltersResponse {
+  type: { code: number; label: string; count: number }[]
+  trigger: { label: string; count: number }[]
+  apply: { label: string; count: number }[]
+  total: number
+}
+
+/** Thumbnail (bag/item) — cargada primero, fallback rápido */
 export function spiritImageSrc(spiritId: number): string {
   return `/images/game/spirits/${spiritId}.webp`
+}
+/** Imagen grande del CDN throughTheBeast/developview */
+export function spiritBigImageSrc(spiritId: number): string {
+  return `/images/game/spirits/big/${spiritId}.webp`
 }
 
 /**

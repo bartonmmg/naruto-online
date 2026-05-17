@@ -357,6 +357,11 @@ model GameSpirit {
   skillName       String
   description     String
   majorSkillIds   String   @default("[]")
+  openLevel       Int      @default(0)
+  cardCost        Int      @default(0)
+  triggerKeywords String   @default("[]")
+  applyKeywords   String   @default("[]")
+  kathaSkillIds   String   @default("{}")
   importedAt      DateTime @default(now())
 
   @@index([region])

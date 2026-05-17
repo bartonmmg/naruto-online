@@ -1,12 +1,16 @@
 #!/usr/bin/env node
 /**
  * Baja imágenes de los 49 espíritus animales del CDN.
- * Cada espíritu tiene:
- *   - card: assets/bag/item/<cardId>.png        (~3KB, icono del bag — usado como portrait)
- *   - icon: assets/skill/40/<artisticId>.png    (icono del skill — fallback)
  *
- * Output:
- *   frontend/public/images/game/spirits/<spiritId>.png
+ * Targets:
+ *   1. Thumbnail (icono del bag, ~3KB):
+ *      CDN: assets/bag/item/<cardId>.png
+ *      Local: frontend/public/images/game/spirits/<spiritId>.png
+ *
+ *   2. Big image (developview, ~150-500KB) — alta resolución para detalle:
+ *      CDN: assets/throughTheBeast/developview/<bigImageId>.png
+ *      bigImageId = 21000000 + (spirit.id - 20000000)
+ *      Local: frontend/public/images/game/spirits/big/<spiritId>.png
  *
  * Uso:
  *   node scripts/download-spirit-images.mjs
@@ -21,6 +25,7 @@ const ROOT = path.resolve(__dirname, '..')
 const XML_PATH = path.join(ROOT, 'backend', 'tmp', 'game-data', 'SummonMonsterCFG.xml')
 const VERSION_MAP = path.join(ROOT, 'backend', 'tmp', 'versionMap.json')
 const OUT_DIR = path.join(ROOT, 'frontend', 'public', 'images', 'game', 'spirits')
+const OUT_DIR_BIG = path.join(OUT_DIR, 'big')
 
 const CDN = 'https://cdnnarutoxi-lm.oasgames.com'
 
@@ -49,57 +54,53 @@ function parseSpirits() {
   })).filter((s) => s.id)
 }
 
+function tryDownload(spirit, kind) {
+  const isBig = kind === 'big'
+  const dest = isBig
+    ? path.join(OUT_DIR_BIG, `${spirit.id}.png`)
+    : path.join(OUT_DIR, `${spirit.id}.png`)
+
+  if (fs.existsSync(dest) && fs.statSync(dest).size > 200) return { ok: true, skipped: true }
+  // Si ya está la .webp optimizada, saltear también
+  const webp = dest.replace(/\.png$/, '.webp')
+  if (fs.existsSync(webp) && fs.statSync(webp).size > 200) return { ok: true, skipped: true }
+
+  const versionMap = JSON.parse(fs.readFileSync(VERSION_MAP, 'utf8'))
+  let key
+  if (isBig) {
+    const bigId = 21000000 + (spirit.id - 20000000)
+    key = `assets/throughTheBeast/developview/${bigId}.png`
+  } else {
+    key = `assets/bag/item/${spirit.cardId}.png`
+  }
+  const entry = versionMap[key]
+  if (!entry) return { ok: false, reason: 'no-asset' }
+
+  const url = `${CDN}/${entry.tag}/${entry.url}`
+  return downloadOne(url, dest)
+}
+
 function main() {
   if (!fs.existsSync(XML_PATH) || !fs.existsSync(VERSION_MAP)) {
     console.error('Faltan inputs')
     process.exit(1)
   }
   ensureDir(OUT_DIR)
+  ensureDir(OUT_DIR_BIG)
 
   const spirits = parseSpirits()
-  const versionMap = JSON.parse(fs.readFileSync(VERSION_MAP, 'utf8'))
   console.log(`Espíritus: ${spirits.length}\n`)
 
-  let ok = 0, skip = 0, fail = 0, fallback = 0
-  for (const s of spirits) {
-    const dest = path.join(OUT_DIR, `${s.id}.png`)
-    if (fs.existsSync(dest) && fs.statSync(dest).size > 200) {
-      skip++
-      continue
+  for (const kind of ['thumb', 'big']) {
+    let ok = 0, skip = 0, fail = 0
+    for (const s of spirits) {
+      const r = tryDownload(s, kind)
+      if (r.skipped) skip++
+      else if (r.ok) ok++
+      else fail++
     }
-
-    // 1. Probar la card (bag/item)
-    const cardKey = `assets/bag/item/${s.cardId}.png`
-    let entry = versionMap[cardKey]
-
-    // 2. Fallback al skill icon
-    if (!entry) {
-      const iconKey = `assets/skill/40/${s.artisticId}.png`
-      entry = versionMap[iconKey]
-      if (entry) fallback++
-    }
-
-    if (!entry) {
-      console.log(`  ✗ ${s.name} (id=${s.id}): sin asset`)
-      fail++
-      continue
-    }
-
-    const url = `${CDN}/${entry.tag}/${entry.url}`
-    const r = downloadOne(url, dest)
-    if (r.ok) {
-      ok++
-      process.stdout.write(`\r  ${ok + skip + fail}/${spirits.length}  ok=${ok}  skip=${skip}  fail=${fail}  `)
-    } else {
-      fail++
-      console.log(`  ✗ ${s.name}: download error`)
-    }
+    console.log(`[${kind}]  ok=${ok}  skip=${skip}  fail=${fail}`)
   }
-
-  console.log(`\n\nDescargadas:  ${ok}`)
-  console.log(`Ya existían:  ${skip}`)
-  console.log(`Fallidas:     ${fail}`)
-  console.log(`Con fallback a icon: ${fallback}`)
 }
 
 main()

@@ -357,6 +357,11 @@ model GameSpirit {
   skillName       String // "Espíritu animal - Tonton"
   description     String // descripción del efecto
   majorSkillIds   String   @default("[]") // JSON: number[] — skills por nivel del espíritu
+  openLevel       Int      @default(0) // nivel del jugador requerido (0 = sin requisito)
+  cardCost        Int      @default(0) // aquireCardNum — fragmentos para obtenerlo
+  triggerKeywords String   @default("[]") // JSON: string[] — estados del enemigo que desencadenan (keyWord1)
+  applyKeywords   String   @default("[]") // JSON: string[] — estados que aplica (keyWord2)
+  kathaSkillIds   String   @default("{}") // JSON: { lv1: number[], lv2: number[], lv3: number[] } — skills de combo
   importedAt      DateTime @default(now())
 
   @@index([region])
