@@ -11,6 +11,7 @@ import {
 } from '@/lib/types'
 import FavoriteButton from '../FavoriteButton'
 import { ElementBadge, CareerBadge, RarenessBadge } from './Badges'
+import RefText from './RefText'
 
 /**
  * Hero del detalle de ninja — layout vertical compacto, optimizado para vivir
@@ -116,7 +117,7 @@ export default function NinjaHero({ ninja }: { ninja: GameNinjaDetail }) {
             `}
           >
             <span className="text-xl leading-none text-accent-orange opacity-50 mr-1">“</span>
-            {ninja.intro.words}
+            <RefText text={ninja.intro.words} />
             <span className="text-xl leading-none text-accent-orange opacity-50 ml-1">”</span>
           </blockquote>
         )}

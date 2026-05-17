@@ -15,6 +15,7 @@ import MainTalentsTimeline from '@/components/ninjas/MainTalentsTimeline'
 import StatPanel from '@/components/ninjas/StatPanel'
 import ResistGrid from '@/components/ninjas/ResistGrid'
 import NinjaPrevNext from '@/components/ninjas/NinjaPrevNext'
+import RefText from '@/components/ninjas/RefText'
 
 export default function NinjaDetailPage() {
   const params = useParams<{ id: string }>()
@@ -105,7 +106,9 @@ export default function NinjaDetailPage() {
                         <span className={`${propColor.text} text-[10px] leading-relaxed mt-1.5`} aria-hidden>
                           ◆
                         </span>
-                        <span className="flex-1">{line}</span>
+                        <span className="flex-1">
+                          <RefText text={line} />
+                        </span>
                       </li>
                     ))}
                   </ul>
