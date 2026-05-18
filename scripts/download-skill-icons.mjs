@@ -24,6 +24,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const ROOT = path.resolve(__dirname, '..')
 const NINJAS_JSON = path.join(ROOT, 'backend', 'tmp', 'game-data', 'ninjas-canonical.json')
 const TALENT_XML = path.join(ROOT, 'backend', 'tmp', 'game-data', 'talentConfig.xml')
+const SUMMON_XML = path.join(ROOT, 'backend', 'tmp', 'game-data', 'SummonMonsterCFG.xml')
 const SKILL_XML = path.join(ROOT, 'backend', 'tmp', 'game-data', 'SkillCFG.xml')
 const VERSION_MAP = path.join(ROOT, 'backend', 'tmp', 'versionMap.json')
 const OUT_DIR = path.join(ROOT, 'frontend', 'public', 'images', 'game', 'skills')
@@ -89,6 +90,20 @@ function collectSkillIds() {
     const xml = fs.readFileSync(TALENT_XML, 'utf8')
     const matches = xml.matchAll(/<item id="\d+" skills="([^"]+)"/g)
     for (const m of matches) for (const sid of m[1].split(',')) ids.add(Number(sid.trim()))
+  }
+  // Skills de los Espíritus Animales — majorSkill + majorKathaSkill / Lv2 / Lv3
+  if (fs.existsSync(SUMMON_XML)) {
+    const xml = fs.readFileSync(SUMMON_XML, 'utf8')
+    const rows = xml.match(/<row>[\s\S]*?<\/row>/g) || []
+    for (const r of rows) {
+      const skillTags = [
+        ...r.matchAll(/<majorSkill>(\d+)<\/majorSkill>/g),
+        ...r.matchAll(/<majorKathaSkill>(\d+)<\/majorKathaSkill>/g),
+        ...r.matchAll(/<majorKathaSkillLv2>(\d+)<\/majorKathaSkillLv2>/g),
+        ...r.matchAll(/<majorKathaSkillLv3>(\d+)<\/majorKathaSkillLv3>/g),
+      ]
+      for (const m of skillTags) ids.add(Number(m[1]))
+    }
   }
   return ids
 }

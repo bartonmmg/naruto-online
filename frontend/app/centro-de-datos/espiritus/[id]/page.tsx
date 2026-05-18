@@ -13,6 +13,14 @@ import Navbar from '@/components/Navbar'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import SkillCard from '@/components/ninjas/SkillCard'
 
+/** Detecta si un string viene mayoritariamente en CJK (sin traducir al español) */
+function isUntranslated(s: string | null | undefined): boolean {
+  if (!s) return false
+  const cjk = (s.match(/[一-鿿]/g) || []).length
+  // Si más del 30% de los chars son CJK, asumimos sin traducir
+  return cjk > 0 && cjk / s.length > 0.3
+}
+
 export default function SpiritDetailPage() {
   const params = useParams<{ id: string }>()
   const [spirit, setSpirit] = useState<GameSpiritDetail | null>(null)
@@ -139,9 +147,25 @@ export default function SpiritDetailPage() {
                   </h2>
                 </div>
                 <h3 className="font-cinzel text-xl font-bold text-text-primary mb-3">
-                  {spirit.skillName}
+                  {isUntranslated(spirit.skillName) ? (
+                    <span className="text-text-muted italic">Sin traducción disponible</span>
+                  ) : (
+                    spirit.skillName
+                  )}
                 </h3>
-                <p className="text-text-primary/85 leading-relaxed mb-4">{spirit.description}</p>
+                {spirit.description ? (
+                  isUntranslated(spirit.description) ? (
+                    <p className="text-text-muted italic mb-4">
+                      La descripción de esta habilidad aún no fue traducida al español por el juego.
+                    </p>
+                  ) : (
+                    <div
+                      className="text-text-primary/85 leading-relaxed mb-4"
+                      // eslint-disable-next-line react/no-danger
+                      dangerouslySetInnerHTML={{ __html: spirit.description }}
+                    />
+                  )
+                ) : null}
 
                 {/* Chips de keywords */}
                 {(spirit.triggerKeywords.length > 0 || spirit.applyKeywords.length > 0) && (
