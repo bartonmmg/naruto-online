@@ -200,7 +200,7 @@ export default function NinjasPage() {
                 md:block md:relative md:inset-auto md:p-0 md:bg-transparent md:w-64 md:flex-shrink-0
               `}
             >
-              <div className="md:sticky md:top-28">
+              <div className="md:sticky md:top-24 md:max-h-[calc(100vh-7rem)] md:overflow-y-auto md:pr-2">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="font-cinzel font-bold text-text-primary">Filtros</h3>
                   <div className="flex gap-2">

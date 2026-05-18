@@ -25,7 +25,9 @@ const ROOT = new URL('../frontend/public/images/game/', import.meta.url).pathnam
 const TARGETS = [
   { dir: join(ROOT, 'ninjas/big'), w: 400, h: 533, fit: 'cover',    quality: 82, label: 'ninjas-big'  },
   { dir: join(ROOT, 'ninjas'),     w: 256, h: 256, fit: 'cover',    quality: 82, label: 'ninjas-thumb', subdirs: false },
-  { dir: join(ROOT, 'skills'),     w: 80,  h: 80,  fit: 'cover',    quality: 85, label: 'skills'      },
+  // Skills: el CDN sirve PNG nativos 45x45. Upscale a 128x128 con Lanczos para
+  // que se vea nítido cuando el SkillCard los renderiza a 56-80 CSS px.
+  { dir: join(ROOT, 'skills'),     w: 128, h: 128, fit: 'cover',    quality: 92, label: 'skills', upscale: true },
   { dir: join(ROOT, 'spirits'),     w: 128, h: 128, fit: 'cover',   quality: 85, label: 'spirits'     },
   { dir: join(ROOT, 'spirits/big'), w: 400, h: 400, fit: 'cover',   quality: 85, label: 'spirits-big' },
 ]
@@ -77,7 +79,12 @@ for (const t of TARGETS) {
       }
 
       await sharp(src)
-        .resize(t.w, t.h, { fit: t.fit, withoutEnlargement: true })
+        .resize(t.w, t.h, {
+          fit: t.fit,
+          // Para iconos chicos (skills 45px) permitimos upscale con Lanczos
+          withoutEnlargement: t.upscale ? false : true,
+          kernel: t.upscale ? 'lanczos3' : 'lanczos3',
+        })
         .webp({ quality: t.quality, effort: 5 })
         .toFile(dst)
 
