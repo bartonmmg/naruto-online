@@ -767,8 +767,8 @@ Start:  npm start --workspace=backend
 | `/rankings/compare` | Public | Compare up to 3 players side-by-side with deltas |
 | `/events` | Public | Calendar view of EVENT-type news with countdown |
 | `/centro-de-datos` | Public | Landing of game data hub (cards for Ninjas, Main, future Modas/Espíritus) |
-| `/centro-de-datos/ninjas` | Public | Catálogo de ninjas — 403 cards, filtros por elemento/clase/rareza |
-| `/centro-de-datos/ninjas/[id]` | Public | Detalle de carta: hero + intro + skills + stats + resistencias |
+| `/centro-de-datos/ninjas` | Public | Catálogo de ninjas — 389 cards (dedup por `starIdArr`), filtros por elemento / tipo (intro tags) / rareza |
+| `/centro-de-datos/ninjas/[slug]` | Public | Detalle de carta: hero + intro + skills + stats + resistencias. Slug ej. `sasuke`, `gai-puerta`, `minato-namikaze-cuarto-hokage`. Selector ★1-★5 + selector de avance/enlace (+1/+2/Y/Y+1/Y+2/L/L+1/L+2) por skill. |
 | `/centro-de-datos/main` | Public | Los 5 Mains del juego (avatares del jugador por elemento) |
 
 ## Centro de Datos — Game Data Hub (`/centro-de-datos`)
@@ -784,9 +784,10 @@ model GameNinja {
   kind            String   @default("NINJA")     // "NINJA" | "MAIN" (avatar del jugador, 5)
   name            String                          // "Naruto"
   title           String                          // "[Kurama]" o "" para base
+  slug            String                          // URL slug — ej. "sasuke", "gai-puerta", "minato-namikaze-cuarto-hokage"
   propertyCode    Int  // 1=Agua 2=Fuego 3=Viento 4=Rayo 5=Tierra
   propertyLabel   String
-  careerCode      Int  // 1=Ataque 2=Defensa 3=Especialista 4=Asistencia 5=Control 6=Médico 7=Distancia
+  careerCode      Int  // 1=Ataque 2=Defensa 3=Especialista 4=Asistencia 5=Control 6=Médico 7=Distancia (campo legacy, NO usado en filtros del listado)
   careerLabel     String
   rarenessCode    Int  // 0..5
   rarenessLabel   String
@@ -797,7 +798,10 @@ model GameNinja {
   equipNum        Int
   stats           String   // JSON: NinjaStats (HP/Atk/Def base + growth + Crit/Strike)
   resists         String   // JSON: { fire, wind, thunder, soil, water }
-  intro           String?  // JSON: { desc: string[], words: string } | null
+  intro           String?  // JSON: { desc: string[], words: string, types: string[] } | null
+  ninjaTypes      String   // JSON: string[] — clasificación visible del juego (ej. ["Ataque grupal", "Buen Estado"])
+  starVariants    String   // JSON: 5 entries (★1..★5) { star, id, title, artisticId, stats, resists, normalSkillIds, specialSkillIds, skillIds, skillUpgrades }
+  skillUpgrades   String   // JSON: { baseSkillId: [{id, tierCode, tierLabel}] } — avance/enlace (+1/+2/Y/Y+1/Y+2/L/L+1/L+2)
   mainTalents     String?  // JSON: solo kind=MAIN — { esoterica, ataque, pasiva: TalentSlot[] }
   normalSkillIds  String   // JSON: number[]
   specialSkillIds String   // JSON: number[]
@@ -805,7 +809,8 @@ model GameNinja {
   assets          String   // JSON: { bigImage, halfImage, portrait }
   importedAt      DateTime @default(now())
   @@unique([region, name, title])
-  @@index([region, kind, name, propertyCode, careerCode, rarenessCode])
+  @@unique([region, slug])
+  @@index([region, kind, name, slug, propertyCode, careerCode, rarenessCode])
 }
 
 model GameSkill {
@@ -821,37 +826,40 @@ model GameSkill {
 ```
 
 ### Backend
-- `services/game-ninjas.service.ts` — `list / getById / getFilterFacets`. `getById` resuelve skill IDs (incluyendo los de `mainTalents`) en un solo `WHERE IN`. Default `kind=NINJA` para que el listado filtre los Mains.
-- `controllers/game-ninjas.controller.ts` — Zod schema valida `search/kind/property/career/rareness/sort/limit/offset`.
+- `services/game-ninjas.service.ts` — `list / getById / getFilterFacets`. `getById(idOrSlug)` acepta id numérico o slug; resuelve skill IDs (winner + cada variante por estrella + upgrades + `mainTalents`) en un solo `WHERE IN`. Default `kind=NINJA` para que el listado filtre los Mains. El listado retorna la forma ★1 de cada carta (artisticId + title del primer `starVariants`).
+- `controllers/game-ninjas.controller.ts` — Zod schema valida `search/kind/property/ninjaType/rareness/sort/limit/offset`. `getById` acepta numérico o slug (regex `/^\d+$/`).
 - `routes/game-ninjas.routes.ts` — todas públicas, registradas ANTES de `apiKeyMiddleware`.
 - Endpoints:
-  - `GET /game/ninjas?kind=NINJA|MAIN&...` — paginado con filtros
-  - `GET /game/ninjas/filters` — counts por property/career/rareness (solo NINJA)
-  - `GET /game/ninjas/:id` — detalle con skills resueltos + mainTalents resueltos (solo si MAIN)
+  - `GET /game/ninjas?kind=NINJA|MAIN&ninjaType=...&property=...&rareness=...` — paginado con filtros
+  - `GET /game/ninjas/filters` — counts por property/career/rareness + `ninjaTypes` (solo NINJA)
+  - `GET /game/ninjas/:idOrSlug` — detalle con skills resueltos + 5 variantes por estrella + skill upgrades (avance/enlace) + mainTalents resueltos (solo si MAIN)
 
 ### Frontend
 - `app/centro-de-datos/page.tsx` — landing con cards (Ninjas activa, Main activa, Modas/Espíritus "Próximamente")
-- `app/centro-de-datos/ninjas/page.tsx` — listado con sidebar filtros (con kanjis por elemento), search debounced 300ms, infinite scroll, sort por nombre/rareza/atk-ninja/atk-cuerpo/vida
-- `app/centro-de-datos/ninjas/[id]/page.tsx` — detalle en **layout 2 columnas** (`[minmax(340px,420px)_1fr]`):
-  - **Izquierda:** Hero compacto (imagen 3:4 + estrellas overlay + ♡ favorito + nombre/título/badges/frase) → StatPanel → ResistGrid
-  - **Derecha:** Intro "Sobre este ninja" → Habilidades (o Talentos timeline si es MAIN)
+- `app/centro-de-datos/ninjas/page.tsx` — listado con sidebar filtros (Elemento con kanjis + Tipo con tags del intro + Rareza), search debounced 300ms, infinite scroll, sort por nombre/rareza/atk-ninja/atk-cuerpo/vida. Cada card muestra la **forma ★1** (imagen + título iniciales del juego, ej. "Gai [Puerta]"). Linkea por slug.
+- `app/centro-de-datos/ninjas/[slug]/page.tsx` — detalle en **layout 2 columnas** (`[minmax(340px,420px)_1fr]`):
+  - **Izquierda:** Hero compacto (imagen 3:4 + estrellas overlay + ♡ favorito + nombre/título/badges/frase) → **StarSelector** (★1..★5) → StatPanel → ResistGrid
+  - **Derecha:** Intro "Sobre este ninja" → Habilidades con selector de tier inline en cada skill (Base / +1 / +2 / Y / Y+1 / Y+2 / L / L+1 / L+2)
+  - **Default ★1**: al entrar, la carta arranca en la forma inicial. El usuario sube estrellas con el selector. Title, imagen, stats, resistencias, skills y upgrades se swappean.
 - `app/centro-de-datos/main/page.tsx` — los 5 Mains como cards 1:1 con kanji decorativo gigante por elemento
 
 ### Componentes compartidos (`frontend/components/ninjas/`)
 | Componente | Función |
 |---|---|
-| `Badges.tsx` | `ElementBadge` / `CareerBadge` / `RarenessBadge` / `StarLevel` |
-| `NinjaCard.tsx` | Card para el listado (kanji watermark + portrait + nombre + chips) |
+| `Badges.tsx` | `ElementBadge` / `CareerBadge` / `RarenessBadge` / `StarLevel` / `NinjaTypeBadge` (tag del intro: Ataque grupal, Control, Médico, etc.) |
+| `NinjaCard.tsx` | Card para el listado (kanji watermark + portrait + nombre + chips). Linkea por `slug`. Muestra `ninjaTypes[0]` en vez del career legacy. |
 | `NinjaBreadcrumb.tsx` | Centro de Datos → Ninjas/Main → [nombre] |
-| `NinjaHero.tsx` | Hero vertical compacto: imagen + identidad + favorito + frase |
+| `NinjaHero.tsx` | Hero vertical compacto: imagen + identidad + favorito + frase. Stars overlay (★N) reflejan la estrella seleccionada. |
+| `StarSelector.tsx` | Botones ★1..★5. Punto naranja en cada estrella donde la carta cambia de forma. Hint inferior cuando transforma de title. |
 | `StatPanel.tsx` | Stats con iconos lucide + chips secundarios + Combatividad pinneada al pie |
 | `ResistGrid.tsx` | Grilla 5 kanjis con bordes verde/rojo según fortaleza/debilidad |
-| `NinjaSkillsList.tsx` | Habilidades en orden Esotérica → Ataque → Combo → Pasivas N (con badges numerados) |
+| `NinjaSkillsList.tsx` | Habilidades en orden Esotérica → Ataque → Combo → Pasivas N (con badges numerados). Re-mounta al cambiar estrella (resetea tier a Base). |
 | `MainTalentsTimeline.tsx` | Para Mains: timeline vertical ordenada por nivel del jugador, tabs internas para pasivas con 3 opciones |
-| `NinjaPrevNext.tsx` | Navegación entre cartas del mismo kind, cacheada en `sessionStorage` |
-| `SkillCard.tsx` | Card de habilidad con icono + descripción **inline siempre visible** (no hover tooltip), ribbon vertical de color por tipo |
+| `NinjaPrevNext.tsx` | Navegación entre cartas del mismo kind, cacheada en `sessionStorage`. Linkea por slug. |
+| `SkillCard.tsx` | Card de habilidad con icono + descripción **inline siempre visible** (no hover tooltip), ribbon vertical de color por tipo. Selector de tier (Base / +1 / +2 / Y / Y+1 / Y+2 / L / L+1 / L+2) cuando la skill tiene upgrades. |
 | `SkillIcon.tsx` | Icono cuadrado de skill con borde por tipo + fallback Sparkles |
 | `StatBar.tsx` | Barra de stat con icono opcional (`LucideIcon`) |
+| `RefText.tsx` | Parsea `{Nombre}` y `{Nombre (Variante)}` en intro → Links a otros ninjas por slug |
 
 ### Sistema visual nuevo (en `lib/types.ts`)
 - `PROPERTY_KANJI`: `1=水 2=火 3=風 4=雷 5=土` — uno por elemento
@@ -983,7 +991,49 @@ DATABASE_URL='file:./prisma/dev.db' npx prisma generate
 - `skills/<skillId>.png` — iconos de habilidades (~5.946 archivos, baja con `scripts/download-skill-icons.mjs`)
 
 ## Last Updated
-2026-05-17
+2026-05-19
+
+### Changes in this session (2026-05-19) — Catálogo de ninjas: dedup correcto + tiers + URLs por slug
+
+Mejoras estructurales al catálogo de ninjas tras analizar la mecánica real del juego (estrellas + avance + enlaces Y/L). El total bajó de 408 a 394 (389 NINJA + 5 MAIN) coincidiendo con los ~390 cards visibles en el juego actual.
+
+- ✅ **Dedup por `starIdArr`** — antes deduplicábamos por `(name, title)`, lo que dejaba duplicados cuando una carta cambia de title al subir estrellas. Ahora agrupamos por el campo `<starIdArr>` del XML (array de 5 IDs, uno por nivel de estrella). Casos resueltos: Gai (★1-3 [Puerta] → ★4-5 [Conmoción]), Itachi (★1-2 [Joven] → ★3-5 [Orejas de Gato]), Naruto Tails ([Chakra 9 colas] x3 IDs), Obito + chino sin traducir (宇智波带土 [暴走]), Kakashi clones (filtrados como `type=1`), Edo Tensei callouts.
+
+- ✅ **Filtro `type === 0`** en el importer (`build.ts > rowToNinja` extrae `<type>` y `<starIdArr>`). Saca NPCs/clones/summons/Edo Tensei callouts (Kakashi - Clon agua/relámpago, Primer/Segundo Hokage Transmigración, Jiraiya Clon de Sombra, Enkouou Enma, etc.).
+
+- ✅ **Filtro "Tipo" desde el intro** — `NinjaIntroduceCFG.xml` tiene tags `Ninja de [X]` / `Ninja [X]` que son la clasificación visible real del juego. 22 categorías: Ataque grupal (86), Control (54), Fuente de Chakra (39), Ataque individual (37), Asistencia (30), Encantamiento, Buen Estado, Médico, Escudo, Escudo Humano, Clon, Interrupción, Marioneta, Resurrección, Invocación, Doble ataque, Copia, Transformación, etc. **Reemplaza** al filtro "Clase" basado en el campo legacy `<carreer>` (que tenía data drift — ej. Minato [Cuarto Hokage] aparecía como "Medico" cuando sus skills son daño + Marcado/Derribo/Flote bajo). El campo `careerLabel` sigue en DB pero NO se muestra en el filtro ni en las cards.
+
+- ✅ **Selector de estrella (★1-★5) en el detalle** — `StarSelector.tsx` debajo del hero. Cada `starVariant` trae su propio `{id, title, artisticId, stats, resists, skills, skillUpgrades}`. Al cambiar de estrella, todo el detalle se swappea (incluyendo skills, que pueden cambiar entre cartas mecánicamente — algunas pasivas se desbloquean recién en ★4-5). Default ★1 (forma inicial). Las estrellas overlay del hero también reflejan la selección.
+
+- ✅ **Selector de avance/enlace por skill** — `SkillCard.tsx` muestra tabs "Base / +1 / +2 / Y / Y+1 / Y+2 / L / L+1 / L+2" cuando la skill tiene upgrades. Decodificado por el dígito que cambia entre la base y cada upgrade en el ID. Los items consumibles del XML (con `;`) se descartan. Algunas skills tienen gaps (ej. Obito Caos Infernal tiene +2/Y/Y+1 pero no +1 ni Y+2).
+
+- ✅ **URLs por slug** — la ruta cambió de `/centro-de-datos/ninjas/[id]` a `/centro-de-datos/ninjas/[slug]`. Slugs ej: `sasuke`, `gai-puerta`, `itachi-uchiha-joven`, `minato-namikaze-cuarto-hokage`. Generados desde `name + title_de_★1` (slugify NFD + lowercase + alphanumeric). El campo `slug` con `@@unique([region, slug])` en el schema. El endpoint `/game/ninjas/:idOrSlug` acepta ambos (regex `/^\d+$/`).
+
+- ✅ **Listado muestra la forma ★1** — `summarize(n)` retorna `artisticId` y `title` del primer star variant. La card muestra "Gai [Puerta]" (no "[Conmoción]"). El detalle también arranca en ★1 para coherencia visual.
+
+- ✅ **Schema additions** (`schema.prisma` + `schema.prod.prisma`):
+  - `slug String` con `@@unique([region, slug])` y `@@index([slug])`
+  - `ninjaTypes String @default("[]")` — JSON `string[]`
+  - `starVariants String @default("[]")` — JSON 5 entries con skills + upgrades por estrella
+  - `skillUpgrades String @default("{}")` — JSON `{ baseSkillId: [{id, tierCode, tierLabel}] }`
+
+- ✅ **`parser.ts` nuevos exports**: `parseSkillUpgrades(xmlPath)` con tier-decoding + `TIER_LABELS` constante. `parseIntros(xmlPath)` ahora extrae `types[]` además de `desc[]` y `words`.
+
+- ✅ **Verificado contra ejemplos del usuario** (screenshots de Sasuke Esotérica en el juego):
+  - `21000237` → Base "Técnica Relámpago - Kirin"
+  - `21010237` → "Técnica Relámpago - Kirin +1"
+  - `21020237` → "Técnica Relámpago - Kirin +2"
+  - `21030237` → "Técnica Relámpago - Kirin Y"
+  - `21040237` → "Técnica Relámpago - Kirin Y+1"
+  - `21050237` → "Técnica Relámpago - Kirin Y+2"
+
+**Pendiente aplicar a Neon (prod):**
+```bash
+cd backend && set -a && . ./.env.production && set +a
+npx prisma db push --schema=prisma/schema.prod.prisma --skip-generate --accept-data-loss
+npx tsx src/game-client/ninja-catalog/import-to-db.ts
+```
+⚠️ La constraint `@@unique([region, slug])` rechaza si quedan slugs vacíos en filas pre-existentes. Solución: borrar las filas de `GameNinja` antes del re-import (`DELETE FROM "GameNinja" WHERE region='ES_LATAM'`) o usar `--accept-data-loss`.
 
 ### Changes in this session (2026-05-17) — Centro de Datos (catálogo de ninjas)
 
@@ -1012,13 +1062,27 @@ Implementación completa del catálogo del juego desde el CDN de Oasis. Todo el 
 - ✅ **Iconos de habilidades** con descripción inline visible (sin hover tooltip — accesible en mobile). Cada `SkillCard` tiene ribbon vertical del color por tipo (naranja Esotérica, azul Ataque, púrpura Combo, gris Pasivas).
 - ✅ **`.gitignore`** agregado `tmp/` para no commitear los assets descargados del CDN (~65 MB regenerables).
 
-**Filtros aplicados al importer** (importante para entender por qué bajamos de 11.041 rows a 408 finales):
-- Solo `id LIKE '11%'` (cartas jugables; los `13xx-19xx` son NPCs / versiones de batalla)
-- `title === ''` o `title.startsWith('[')` (descarta clones/placeholders con texto libre)
+**Filtros aplicados al importer** (importante para entender por qué bajamos de 11.041 rows a 394 finales — 389 NINJA + 5 MAIN):
+- Solo `id LIKE '11%'` (cartas jugables)
+- `<type> === 0` (filtra NPCs/clones/summons/Edo Tensei callouts. type=1 y type=3 son entidades de batalla, no cartas)
+- `title === ''` o `title.startsWith('[')` (descarta placeholders con texto libre)
 - Tiene imagen en CDN (descarta invocaciones como marionetas/summons)
 - Nombre no arranca con `Clon|Pseudo|Mecha-Naruto`
+- `<starIdArr>` no vacío (descarta aliases sin progresión propia como "Tobirama Senju [Edo Tensei]" 11002163)
 - Para Mains: `id LIKE '10%'` + título entre corchetes
-- Dedup por `(name, title)` quedándose con mayor `starLevel`
+- **Dedup por `starIdArr.join(',')`** — el campo `starIdArr` del XML es un array de 5 IDs (uno por nivel de estrella ★1..★5) que representan a la misma carta. Múltiples entries que comparten la misma signature son UNA sola carta. Esto colapsa correctamente cartas que cambian de title al subir estrellas: Naruto Tails ([Chakra 9 colas] x3 ids), Gai ([Puerta]→[Conmoción]), Itachi ([Joven]→[Orejas de Gato]), etc. Tiebreak: mayor `starLevel` → más palabras capitalizadas en `name` → mayor `artisticId`.
+
+**Sistema de tiers (Avance/Enlace) en skills** — decodificado por posición del dígito que difiere entre la skill base y cada upgrade:
+- `1` = `+1` (Avance lvl 1)
+- `2` = `+2` (Avance lvl 2)
+- `3` = `Y` (Enlace tipo Y, base)
+- `4` = `Y+1`
+- `5` = `Y+2`
+- `6` = `L` (Enlace tipo L, base)
+- `7` = `L+1`
+- `8` = `L+2`
+
+Ej. base `21000237` (Sasuke Kirin Esotérica) → upgrades `21010237`(+1), `21020237`(+2), `21030237`(Y), `21040237`(Y+1), `21050237`(Y+2). Algunos cards tienen gaps (Obito [Explosivo] tiene +2, Y, Y+1 pero no +1 ni Y+2). El parser (`parseSkillUpgrades` en `parser.ts`) lee de `normalItemIds`/`specialItemIds`/`skillItemNIds` de `NinjaSkillCFG.xml`, descarta los items consumibles (los que tienen `;`), y calcula el `tierCode` por comparación carácter a carácter.
 
 **Migraciones SQL aplicadas en dev (SQLite vía `prisma db push`); pendiente aplicar en prod:**
 ```sql

@@ -38,7 +38,7 @@ export default function NinjasPage() {
   const [search, setSearch] = useState('')
   const [searchDebounced, setSearchDebounced] = useState('')
   const [property, setProperty] = useState<number | null>(null)
-  const [career, setCareer] = useState<number | null>(null)
+  const [ninjaType, setNinjaType] = useState<string | null>(null)
   const [rareness, setRareness] = useState<number | null>(null)
   const [sort, setSort] = useState<SortKey>('name')
 
@@ -61,7 +61,7 @@ export default function NinjasPage() {
     const params: Record<string, any> = { limit: PAGE_SIZE, offset: 0, sort }
     if (searchDebounced) params.search = searchDebounced
     if (property !== null) params.property = property
-    if (career !== null) params.career = career
+    if (ninjaType !== null) params.ninjaType = ninjaType
     if (rareness !== null) params.rareness = rareness
     api
       .get<NinjaListResponse>('/game/ninjas', { params })
@@ -72,7 +72,7 @@ export default function NinjasPage() {
       })
       .catch(console.error)
       .finally(() => setLoading(false))
-  }, [searchDebounced, property, career, rareness, sort])
+  }, [searchDebounced, property, ninjaType, rareness, sort])
 
   const loadMore = async () => {
     if (loadingMore || !hasMore) return
@@ -80,7 +80,7 @@ export default function NinjasPage() {
     const params: Record<string, any> = { limit: PAGE_SIZE, offset: items.length, sort }
     if (searchDebounced) params.search = searchDebounced
     if (property !== null) params.property = property
-    if (career !== null) params.career = career
+    if (ninjaType !== null) params.ninjaType = ninjaType
     if (rareness !== null) params.rareness = rareness
     try {
       const r = await api.get<NinjaListResponse>('/game/ninjas', { params })
@@ -107,11 +107,11 @@ export default function NinjasPage() {
     return () => obs.disconnect()
   }, [items.length, hasMore, loadingMore])
 
-  const activeFilters = (property !== null ? 1 : 0) + (career !== null ? 1 : 0) + (rareness !== null ? 1 : 0)
+  const activeFilters = (property !== null ? 1 : 0) + (ninjaType !== null ? 1 : 0) + (rareness !== null ? 1 : 0)
 
   const clearFilters = () => {
     setProperty(null)
-    setCareer(null)
+    setNinjaType(null)
     setRareness(null)
     setSearch('')
   }
@@ -227,11 +227,11 @@ export default function NinjasPage() {
                       onSelect={setProperty}
                       withKanji
                     />
-                    <FilterGroup
-                      label="Clase"
-                      facets={filters.career}
-                      selected={career}
-                      onSelect={setCareer}
+                    <TypeFilterGroup
+                      label="Tipo"
+                      facets={filters.ninjaTypes ?? []}
+                      selected={ninjaType}
+                      onSelect={setNinjaType}
                     />
                     <FilterGroup
                       label="Rareza"
@@ -275,6 +275,53 @@ export default function NinjasPage() {
         </div>
       </main>
     </>
+  )
+}
+
+function TypeFilterGroup({
+  label,
+  facets,
+  selected,
+  onSelect,
+}: {
+  label: string
+  facets: { label: string; count: number }[]
+  selected: string | null
+  onSelect: (v: string | null) => void
+}) {
+  return (
+    <div className="mb-5">
+      <h4 className="text-[10px] uppercase tracking-[0.2em] text-text-muted mb-2 font-bold">{label}</h4>
+      <div className="flex flex-col gap-1">
+        <button
+          onClick={() => onSelect(null)}
+          className={`text-left text-sm px-3 py-1.5 rounded border transition-colors ${
+            selected === null
+              ? 'bg-accent-orange/20 border-accent-orange text-text-primary'
+              : 'bg-bg-card border-border text-text-muted hover:text-text-primary'
+          }`}
+        >
+          Todos
+        </button>
+        {facets.map((f) => {
+          const isSelected = selected === f.label
+          return (
+            <button
+              key={f.label}
+              onClick={() => onSelect(f.label)}
+              className={`flex items-center justify-between text-left text-sm px-3 py-1.5 rounded border transition-colors ${
+                isSelected
+                  ? 'bg-accent-orange/20 border-accent-orange text-text-primary'
+                  : 'bg-bg-card border-border text-text-muted hover:text-text-primary'
+              }`}
+            >
+              <span className="truncate">{f.label}</span>
+              <span className="text-xs opacity-60 font-mono flex-shrink-0">{f.count}</span>
+            </button>
+          )
+        })}
+      </div>
+    </div>
   )
 }
 

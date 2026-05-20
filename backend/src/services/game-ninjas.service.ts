@@ -18,7 +18,8 @@ export interface ListNinjasFilters {
   search?: string
   kind?: 'NINJA' | 'MAIN'  // default NINJA (filtra los mains del listado principal)
   property?: number       // propertyCode (1..5)
-  career?: number         // careerCode
+  career?: number         // careerCode (legacy, data drift en algunas cartas)
+  ninjaType?: string      // tag del intro ("Ataque grupal", "Control", etc.)
   rareness?: number       // rarenessCode
   sort?: SortKey
   limit?: number
@@ -29,6 +30,26 @@ export interface ListNinjasFilters {
 function jsonParse<T>(s: string | null, fallback: T): T {
   if (!s) return fallback
   try { return JSON.parse(s) as T } catch { return fallback }
+}
+
+interface StarVariant {
+  star: number
+  id: number
+  title: string
+  artisticId: number
+  stats: Record<string, number>
+  resists: Record<string, number>
+  normalSkillIds: number[]
+  specialSkillIds: number[]
+  skillIds: number[]
+  skillUpgrades: Record<string, RawSkillUpgrade[]>
+}
+
+/** Lo que llega serializado en `GameNinja.skillUpgrades` (un upgrade sin la skill resuelta). */
+interface RawSkillUpgrade {
+  id: number
+  tierCode: number
+  tierLabel: string
 }
 
 /** Estructura cruda de talentos de Main (tal cual la guarda el importer) */
@@ -58,7 +79,10 @@ function decorate(n: any) {
     equipNum: n.equipNum,
     stats,
     resists: jsonParse(n.resists, {} as Record<string, number>),
-    intro: jsonParse<{ desc: string[]; words: string } | null>(n.intro, null),
+    intro: jsonParse<{ desc: string[]; words: string; types?: string[] } | null>(n.intro, null),
+    ninjaTypes: jsonParse<string[]>(n.ninjaTypes, []),
+    starVariants: jsonParse<StarVariant[]>(n.starVariants, []),
+    skillUpgrades: jsonParse<Record<string, RawSkillUpgrade[]>>(n.skillUpgrades, {}),
     mainTalentsRaw: jsonParse<MainTalentsRaw | null>(n.mainTalents, null),
     skillRefs: {
       normalIds: jsonParse<number[]>(n.normalSkillIds, []),
@@ -72,14 +96,22 @@ function decorate(n: any) {
 /** Version compacta para el listado: sin skill descriptions ni intro completa */
 function summarize(n: any) {
   const dec = decorate(n)
+  // En cartas que transforman al subir estrellas (Gai [Puerta]→[Conmoción], Itachi
+  // [Joven]→[Orejas de Gato]), el listado muestra la forma inicial (★1) — coincide
+  // con la apariencia de la carta cuando recién se la obtiene en el juego.
+  const firstVariant = dec.starVariants?.[0]
+  const cardArtisticId = firstVariant?.artisticId ?? dec.artisticId
+  const cardTitle = firstVariant?.title ?? dec.title
   return {
     id: dec.id,
-    artisticId: dec.artisticId,
+    slug: n.slug,
+    artisticId: cardArtisticId,
     kind: dec.kind,
     name: dec.name,
-    title: dec.title,
+    title: cardTitle,
     property: dec.property,
     career: dec.career,
+    ninjaTypes: dec.ninjaTypes,
     rareness: dec.rareness,
     starLevel: dec.starLevel,
     stats: {
@@ -117,13 +149,13 @@ export const gameNinjasService = {
     if (filters.rareness !== undefined) where.rarenessCode = filters.rareness
 
     const searchQuery = filters.search?.trim() ?? ''
+    const ninjaType = filters.ninjaType?.trim() ?? ''
     const wantsStatSort = ['ninjaAttack', 'bodyAttack', 'life'].includes(sortKey)
 
-    // Con search activo: traemos TODOS los rows del WHERE (sin paginar) y
-    // filtramos en JS para soportar case/accent-insensitive y matching por id.
+    // Con search/ninjaType activo: traemos TODOS los rows del WHERE (sin paginar) y
+    // filtramos en JS. ninjaType es un array en JSON, no se puede WHERE en SQLite.
     // Como hay ~408 ninjas total, esto es trivial en memoria.
-    // Idem cuando ordenamos por stat (necesita ver todos los stats para ranking).
-    const needsInMemoryPipeline = !!searchQuery || wantsStatSort
+    const needsInMemoryPipeline = !!searchQuery || !!ninjaType || wantsStatSort
 
     if (needsInMemoryPipeline) {
       const rowsRaw = await prisma.gameNinja.findMany({
@@ -140,6 +172,12 @@ export const gameNinjasService = {
           if (numQ !== null && (n.id === numQ || n.artisticId === numQ)) return true
           return matchesSearch([n.name, n.title], searchQuery)
         })
+      }
+
+      // Filtro por tag de tipo (case-insensitive)
+      if (ninjaType) {
+        const q = ninjaType.toLowerCase()
+        rows = rows.filter((n) => n.ninjaTypes.some((t) => t.toLowerCase() === q))
       }
 
       // Aplicar sort por stat
@@ -178,11 +216,17 @@ export const gameNinjasService = {
     }
   },
 
-  async getById(id: number) {
-    const row = await prisma.gameNinja.findUnique({ where: { id } })
+  /**
+   * Acepta id numérico (back-compat) o slug (ej. "sasuke-susanoo").
+   */
+  async getById(idOrSlug: number | string) {
+    const row =
+      typeof idOrSlug === 'number'
+        ? await prisma.gameNinja.findUnique({ where: { id: idOrSlug } })
+        : await prisma.gameNinja.findFirst({ where: { region: REGION, slug: idOrSlug } })
     if (!row) return null
     const dec = decorate(row)
-    // Recolectar TODOS los skill IDs necesarios (skillset + mainTalents)
+    // Recolectar TODOS los skill IDs necesarios (skillset + mainTalents + upgrades)
     const allIds = [
       ...dec.skillRefs.normalIds,
       ...dec.skillRefs.specialIds,
@@ -195,6 +239,19 @@ export const gameNinjasService = {
         dec.mainTalentsRaw.pasiva,
       ]) {
         for (const slot of cat) allIds.push(...slot.skillIds)
+      }
+    }
+    // Avance/breakthrough/enlace skill upgrades (winner)
+    for (const ups of Object.values(dec.skillUpgrades)) {
+      for (const u of ups) allIds.push(u.id)
+    }
+    // Skills + upgrades de CADA variante por estrella
+    for (const v of dec.starVariants) {
+      for (const id of v.normalSkillIds ?? []) allIds.push(id)
+      for (const id of v.specialSkillIds ?? []) allIds.push(id)
+      for (const id of v.skillIds ?? []) allIds.push(id)
+      for (const ups of Object.values(v.skillUpgrades ?? {})) {
+        for (const u of ups) allIds.push(u.id)
       }
     }
     const uniq = [...new Set(allIds)]
@@ -212,20 +269,51 @@ export const gameNinjasService = {
           pasiva:    dec.mainTalentsRaw.pasiva.map((s) =>    ({ slot: s.slot, level: s.level, skills: resolve(s.skillIds) })),
         }
       : null
-    // Limpiar campo crudo del payload
-    const { mainTalentsRaw, ...rest } = dec
+    // Helper: resuelve upgrades de un skillUpgrades crudo (con .id) → con .skill resuelta
+    const resolveUpgrades = (ups: Record<string, RawSkillUpgrade[]>) => {
+      const out: Record<string, Array<{ tierCode: number; tierLabel: string; skill: any }>> = {}
+      for (const [baseId, list] of Object.entries(ups)) {
+        out[baseId] = list
+          .map((u) => ({ tierCode: u.tierCode, tierLabel: u.tierLabel, skill: byId.get(u.id) }))
+          .filter((u) => u.skill)
+      }
+      return out
+    }
+    const skillUpgradesResolved = resolveUpgrades(dec.skillUpgrades)
+
+    // Para cada variante por estrella, adjuntamos sus skills resueltas + upgrades.
+    // Esto permite al frontend swappear skills al cambiar de estrella sin otro fetch.
+    const starVariantsResolved = dec.starVariants.map((v) => ({
+      star: v.star,
+      id: v.id,
+      title: v.title,
+      artisticId: v.artisticId,
+      stats: v.stats,
+      resists: v.resists,
+      skills: {
+        normals: resolve(v.normalSkillIds ?? []),
+        specials: resolve(v.specialSkillIds ?? []),
+        passives: resolve(v.skillIds ?? []),
+      },
+      skillUpgrades: resolveUpgrades(v.skillUpgrades ?? {}),
+    }))
+
+    // Limpiar campos crudos del payload
+    const { mainTalentsRaw, skillUpgrades, starVariants, ...rest } = dec
     return {
       ...rest,
+      starVariants: starVariantsResolved,
       skills: {
         normals: resolve(dec.skillRefs.normalIds),
         specials: resolve(dec.skillRefs.specialIds),
         passives: resolve(dec.skillRefs.skillIds),
       },
+      skillUpgrades: skillUpgradesResolved,
       mainTalents,
     }
   },
 
-  /** Devuelve counts por property/career/rareness para los chips de filtro */
+  /** Devuelve counts por property/career/rareness/ninjaType para los chips de filtro */
   async getFilterFacets() {
     const base = await prisma.gameNinja.findMany({
       where: { region: REGION, kind: 'NINJA' },
@@ -236,6 +324,7 @@ export const gameNinjasService = {
         careerLabel: true,
         rarenessCode: true,
         rarenessLabel: true,
+        ninjaTypes: true,
       },
     })
 
@@ -251,10 +340,21 @@ export const gameNinjasService = {
       return [...m.values()].sort((a, b) => a.code - b.code)
     }
 
+    // ninjaTypes: tally desde el JSON (cada ninja puede tener varios tags)
+    const typeCounts = new Map<string, number>()
+    for (const r of base) {
+      const tags = jsonParse<string[]>(r.ninjaTypes, [])
+      for (const t of tags) typeCounts.set(t, (typeCounts.get(t) ?? 0) + 1)
+    }
+    const ninjaTypes = [...typeCounts.entries()]
+      .map(([label, count]) => ({ label, count }))
+      .sort((a, b) => b.count - a.count)
+
     return {
       property: tally(base, 'propertyCode' as any, 'propertyLabel' as any),
       career: tally(base, 'careerCode' as any, 'careerLabel' as any),
       rareness: tally(base, 'rarenessCode' as any, 'rarenessLabel' as any),
+      ninjaTypes,
       total: base.length,
     }
   },

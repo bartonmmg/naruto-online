@@ -17,6 +17,14 @@ export function CareerBadge({ value }: { value: Coded }) {
   )
 }
 
+export function NinjaTypeBadge({ value }: { value: string }) {
+  return (
+    <span className={`${BASE} bg-accent-orange/10 text-accent-orange border-accent-orange/30`}>
+      {value}
+    </span>
+  )
+}
+
 export function RarenessBadge({ value }: { value: Coded }) {
   const c = RARENESS_COLORS[value.code] ?? RARENESS_COLORS[0]
   return <span className={`${BASE} ${c.bg} ${c.text} ${c.border}`}>{value.label}</span>

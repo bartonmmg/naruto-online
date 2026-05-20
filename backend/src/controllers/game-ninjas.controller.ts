@@ -7,6 +7,7 @@ const listQuery = z.object({
   kind: z.enum(['NINJA', 'MAIN']).optional(),
   property: z.coerce.number().int().optional(),
   career: z.coerce.number().int().optional(),
+  ninjaType: z.string().optional(),
   rareness: z.coerce.number().int().optional(),
   sort: z.enum(['name', 'rareness', 'ninjaAttack', 'bodyAttack', 'life']).optional(),
   limit: z.coerce.number().int().min(1).max(100).optional(),
@@ -38,11 +39,10 @@ export const gameNinjasController = {
 
   async getById(req: Request, res: Response) {
     try {
-      const id = Number(req.params.id)
-      if (!Number.isFinite(id)) {
-        return res.status(400).json({ error: 'id inválido' })
-      }
-      const ninja = await gameNinjasService.getById(id)
+      const raw = req.params.id ?? ''
+      // Acepta id numérico (legacy) o slug (preferido). Slug ej: "sasuke-susanoo".
+      const idOrSlug: number | string = /^\d+$/.test(raw) ? Number(raw) : raw
+      const ninja = await gameNinjasService.getById(idOrSlug)
       if (!ninja) return res.status(404).json({ error: 'Ninja no encontrado' })
       res.json(ninja)
     } catch (e: any) {

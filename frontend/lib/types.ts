@@ -149,6 +149,7 @@ export interface NinjaResists {
 export interface NinjaIntro {
   desc: string[]
   words: string
+  types?: string[]
 }
 
 export interface GameSkill {
@@ -162,12 +163,14 @@ export interface GameSkill {
 
 export interface GameNinjaSummary {
   id: number
+  slug: string
   artisticId: number
   kind: 'NINJA' | 'MAIN'
   name: string
   title: string
   property: Coded
   career: Coded
+  ninjaTypes: string[]
   rareness: Coded
   starLevel: number
   stats: { baseLife: number; baseBodyAttack: number; baseNinjaAttack: number }
@@ -185,6 +188,24 @@ export interface MainTalents {
   pasiva: MainTalentSlot[]
 }
 
+export interface StarVariant {
+  star: number
+  id: number
+  title: string
+  artisticId: number
+  stats: NinjaStats
+  resists: NinjaResists
+  // Skills + upgrades específicas de esta estrella (cambian al subir ★ en algunas cartas)
+  skills?: { normals: GameSkill[]; specials: GameSkill[]; passives: GameSkill[] }
+  skillUpgrades?: Record<string, SkillUpgrade[]>
+}
+
+export interface SkillUpgrade {
+  tierCode: number      // 1=+1, 2=+2, 3=Y, 4=Y+1, 5=Y+2, 6=L, 7=L+1, 8=L+2
+  tierLabel: string     // etiqueta visible del juego
+  skill: GameSkill
+}
+
 export interface GameNinjaDetail {
   id: number
   artisticId: number
@@ -195,6 +216,7 @@ export interface GameNinjaDetail {
   title: string
   property: Coded
   career: Coded
+  ninjaTypes: string[]
   rareness: Coded
   sex: Coded
   starLevel: number
@@ -203,6 +225,9 @@ export interface GameNinjaDetail {
   stats: NinjaStats
   resists: NinjaResists
   intro: NinjaIntro | null
+  starVariants?: StarVariant[]
+  /** baseSkillId → variantes upgradeadas (avance/enlace). Cada una con su label in-game (+1, +2, Y, Y+1, Y+2, L, L+1, L+2). */
+  skillUpgrades?: Record<string, SkillUpgrade[]>
   skillRefs: { normalIds: number[]; specialIds: number[]; skillIds: number[] }
   assets: { bigImage: string; halfImage: string; portrait: string }
   skills: { normals: GameSkill[]; specials: GameSkill[]; passives: GameSkill[] }
@@ -223,6 +248,7 @@ export interface NinjaFiltersResponse {
   property: NinjaFilterFacet[]
   career: NinjaFilterFacet[]
   rareness: NinjaFilterFacet[]
+  ninjaTypes: { label: string; count: number }[]
   total: number
 }
 

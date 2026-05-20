@@ -85,7 +85,7 @@ function NavCard({
   const isPrev = direction === 'prev'
   return (
     <Link
-      href={`/centro-de-datos/ninjas/${ninja.id}`}
+      href={`/centro-de-datos/ninjas/${(ninja as any).slug || ninja.id}`}
       className={`
         group relative flex items-center gap-3 p-3 rounded-lg border border-border
         bg-bg-card hover:border-accent-orange/50 hover:bg-bg-elevated transition-all

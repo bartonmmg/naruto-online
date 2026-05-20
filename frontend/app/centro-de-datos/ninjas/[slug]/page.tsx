@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { Quote } from 'lucide-react'
@@ -16,16 +16,20 @@ import StatPanel from '@/components/ninjas/StatPanel'
 import ResistGrid from '@/components/ninjas/ResistGrid'
 import NinjaPrevNext from '@/components/ninjas/NinjaPrevNext'
 import RefText from '@/components/ninjas/RefText'
+import StarSelector from '@/components/ninjas/StarSelector'
 
 export default function NinjaDetailPage() {
-  const params = useParams<{ id: string }>()
+  const params = useParams<{ slug: string }>()
   const [ninja, setNinja] = useState<GameNinjaDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
+  // Estrella seleccionada (1..5). Default ★1 — la "forma inicial" cuando recién
+  // se obtiene la carta. El usuario puede subir estrellas con el selector.
+  const [selectedStar, setSelectedStar] = useState(1)
 
   useEffect(() => {
-    const id = Number(params?.id)
-    if (!Number.isFinite(id)) {
+    const idOrSlug = params?.slug
+    if (!idOrSlug) {
       setNotFound(true)
       setLoading(false)
       return
@@ -34,14 +38,37 @@ export default function NinjaDetailPage() {
     setNotFound(false)
     setNinja(null)
     api
-      .get<GameNinjaDetail>(`/game/ninjas/${id}`)
-      .then((r) => setNinja(r.data))
+      .get<GameNinjaDetail>(`/game/ninjas/${idOrSlug}`)
+      .then((r) => {
+        setNinja(r.data)
+        // Reset estrella seleccionada al cambiar de ninja → siempre arrancamos en ★1
+        setSelectedStar(1)
+      })
       .catch((e) => {
         if (e?.response?.status === 404) setNotFound(true)
         else console.error(e)
       })
       .finally(() => setLoading(false))
-  }, [params?.id])
+  }, [params?.slug])
+
+  // Computamos el ninja "efectivo" según la estrella seleccionada — pisamos
+  // título/imagen/stats/resists, skills y upgrades con los de esa variante.
+  // Las stars overlay del hero usan `starLevel` = selectedStar.
+  const effectiveNinja = useMemo(() => {
+    if (!ninja || !ninja.starVariants?.length) return ninja
+    const variant = ninja.starVariants.find((v) => v.star === selectedStar)
+    if (!variant) return ninja
+    return {
+      ...ninja,
+      title: variant.title,
+      artisticId: variant.artisticId,
+      stats: variant.stats,
+      resists: variant.resists,
+      starLevel: variant.star,
+      skills: variant.skills ?? ninja.skills,
+      skillUpgrades: variant.skillUpgrades ?? ninja.skillUpgrades,
+    }
+  }, [ninja, selectedStar])
 
   if (loading) {
     return (
@@ -54,7 +81,7 @@ export default function NinjaDetailPage() {
     )
   }
 
-  if (notFound || !ninja) {
+  if (notFound || !ninja || !effectiveNinja) {
     return (
       <>
         <Navbar />
@@ -73,22 +100,31 @@ export default function NinjaDetailPage() {
   const propColor = PROPERTY_COLORS[ninja.property.code] ?? PROPERTY_COLORS[0]
   const backHref = ninja.kind === 'MAIN' ? '/centro-de-datos/main' : '/centro-de-datos/ninjas'
   const backLabel = ninja.kind === 'MAIN' ? 'Main' : 'Ninjas'
+  const showStarSelector = ninja.kind === 'NINJA' && (ninja.starVariants?.length ?? 0) > 1
 
   return (
     <>
       <Navbar />
       <main className="min-h-screen bg-bg-primary pt-24 pb-16">
         <div className="max-w-7xl mx-auto px-6">
-          <NinjaBreadcrumb name={ninja.name} title={ninja.title} kind={ninja.kind} />
+          <NinjaBreadcrumb name={ninja.name} title={effectiveNinja.title} kind={ninja.kind} />
 
           {/* Layout principal: columna izquierda con identidad + stats + resists,
               columna derecha con las habilidades (que son altas). */}
           <div className="grid lg:grid-cols-[minmax(340px,420px)_1fr] gap-6 items-start">
             {/* Columna izquierda: identidad + stats + resists */}
             <aside className="space-y-6">
-              <NinjaHero ninja={ninja} />
-              <StatPanel stats={ninja.stats} />
-              <ResistGrid resists={ninja.resists} />
+              <NinjaHero ninja={effectiveNinja} />
+              {showStarSelector && (
+                <StarSelector
+                  variants={ninja.starVariants!}
+                  selected={selectedStar}
+                  onSelect={setSelectedStar}
+                  propColor={propColor}
+                />
+              )}
+              <StatPanel stats={effectiveNinja.stats} />
+              <ResistGrid resists={effectiveNinja.resists} />
             </aside>
 
             {/* Columna derecha: intro + habilidades / talentos */}
@@ -119,9 +155,11 @@ export default function NinjaDetailPage() {
                 <MainTalentsTimeline talents={ninja.mainTalents} />
               ) : (
                 <NinjaSkillsList
-                  specials={ninja.skills.specials}
-                  normals={ninja.skills.normals}
-                  passives={ninja.skills.passives}
+                  key={`star-${selectedStar}`}
+                  specials={effectiveNinja.skills.specials}
+                  normals={effectiveNinja.skills.normals}
+                  passives={effectiveNinja.skills.passives}
+                  skillUpgrades={effectiveNinja.skillUpgrades}
                 />
               )}
             </div>

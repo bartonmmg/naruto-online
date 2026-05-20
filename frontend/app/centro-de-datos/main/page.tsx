@@ -90,7 +90,7 @@ function MainCard({ ninja }: { ninja: GameNinjaSummary }) {
 
   return (
     <Link
-      href={`/centro-de-datos/ninjas/${ninja.id}`}
+      href={`/centro-de-datos/ninjas/${ninja.slug || ninja.id}`}
       className={`
         group relative flex flex-col rounded-lg overflow-hidden bg-bg-card border
         ${c.border}

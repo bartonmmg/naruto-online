@@ -298,6 +298,7 @@ model GameNinja {
   kind            String   @default("NINJA") // "NINJA" (carta jugable) | "MAIN" (avatar del jugador, 5 totales)
   name            String // nombre canónico ("Naruto")
   title           String // epíteto/variante ("[Kurama]")
+  slug            String @default("") // slug URL (ej. "naruto-kurama") — único dentro de la región
   propertyCode    Int // 1=Agua 2=Fuego 3=Viento 4=Rayo 5=Tierra
   propertyLabel   String
   careerCode      Int // 1=Ataque 2=Defensa 3=Especialista 4=Asistencia 5=Control 6=Médico
@@ -311,7 +312,10 @@ model GameNinja {
   equipNum        Int
   stats           String // JSON: NinjaStats
   resists         String // JSON: NinjaResists
-  intro           String? // JSON: { desc: string[], words: string } | null
+  intro           String? // JSON: { desc: string[], words: string, types: string[] } | null
+  ninjaTypes      String   @default("[]") // JSON: string[] — clasificación visible del juego (ej. ["Ataque grupal", "Buen Estado"])
+  starVariants    String   @default("[]") // JSON: 5 entries (★1..★5) con {id, title, artisticId, stats, resists}
+  skillUpgrades   String   @default("{}") // JSON: map baseSkillId → [tier1Id, tier2Id, ...] (avance/breakthrough)
   mainTalents     String? // JSON: solo para kind=MAIN (talentos por tipo/slot)
   normalSkillIds  String // JSON: number[]
   specialSkillIds String // JSON: number[]
@@ -320,9 +324,11 @@ model GameNinja {
   importedAt      DateTime @default(now())
 
   @@unique([region, name, title])
+  @@unique([region, slug])
   @@index([region])
   @@index([kind])
   @@index([name])
+  @@index([slug])
   @@index([propertyCode])
   @@index([careerCode])
   @@index([rarenessCode])

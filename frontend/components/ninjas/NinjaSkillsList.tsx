@@ -1,12 +1,14 @@
 'use client'
 
-import { GameSkill } from '@/lib/types'
+import { GameSkill, SkillUpgrade } from '@/lib/types'
 import SkillCard from './SkillCard'
 
 interface Props {
   specials: GameSkill[]
   normals: GameSkill[]
   passives: GameSkill[]
+  /** map baseSkillId → upgrades (avance/enlace) con tier label del juego */
+  skillUpgrades?: Record<string, SkillUpgrade[]>
 }
 
 /**
@@ -18,9 +20,10 @@ interface Props {
  * - Las pasivas (passives[1]+) se renderizan en grilla 2 columnas en desktop
  *   para ahorrar scroll cuando hay muchas.
  */
-export default function NinjaSkillsList({ specials, normals, passives }: Props) {
+export default function NinjaSkillsList({ specials, normals, passives, skillUpgrades }: Props) {
   const [combo, ...rest] = passives
   const otherPassives = rest
+  const upgradesFor = (id: number) => skillUpgrades?.[String(id)]
 
   return (
     <div className="space-y-6">
@@ -29,20 +32,20 @@ export default function NinjaSkillsList({ specials, normals, passives }: Props) 
       {specials.length > 0 && (
         <SkillGroup title="Esotérica" subtitle="La técnica más poderosa">
           {specials.map((s) => (
-            <SkillCard key={s.id} skill={s} variant="special" />
+            <SkillCard key={s.id} skill={s} variant="special" upgrades={upgradesFor(s.id)} />
           ))}
         </SkillGroup>
       )}
 
       {normals.length > 0 && (
         <SkillGroup title="Ataque Básico" subtitle="Acción por defecto">
-          <SkillCard skill={normals[0]} variant="normal" />
+          <SkillCard skill={normals[0]} variant="normal" upgrades={upgradesFor(normals[0].id)} />
         </SkillGroup>
       )}
 
       {combo && (
         <SkillGroup title="Combo" subtitle="Persecución tras un Combo aliado">
-          <SkillCard skill={combo} variant="combo" />
+          <SkillCard skill={combo} variant="combo" upgrades={upgradesFor(combo.id)} />
         </SkillGroup>
       )}
 
@@ -57,7 +60,7 @@ export default function NinjaSkillsList({ specials, normals, passives }: Props) 
                 <span className="absolute -top-2 -left-2 z-10 w-6 h-6 rounded-full bg-accent-orange/90 text-bg-primary text-xs font-bold flex items-center justify-center shadow-md">
                   {i + 1}
                 </span>
-                <SkillCard skill={s} variant="passive" />
+                <SkillCard skill={s} variant="passive" upgrades={upgradesFor(s.id)} />
               </div>
             ))}
           </div>

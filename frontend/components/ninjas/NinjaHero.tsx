@@ -10,7 +10,7 @@ import {
   RARENESS_COLORS,
 } from '@/lib/types'
 import FavoriteButton from '../FavoriteButton'
-import { ElementBadge, CareerBadge, RarenessBadge } from './Badges'
+import { ElementBadge, NinjaTypeBadge, RarenessBadge } from './Badges'
 import RefText from './RefText'
 
 /**
@@ -101,7 +101,7 @@ export default function NinjaHero({ ninja }: { ninja: GameNinjaDetail }) {
         {/* Badges */}
         <div className="flex flex-wrap gap-1.5">
           <ElementBadge value={ninja.property} />
-          <CareerBadge value={ninja.career} />
+          {ninja.ninjaTypes?.map((t) => <NinjaTypeBadge key={t} value={t} />)}
           <RarenessBadge value={ninja.rareness} />
           <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border border-border-light bg-bg-elevated text-text-primary">
             {ninja.sex.label}

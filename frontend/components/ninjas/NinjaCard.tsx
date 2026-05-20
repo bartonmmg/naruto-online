@@ -29,7 +29,7 @@ export default function NinjaCard({ ninja }: { ninja: GameNinjaSummary }) {
 
   return (
     <Link
-      href={`/centro-de-datos/ninjas/${ninja.id}`}
+      href={`/centro-de-datos/ninjas/${ninja.slug || ninja.id}`}
       className={`
         group relative flex flex-col rounded-lg overflow-hidden
         bg-bg-card border ${rareColor.border}
@@ -107,8 +107,12 @@ export default function NinjaCard({ ninja }: { ninja: GameNinjaSummary }) {
             <span className="text-base leading-none">{kanji}</span>
             {ninja.property.label}
           </span>
-          <span className="text-text-dim">·</span>
-          <span className="text-text-muted">{ninja.career.label}</span>
+          {ninja.ninjaTypes?.[0] && (
+            <>
+              <span className="text-text-dim">·</span>
+              <span className="text-text-muted truncate">{ninja.ninjaTypes[0]}</span>
+            </>
+          )}
         </div>
       </div>
     </Link>

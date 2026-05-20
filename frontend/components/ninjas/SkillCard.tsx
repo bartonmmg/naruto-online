@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { GameSkill } from '@/lib/types'
+import { GameSkill, SkillUpgrade } from '@/lib/types'
 import SkillIcon from './SkillIcon'
 
 interface Props {
@@ -10,6 +10,9 @@ interface Props {
   /** "expanded" muestra la descripcion completa (default en el detalle).
    *  "compact" trunca la descripcion con boton "Ver mas" (usado en talentos densos). */
   size?: 'expanded' | 'compact'
+  /** Variantes de avance/enlace (Base/+1/+2/Y/Y+1/Y+2/L/L+1/L+2). Si vienen, se
+   *  muestra un selector inline para cambiar la descripción al tier elegido. */
+  upgrades?: SkillUpgrade[]
 }
 
 // Ribbon vertical lateral del color por tipo de habilidad
@@ -29,10 +32,18 @@ const VARIANT_BORDER: Record<NonNullable<Props['variant']>, string> = {
 
 const DESC_TRUNCATE_AT = 140
 
-export default function SkillCard({ skill, variant = 'passive', size = 'expanded' }: Props) {
+export default function SkillCard({ skill, variant = 'passive', size = 'expanded', upgrades }: Props) {
   const [expanded, setExpanded] = useState(false)
+  // tier 0 = Base, 1+ = índice en la lista de upgrades (con su label "+1"/"+2"/"Y"/"Y+1"/etc.)
+  const [tier, setTier] = useState(0)
+  // Lista combinada: base + variantes upgradeadas (cada una con su tierLabel).
+  // Construimos un array uniforme [{ label, skill }] para renderizar.
+  const variants = upgrades && upgrades.length
+    ? [{ label: 'Base', skill }, ...upgrades.map((u) => ({ label: u.tierLabel, skill: u.skill }))]
+    : null
+  const active = variants ? variants[tier]?.skill ?? skill : skill
   const isExpanded = size === 'expanded' || expanded
-  const desc = skill.description ?? ''
+  const desc = active.description ?? ''
   const truncated = !isExpanded && desc.length > DESC_TRUNCATE_AT
   const visibleDesc = truncated ? desc.slice(0, DESC_TRUNCATE_AT).trim() + '…' : desc
 
@@ -53,13 +64,41 @@ export default function SkillCard({ skill, variant = 'passive', size = 'expanded
         {/* Header */}
         <div className="flex items-start justify-between gap-3 mb-1.5">
           <h4 className="font-cinzel font-bold text-text-primary text-base leading-snug">
-            {skill.name}
+            {active.name}
           </h4>
           <div className="flex items-center gap-2 text-xs text-text-muted flex-shrink-0 whitespace-nowrap">
-            {skill.chakra > 0 && <span className="text-chakra-blue">⚡ {skill.chakra}</span>}
-            {skill.cooldown > 0 && <span className="text-accent-orange">⏳ {skill.cooldown}</span>}
+            {active.chakra > 0 && <span className="text-chakra-blue">⚡ {active.chakra}</span>}
+            {active.cooldown > 0 && <span className="text-accent-orange">⏳ {active.cooldown}</span>}
           </div>
         </div>
+
+        {/* Selector de variantes (Base / +1 / +2 / Y / Y+1 / Y+2 / L / L+1 / L+2) */}
+        {variants && variants.length > 1 && (
+          <div className="flex gap-1 mb-2 flex-wrap">
+            {variants.map((v, idx) => (
+              <button
+                key={idx}
+                onClick={() => setTier(idx)}
+                className={`text-[10px] px-2 py-0.5 rounded border font-bold tracking-wider transition-colors ${
+                  tier === idx
+                    ? 'bg-accent-orange/20 border-accent-orange text-accent-orange'
+                    : 'bg-bg-card border-border text-text-muted hover:text-text-primary'
+                }`}
+                title={
+                  idx === 0
+                    ? 'Habilidad base (Inicial)'
+                    : v.label.startsWith('Y')
+                    ? `Enlace tipo Y · ${v.label}`
+                    : v.label.startsWith('L')
+                    ? `Enlace tipo L · ${v.label}`
+                    : `Avance ${v.label}`
+                }
+              >
+                {v.label}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Descripción inline (siempre visible o truncada) */}
         {desc && (
