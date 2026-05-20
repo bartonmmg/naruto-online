@@ -16,7 +16,7 @@ export default function SpiritCard({ spirit }: { spirit: GameSpirit }) {
 
   return (
     <Link
-      href={`/centro-de-datos/espiritus/${spirit.id}`}
+      href={`/centro-de-datos/espiritus/${spirit.slug || spirit.id}`}
       className="group relative flex flex-col rounded-lg overflow-hidden bg-bg-card border border-border hover:border-accent-orange/60 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-accent-orange/15 transition-all duration-300"
     >
       {/* Imagen 1:1 con object-cover object-top */}

@@ -354,6 +354,7 @@ model GameSpirit {
   artisticId      Int
   cardId          Int
   name            String
+  slug            String   @default("") // URL slug
   type            Int
   baseLife        Int
   baseAttack      Int
@@ -370,6 +371,8 @@ model GameSpirit {
   kathaSkillIds   String   @default("{}")
   importedAt      DateTime @default(now())
 
+  @@unique([region, slug])
   @@index([region])
   @@index([name])
+  @@index([slug])
 }

@@ -286,6 +286,7 @@ export interface GameSpiritStats {
 
 export interface GameSpirit {
   id: number
+  slug: string
   artisticId: number
   cardId: number
   name: string

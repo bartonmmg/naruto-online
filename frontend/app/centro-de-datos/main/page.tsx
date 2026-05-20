@@ -57,9 +57,8 @@ export default function MainPage() {
             <h1 className="font-cinzel text-5xl md:text-6xl font-bold text-text-primary leading-none mb-3">
               Main
             </h1>
-            <p className="text-text-muted max-w-xl">
-              Los cinco caminos del shinobi. El personaje que elegís al crear tu cuenta —
-              cada uno con su elemento, talentos exclusivos y estilo único.
+            <p className="text-text-muted whitespace-nowrap">
+              Los cinco caminos del ninja. El personaje que elegís al crear tu cuenta — cada uno con su elemento, talentos exclusivos y estilo único.
             </p>
           </div>
         </div>

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Search, Filter, X } from 'lucide-react'
+import { Search, Filter, X, ChevronRight } from 'lucide-react'
 import api from '@/lib/api'
 import {
   GameNinjaSummary,
@@ -11,6 +11,7 @@ import {
   PROPERTY_COLORS,
   PROPERTY_KANJI,
 } from '@/lib/types'
+import { NINJA_TYPE_GROUPS, findGroupForType, MAPPED_TYPES } from '@/lib/ninja-type-groups'
 import Navbar from '@/components/Navbar'
 import NinjaCard from '@/components/ninjas/NinjaCard'
 import LoadingSpinner from '@/components/LoadingSpinner'
@@ -137,9 +138,9 @@ export default function NinjasPage() {
             <h1 className="font-cinzel text-5xl md:text-6xl font-bold text-text-primary leading-none mb-3">
               Ninjas
             </h1>
-            <p className="text-text-muted max-w-xl">
+            <p className="text-text-muted whitespace-nowrap">
               {filters
-                ? `Catálogo completo de los ${filters.total.toLocaleString('es')} shinobi disponibles en la región España + Latinoamérica.`
+                ? `Catálogo completo de los ${filters.total.toLocaleString('es')} ninjas disponibles en la región España + Latinoamérica.`
                 : 'Cargando catálogo…'}
             </p>
           </div>
@@ -289,38 +290,90 @@ function TypeFilterGroup({
   selected: string | null
   onSelect: (v: string | null) => void
 }) {
+  const byLabel = useMemo(() => new Map(facets.map((f) => [f.label, f.count])), [facets])
+
+  // Default: expandir solo el grupo que contiene el tipo seleccionado
+  const initialOpen = useMemo<Record<string, boolean>>(() => {
+    if (!selected) return {}
+    const g = findGroupForType(selected)
+    return g ? { [g.label]: true } : {}
+  }, [selected])
+  const [open, setOpen] = useState<Record<string, boolean>>(initialOpen)
+  useEffect(() => {
+    setOpen(initialOpen)
+  }, [initialOpen])
+
+  // Detectar tipos del backend que no estén mapeados a ningún grupo
+  useEffect(() => {
+    const orphans = facets.map((f) => f.label).filter((l) => !MAPPED_TYPES.has(l))
+    if (orphans.length) {
+      // eslint-disable-next-line no-console
+      console.warn('[TypeFilter] Tipos sin grupo asignado:', orphans)
+    }
+  }, [facets])
+
+  const chipClass = (active: boolean) =>
+    `text-left text-sm px-3 py-1.5 rounded border transition-colors ${
+      active
+        ? 'bg-accent-orange/20 border-accent-orange text-text-primary'
+        : 'bg-bg-card border-border text-text-muted hover:text-text-primary'
+    }`
+
+  const toggle = (g: string) => setOpen((p) => ({ ...p, [g]: !p[g] }))
+
   return (
     <div className="mb-5">
       <h4 className="text-[10px] uppercase tracking-[0.2em] text-text-muted mb-2 font-bold">{label}</h4>
       <div className="flex flex-col gap-1">
-        <button
-          onClick={() => onSelect(null)}
-          className={`text-left text-sm px-3 py-1.5 rounded border transition-colors ${
-            selected === null
-              ? 'bg-accent-orange/20 border-accent-orange text-text-primary'
-              : 'bg-bg-card border-border text-text-muted hover:text-text-primary'
-          }`}
-        >
+        <button onClick={() => onSelect(null)} className={chipClass(selected === null)}>
           Todos
         </button>
-        {facets.map((f) => {
-          const isSelected = selected === f.label
-          return (
-            <button
-              key={f.label}
-              onClick={() => onSelect(f.label)}
-              className={`flex items-center justify-between text-left text-sm px-3 py-1.5 rounded border transition-colors ${
-                isSelected
-                  ? 'bg-accent-orange/20 border-accent-orange text-text-primary'
-                  : 'bg-bg-card border-border text-text-muted hover:text-text-primary'
-              }`}
-            >
-              <span className="truncate">{f.label}</span>
-              <span className="text-xs opacity-60 font-mono flex-shrink-0">{f.count}</span>
-            </button>
-          )
-        })}
       </div>
+      {NINJA_TYPE_GROUPS.map((group) => {
+        const groupFacets = group.types
+          .map((t) => ({ label: t, count: byLabel.get(t) ?? 0 }))
+          .filter((f) => f.count > 0)
+        if (!groupFacets.length) return null
+        const groupTotal = groupFacets.reduce((s, f) => s + f.count, 0)
+        const isOpen = !!open[group.label]
+        const hasSelected = groupFacets.some((f) => f.label === selected)
+        return (
+          <div key={group.label} className="mt-2">
+            <button
+              onClick={() => toggle(group.label)}
+              className={`w-full flex items-center justify-between gap-2 text-left text-xs uppercase tracking-wider font-bold py-1.5 px-2 rounded transition-colors ${
+                hasSelected
+                  ? 'text-accent-orange hover:bg-accent-orange/10'
+                  : 'text-text-primary/80 hover:text-text-primary hover:bg-bg-card'
+              }`}
+              aria-expanded={isOpen}
+            >
+              <span className="flex items-center gap-2">
+                <ChevronRight
+                  size={12}
+                  className={`transition-transform ${isOpen ? 'rotate-90' : ''}`}
+                />
+                {group.label}
+              </span>
+              <span className="text-[10px] opacity-60 font-mono">{groupTotal}</span>
+            </button>
+            {isOpen && (
+              <div className="flex flex-col gap-1 mt-1 pl-3">
+                {groupFacets.map((f) => (
+                  <button
+                    key={f.label}
+                    onClick={() => onSelect(f.label)}
+                    className={`flex items-center justify-between ${chipClass(selected === f.label)}`}
+                  >
+                    <span className="truncate">{f.label}</span>
+                    <span className="text-xs opacity-60 font-mono flex-shrink-0">{f.count}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )
+      })}
     </div>
   )
 }

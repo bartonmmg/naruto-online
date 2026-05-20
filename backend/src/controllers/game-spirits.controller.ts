@@ -34,11 +34,10 @@ export const gameSpiritsController = {
 
   async getById(req: Request, res: Response) {
     try {
-      const id = Number(req.params.id)
-      if (!Number.isFinite(id)) {
-        return res.status(400).json({ error: 'id inválido' })
-      }
-      const spirit = await gameSpiritsService.getById(id)
+      const raw = req.params.id ?? ''
+      // Acepta id numérico (legacy) o slug (preferido). Slug ej: "tonton".
+      const idOrSlug: number | string = /^\d+$/.test(raw) ? Number(raw) : raw
+      const spirit = await gameSpiritsService.getById(idOrSlug)
       if (!spirit) return res.status(404).json({ error: 'Espíritu no encontrado' })
       res.json(spirit)
     } catch (e: any) {

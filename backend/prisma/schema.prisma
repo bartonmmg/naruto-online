@@ -354,6 +354,7 @@ model GameSpirit {
   artisticId      Int // id del icono de skill (assets/skill/40/<artisticId>.png)
   cardId          Int // aquireCardId — fragmento del bag (assets/bag/item/<cardId>.png)
   name            String // "Tonton", "Rey águila", etc.
+  slug            String   @default("") // URL slug (ej. "tonton", "perro-ninja-parker") — único dentro de la región
   type            Int // tipo / familia (1, 2...)
   baseLife        Int
   baseAttack      Int
@@ -370,6 +371,8 @@ model GameSpirit {
   kathaSkillIds   String   @default("{}") // JSON: { lv1: number[], lv2: number[], lv3: number[] } — skills de combo
   importedAt      DateTime @default(now())
 
+  @@unique([region, slug])
   @@index([region])
   @@index([name])
+  @@index([slug])
 }

@@ -22,14 +22,14 @@ function isUntranslated(s: string | null | undefined): boolean {
 }
 
 export default function SpiritDetailPage() {
-  const params = useParams<{ id: string }>()
+  const params = useParams<{ slug: string }>()
   const [spirit, setSpirit] = useState<GameSpiritDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
 
   useEffect(() => {
-    const id = Number(params?.id)
-    if (!Number.isFinite(id)) {
+    const idOrSlug = params?.slug
+    if (!idOrSlug) {
       setNotFound(true)
       setLoading(false)
       return
@@ -38,14 +38,14 @@ export default function SpiritDetailPage() {
     setNotFound(false)
     setSpirit(null)
     api
-      .get<GameSpiritDetail>(`/game/spirits/${id}`)
+      .get<GameSpiritDetail>(`/game/spirits/${idOrSlug}`)
       .then((r) => setSpirit(r.data))
       .catch((e) => {
         if (e?.response?.status === 404) setNotFound(true)
         else console.error(e)
       })
       .finally(() => setLoading(false))
-  }, [params?.id])
+  }, [params?.slug])
 
   if (loading) {
     return (

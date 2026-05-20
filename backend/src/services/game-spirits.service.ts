@@ -36,6 +36,7 @@ function decorate(s: any) {
   const katha = jsonObj<KathaSkillsRaw>(s.kathaSkillIds, { lv1: [], lv2: [], lv3: [] })
   return {
     id: s.id,
+    slug: s.slug,
     region: s.region,
     artisticId: s.artisticId,
     cardId: s.cardId,
@@ -145,8 +146,12 @@ export const gameSpiritsService = {
     }
   },
 
-  async getById(id: number) {
-    const row = await prisma.gameSpirit.findUnique({ where: { id } })
+  /** Acepta id numérico (back-compat) o slug (ej. "tonton"). */
+  async getById(idOrSlug: number | string) {
+    const row =
+      typeof idOrSlug === 'number'
+        ? await prisma.gameSpirit.findUnique({ where: { id: idOrSlug } })
+        : await prisma.gameSpirit.findFirst({ where: { region: REGION, slug: idOrSlug } })
     if (!row) return null
     const dec = decorate(row)
     // Resolver skills referenciadas (major + katha) en un solo query
