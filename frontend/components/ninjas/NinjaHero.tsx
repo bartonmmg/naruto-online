@@ -11,6 +11,7 @@ import {
 } from '@/lib/types'
 import FavoriteButton from '../FavoriteButton'
 import { ElementBadge, NinjaTypeBadge, RarenessBadge } from './Badges'
+import ShowPropertyIcons from './ShowPropertyIcons'
 import RefText from './RefText'
 
 /**
@@ -107,6 +108,11 @@ export default function NinjaHero({ ninja }: { ninja: GameNinjaDetail }) {
             {ninja.sex.label}
           </span>
         </div>
+
+        {/* Íconos de propiedades visibles (Hokage, Modo Sabio, etc.) */}
+        {ninja.showPropertys?.length > 0 && (
+          <ShowPropertyIcons codes={ninja.showPropertys} size={22} />
+        )}
 
         {/* Frase del personaje */}
         {ninja.intro?.words && (

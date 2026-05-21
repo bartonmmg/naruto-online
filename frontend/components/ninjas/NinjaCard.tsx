@@ -11,6 +11,7 @@ import {
   PROPERTY_KANJI,
   RARENESS_COLORS,
 } from '@/lib/types'
+import ShowPropertyIcons from './ShowPropertyIcons'
 
 /**
  * Card de ninja con identidad temática:
@@ -114,6 +115,11 @@ export default function NinjaCard({ ninja }: { ninja: GameNinjaSummary }) {
             </>
           )}
         </div>
+
+        {/* Íconos de propiedades visibles (Hokage, Modo Sabio, etc.) — máx 6 en card */}
+        {ninja.showPropertys?.length > 0 && (
+          <ShowPropertyIcons codes={ninja.showPropertys} size={16} limit={6} className="mt-1.5" />
+        )}
       </div>
     </Link>
   )

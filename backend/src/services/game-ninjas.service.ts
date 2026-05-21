@@ -81,6 +81,7 @@ function decorate(n: any) {
     resists: jsonParse(n.resists, {} as Record<string, number>),
     intro: jsonParse<{ desc: string[]; words: string; types?: string[] } | null>(n.intro, null),
     ninjaTypes: jsonParse<string[]>(n.ninjaTypes, []),
+    showPropertys: jsonParse<number[]>(n.showPropertys, []),
     starVariants: jsonParse<StarVariant[]>(n.starVariants, []),
     skillUpgrades: jsonParse<Record<string, RawSkillUpgrade[]>>(n.skillUpgrades, {}),
     mainTalentsRaw: jsonParse<MainTalentsRaw | null>(n.mainTalents, null),
@@ -112,6 +113,7 @@ function summarize(n: any) {
     property: dec.property,
     career: dec.career,
     ninjaTypes: dec.ninjaTypes,
+    showPropertys: dec.showPropertys,
     rareness: dec.rareness,
     starLevel: dec.starLevel,
     stats: {

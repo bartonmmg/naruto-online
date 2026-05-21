@@ -993,6 +993,38 @@ DATABASE_URL='file:./prisma/dev.db' npx prisma generate
 ## Last Updated
 2026-05-19
 
+### Changes in this session (2026-05-19, later) — Slugs en Espíritus + filtro Tipo agrupado
+
+Mejoras de UX e infraestructura aplicadas tras el refactor mayor de ninjas:
+
+- ✅ **Helper compartido `backend/src/lib/slug.ts`** — extraído del importer de ninjas. Función `slugify(name, title?)` reusable. Normaliza NFD, lowercase, descarta caracteres especiales, hyphen-separated.
+
+- ✅ **Slugs en Espíritus Animales** — schema `GameSpirit` ahora tiene `slug String` + `@@unique([region, slug])` + `@@index([slug])`. Importer genera slugs desde el name (49 únicos, 1 colisión resuelta con sufijo `-id`: `gamakichi` + `gamakichi-20000026`). Service `getById(idOrSlug)` acepta string o number. Controller usa regex `/^\d+$/` para discriminar. Frontend: folder `[id]` renombrado a `[slug]`, `SpiritCard` linkea con `spirit.slug || spirit.id` (backward compat). URLs ahora son: `/centro-de-datos/espiritus/tonton`, `/gamabunta`, `/perro-ninja-parker`, etc.
+
+- ✅ **Filtro Tipo agrupado por categorías colapsables** — el filtro tenía 22 tipos planos apilados. Ahora se agrupan en 5 categorías semánticas en `frontend/lib/ninja-type-groups.ts`:
+  - **Ofensivos** (125): Ataque grupal, Ataque individual, Doble ataque, Daño grupal, Ataque
+  - **Control** (60): Control, Interrupción
+  - **Soporte** (86): Asistencia, Encantamiento, Médico, Buen Estado, Cura
+  - **Defensivos** (30): Escudo, Escudo Humano, Resurrección
+  - **Invocación / Recurso** (63): Fuente de Chakra, Clon, Marioneta, Invocador, Invocación, Copia, Transformación
+  
+  Cada grupo es un header clickeable con chevron + count agregado. Default: colapsados. Si hay un tipo seleccionado al cargar, su grupo arranca expandido. El header del grupo que contiene el tipo activo se resalta en naranja. Solo se muestran tipos con `count > 0`. Si el backend devuelve un tipo no mapeado, se loguea warning en consola (no rompe UI).
+
+- ✅ **Mains verificados (no requieren cambios)** — ya tienen slugs (`colmillo-anil`, `pupila-carmesi`, `bailarina-vendaval`, `filo-nocturno`, `puno-escarlata`). El `MainTalentsTimeline` refleja correctamente la mecánica del juego (talentos por nivel del jugador, pasivas con 3 opciones); NO tienen sistema de avance/enlace +1/+2/Y/L, no aplica.
+
+- ✅ **Pequeños fixes UI** — "shinobi" → "ninjas" en el catálogo. `max-w-xl` reemplazado por `whitespace-nowrap` en headers de `/centro-de-datos/ninjas` y `/centro-de-datos/main` para que el texto descriptivo quede en una sola línea.
+
+**Pendientes de aplicar a prod (Neon):**
+```bash
+cd backend && set -a && . ./.env.production && set +a
+npx prisma db push --schema=prisma/schema.prod.prisma --skip-generate --accept-data-loss
+npx tsx src/game-client/spirits-catalog/import-to-db.ts
+```
+
+**Decisiones documentadas (fuera de scope):**
+- **Modas:** postergado. 0 código, ~13-20h estimado para bootstrap completo (configs `FashionConfigCFG` / `TabardLevelUpCFG` / `TabardStepUpCFG` / `TabardAssetsCFG` del CDN, schema, importer, endpoints, frontend, imágenes).
+- **Selector de nivel del espíritu:** descartado tras verificar que los 5 `majorSkill` IDs de Tonton (20000611-20001011) tienen descripción IDÉNTICA — el sistema de niveles del espíritu existe pero no aporta cambio visible en la skill. Re-evaluar si en el futuro encontramos espíritus con descripción que cambie.
+
 ### Changes in this session (2026-05-19) — Catálogo de ninjas: dedup correcto + tiers + URLs por slug
 
 Mejoras estructurales al catálogo de ninjas tras analizar la mecánica real del juego (estrellas + avance + enlaces Y/L). El total bajó de 408 a 394 (389 NINJA + 5 MAIN) coincidiendo con los ~390 cards visibles en el juego actual.

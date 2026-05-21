@@ -14,12 +14,16 @@ import { NinjaListResponse } from '@/lib/types'
  */
 export interface IndexEntry {
   id: number
+  slug: string
   name: string
   title: string
   kind: 'NINJA' | 'MAIN'
+  rarenessCode: number
 }
 
-const CACHE_KEY = 'ninja-index-v1'
+// v2: incluye slug + rarenessCode. Bump version cuando cambia la shape para que
+// los browsers con cache viejo lo invaliden automáticamente.
+const CACHE_KEY = 'ninja-index-v2'
 let memCache: IndexEntry[] | null = null
 let inFlight: Promise<IndexEntry[]> | null = null
 
@@ -31,7 +35,14 @@ async function fetchKind(kind: 'NINJA' | 'MAIN'): Promise<IndexEntry[]> {
       params: { kind, sort: 'name', limit: 100, offset },
     })
     for (const n of r.data.items) {
-      out.push({ id: n.id, name: n.name, title: n.title, kind: n.kind })
+      out.push({
+        id: n.id,
+        slug: n.slug,
+        name: n.name,
+        title: n.title,
+        kind: n.kind,
+        rarenessCode: n.rareness.code,
+      })
     }
     if (!r.data.pagination.hasMore) break
     offset = out.length

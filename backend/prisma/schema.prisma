@@ -314,6 +314,7 @@ model GameNinja {
   resists         String // JSON: NinjaResists
   intro           String? // JSON: { desc: string[], words: string, types: string[] } | null
   ninjaTypes      String   @default("[]") // JSON: string[] — clasificación visible del juego (ej. ["Ataque grupal", "Buen Estado"])
+  showPropertys   String   @default("[]") // JSON: number[] — códigos de propiedades visibles (Hokage, Sage, etc.) → assets/user/ninja/propertyIcon/<code>.png
   starVariants    String   @default("[]") // JSON: 5 entries (★1..★5) con {id, title, artisticId, stats, resists}
   skillUpgrades   String   @default("{}") // JSON: map baseSkillId → [tier1Id, tier2Id, ...] (avance/breakthrough)
   mainTalents     String? // JSON: solo para kind=MAIN (talentos por tipo/slot)

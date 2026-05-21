@@ -53,7 +53,7 @@ export default function RefText({ text, linkClassName }: Props) {
           return (
             <Link
               key={i}
-              href={`/centro-de-datos/ninjas/${(ninja as any).slug || ninja.id}`}
+              href={`/centro-de-datos/ninjas/${ninja.slug || ninja.id}`}
               className={linkCls}
               title={`Ver ${ninja.name}${ninja.title ? ' ' + ninja.title : ''}`}
             >

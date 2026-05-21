@@ -171,6 +171,7 @@ export interface GameNinjaSummary {
   property: Coded
   career: Coded
   ninjaTypes: string[]
+  showPropertys: number[]
   rareness: Coded
   starLevel: number
   stats: { baseLife: number; baseBodyAttack: number; baseNinjaAttack: number }
@@ -217,6 +218,7 @@ export interface GameNinjaDetail {
   property: Coded
   career: Coded
   ninjaTypes: string[]
+  showPropertys: number[]
   rareness: Coded
   sex: Coded
   starLevel: number
